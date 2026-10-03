@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
+import 'package:dropdown_search/dropdown_search.dart';
 import '../../core/utils/responsive_layout.dart';
 import '../../core/values/app_colors.dart';
 import '../../core/values/app_constants.dart';
@@ -10,6 +11,8 @@ import '../../core/widgets/custom_pagination.dart';
 import '../../core/widgets/custom_shimmer.dart';
 import '../../core/widgets/custom_snackbar.dart';
 import '../../core/widgets/global_gaushala_selector.dart';
+import '../../core/widgets/header_user_profile_badge.dart';
+import '../notification/widgets/notification_bell_widget.dart';
 import '../../data/models/type_model.dart';
 import '../../routes/app_routes.dart';
 import '../dashboard/widgets/mobile_drawer.dart';
@@ -24,9 +27,9 @@ class TypeScreen extends GetView<TypeController> {
   @override
   Widget build(BuildContext context) {
     return ResponsiveLayout(
-      mobile: _buildMobileScaffold(context),
-      tablet: _buildTabletScaffold(context),
-      desktop: _buildDesktopScaffold(context),
+      mobileBuilder: (context) => _buildMobileScaffold(context),
+      tabletBuilder: (context) => _buildTabletScaffold(context),
+      desktopBuilder: (context) => _buildDesktopScaffold(context),
     );
   }
 
@@ -83,6 +86,7 @@ class TypeScreen extends GetView<TypeController> {
       appBar: AppBar(
         title: const Text('Types Master'),
         actions: [
+          const NotificationBellWidget(),
           Obx(() {
             final isBusy = controller.isRefreshing.value || controller.isLoading.value;
             return IconButton(
@@ -126,6 +130,7 @@ class TypeScreen extends GetView<TypeController> {
       appBar: AppBar(
         title: const Text('Types Master'),
         actions: [
+          const NotificationBellWidget(),
           Obx(() {
             final isBusy = controller.isRefreshing.value || controller.isLoading.value;
             return IconButton(
@@ -231,7 +236,9 @@ class TypeScreen extends GetView<TypeController> {
           Row(
             children: [
               const GlobalGaushalaSelector(),
-              const SizedBox(width: 12),
+              const SizedBox(width: 8),
+              const NotificationBellWidget(),
+              const SizedBox(width: 8),
               Obx(() {
                 final isBusy = controller.isRefreshing.value || controller.isLoading.value;
                 return IconButton(
@@ -243,42 +250,7 @@ class TypeScreen extends GetView<TypeController> {
                 );
               }),
               const SizedBox(width: 8),
-              Obx(() {
-                final user = controller.currentUser.value;
-                return Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: isDark ? AppColors.cardDark : AppColors.backgroundLight,
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(
-                      color: isDark ? AppColors.borderDark : AppColors.borderLight,
-                    ),
-                  ),
-                  child: Row(
-                    children: [
-                      CircleAvatar(
-                        radius: 13,
-                        backgroundColor: AppColors.primary,
-                        child: Text(
-                          user?.name.isNotEmpty == true
-                              ? user!.name.substring(0, 1).toUpperCase()
-                              : 'A',
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 11,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Text(
-                        user?.name ?? 'Admin',
-                        style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
-                      ),
-                    ],
-                  ),
-                );
-              }),
+              Obx(() => HeaderUserProfileBadge(user: controller.currentUser.value)),
             ],
           ),
         ],
@@ -426,41 +398,48 @@ class TypeScreen extends GetView<TypeController> {
                     }),
                   ],
                 ),
-                SizedBox(
-                  width: 280,
-                  height: 38,
-                  child: TextField(
-                    onChanged: (val) => controller.searchQuery.value = val,
-                    style: const TextStyle(fontSize: 13),
-                    decoration: InputDecoration(
-                      hintText: 'Search type name or ID...',
-                      hintStyle: const TextStyle(fontSize: 12),
-                      prefixIcon: const Icon(Icons.search_rounded, size: 18),
-                      suffixIcon: Obx(
-                        () => controller.searchQuery.value.isNotEmpty
-                            ? IconButton(
-                                icon: const Icon(Icons.clear_rounded, size: 16),
-                                onPressed: () => controller.searchQuery.value = '',
-                              )
-                            : const SizedBox.shrink(),
-                      ),
-                      filled: true,
-                      fillColor: isDark ? AppColors.cardDark : AppColors.backgroundLight,
-                      contentPadding: const EdgeInsets.symmetric(vertical: 0, horizontal: 12),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(8),
-                        borderSide: BorderSide(
-                          color: isDark ? AppColors.borderDark : AppColors.borderLight,
-                        ),
-                      ),
-                      enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(8),
-                        borderSide: BorderSide(
-                          color: isDark ? AppColors.borderDark : AppColors.borderLight,
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    _buildGaushalaFilterDropdown(context, isDark),
+                    const SizedBox(width: 12),
+                    SizedBox(
+                      width: 260,
+                      height: 38,
+                      child: TextField(
+                        onChanged: (val) => controller.searchQuery.value = val,
+                        style: const TextStyle(fontSize: 13),
+                        decoration: InputDecoration(
+                          hintText: 'Search type name or ID...',
+                          hintStyle: const TextStyle(fontSize: 12),
+                          prefixIcon: const Icon(Icons.search_rounded, size: 18),
+                          suffixIcon: Obx(
+                            () => controller.searchQuery.value.isNotEmpty
+                                ? IconButton(
+                                    icon: const Icon(Icons.clear_rounded, size: 16),
+                                    onPressed: () => controller.searchQuery.value = '',
+                                  )
+                                : const SizedBox.shrink(),
+                          ),
+                          filled: true,
+                          fillColor: isDark ? AppColors.cardDark : AppColors.backgroundLight,
+                          contentPadding: const EdgeInsets.symmetric(vertical: 0, horizontal: 12),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8),
+                            borderSide: BorderSide(
+                              color: isDark ? AppColors.borderDark : AppColors.borderLight,
+                            ),
+                          ),
+                          enabledBorder: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(8),
+                            borderSide: BorderSide(
+                              color: isDark ? AppColors.borderDark : AppColors.borderLight,
+                            ),
+                          ),
                         ),
                       ),
                     ),
-                  ),
+                  ],
                 ),
               ],
             ),
@@ -472,14 +451,16 @@ class TypeScreen extends GetView<TypeController> {
             if (controller.isLoading.value) {
               return const CustomTableShimmer(
                 rowCount: 6,
-                columnFlexes: [6, 6, 5],
-                headers: ['#', 'TYPE NAME', 'SYSTEM ID', 'CREATED AT'],
+                columnFlexes: [5, 4, 5, 4],
+                headers: ['#', 'TYPE NAME', 'GAUSHALA', 'SYSTEM ID', 'CREATED AT'],
               );
             }
 
             final list = controller.filteredTypes;
 
             if (list.isEmpty) {
+              final isSearching = controller.searchQuery.value.isNotEmpty;
+
               return Padding(
                 padding: const EdgeInsets.all(60.0),
                 child: Center(
@@ -492,17 +473,26 @@ class TypeScreen extends GetView<TypeController> {
                       ),
                       const SizedBox(height: 12),
                       Text(
-                        controller.searchQuery.value.isNotEmpty
+                        isSearching
                             ? 'No types matching "${controller.searchQuery.value}"'
-                            : 'No types registered yet.',
+                            : 'No types registered for ${controller.selectedGaushalaName}.',
                         style: const TextStyle(
                           fontSize: 14,
                           color: AppColors.textSecondaryLight,
                           fontWeight: FontWeight.w500,
                         ),
                       ),
-                      if (controller.searchQuery.value.isEmpty) ...[
-                        const SizedBox(height: 16),
+                      const SizedBox(height: 16),
+                      if (isSearching)
+                        CustomButton(
+                          text: 'Clear Search',
+                          icon: Icons.clear_rounded,
+                          variant: ButtonVariant.outlined,
+                          width: 150,
+                          height: 40,
+                          onPressed: controller.clearFilters,
+                        )
+                      else
                         CustomButton(
                           text: 'Add First Type',
                           icon: Icons.add_rounded,
@@ -510,7 +500,6 @@ class TypeScreen extends GetView<TypeController> {
                           height: 38,
                           onPressed: () => controller.openAddTypeDialog(context),
                         ),
-                      ],
                     ],
                   ),
                 ),
@@ -532,9 +521,10 @@ class TypeScreen extends GetView<TypeController> {
                   child: Row(
                     children: [
                       SizedBox(width: 56.5, child: _buildTableHeaderCell('#')),
-                      Expanded(flex: 6, child: _buildTableHeaderCell('TYPE NAME')),
-                      Expanded(flex: 6, child: _buildTableHeaderCell('SYSTEM ID')),
-                      Expanded(flex: 5, child: _buildTableHeaderCell('CREATED AT')),
+                      Expanded(flex: 5, child: _buildTableHeaderCell('TYPE NAME')),
+                      Expanded(flex: 4, child: _buildTableHeaderCell('GAUSHALA')),
+                      Expanded(flex: 5, child: _buildTableHeaderCell('SYSTEM ID')),
+                      Expanded(flex: 4, child: _buildTableHeaderCell('CREATED AT')),
                     ],
                   ),
                 ),
@@ -566,6 +556,235 @@ class TypeScreen extends GetView<TypeController> {
     );
   }
 
+  Widget _buildGaushalaFilterDropdown(BuildContext context, bool isDark, {bool isExpanded = false}) {
+    return Obx(() {
+      final list = controller.gaushalas.toList();
+      final canChange = controller.canChangeGaushala;
+      final selectedName = controller.selectedGaushalaName;
+
+      // If user is Non-Admin, render fixed station chip
+      if (!canChange) {
+        return Tooltip(
+          message: 'Assigned Gaushala: $selectedName (Fixed to your account)',
+          child: Container(
+            width: isExpanded ? double.infinity : 240,
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8.5),
+            decoration: BoxDecoration(
+              color: isDark ? AppColors.surfaceDark : Theme.of(context).cardColor,
+              borderRadius: BorderRadius.circular(10),
+              border: Border.all(
+                color: isDark ? AppColors.borderDark : AppColors.borderLight,
+                width: 1.0,
+              ),
+            ),
+            child: Row(
+              mainAxisSize: isExpanded ? MainAxisSize.max : MainAxisSize.min,
+              children: [
+                const Icon(
+                  Icons.storefront_outlined,
+                  size: 16,
+                  color: AppColors.primary,
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    selectedName,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: isDark ? AppColors.textPrimaryDark : AppColors.textPrimaryLight,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 6),
+                Icon(
+                  PhosphorIconsRegular.lockSimple,
+                  size: 13,
+                  color: isDark ? AppColors.textMutedDark : AppColors.textMutedLight,
+                ),
+              ],
+            ),
+          ),
+        );
+      }
+
+      final items = list.map((g) => g.gaushalaName).toList();
+
+      return SizedBox(
+        width: isExpanded ? double.infinity : 240,
+        child: DropdownSearch<String>(
+          items: (filter, infiniteScrollProps) {
+            if (filter.isEmpty) return items;
+            return items
+                .where((item) => item.toLowerCase().contains(filter.toLowerCase()))
+                .toList();
+          },
+          selectedItem: selectedName,
+          compareFn: (i1, i2) => i1 == i2,
+          onSelected: (selected) {
+            if (selected != null) {
+              final match = controller.findGaushala(selected);
+              if (match != null) {
+                controller.setGaushalaFilter(match.id);
+              }
+            }
+          },
+          dropdownBuilder: (context, selectedItem) {
+            return Text(
+              selectedItem ?? 'Select Gaushala',
+              maxLines: 1,
+              overflow: TextOverflow.ellipsis,
+              style: TextStyle(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: isDark ? AppColors.textPrimaryDark : AppColors.textPrimaryLight,
+              ),
+            );
+          },
+          suffixProps: DropdownSuffixProps(
+            dropdownButtonProps: DropdownButtonProps(
+              padding: EdgeInsets.zero,
+              constraints: const BoxConstraints(minWidth: 24, minHeight: 24),
+              iconClosed: Icon(
+                Icons.keyboard_arrow_down_rounded,
+                size: 18,
+                color: isDark ? AppColors.textMutedDark : AppColors.textMutedLight,
+              ),
+            ),
+          ),
+          decoratorProps: DropDownDecoratorProps(
+            baseStyle: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+              color: isDark ? AppColors.textPrimaryDark : AppColors.textPrimaryLight,
+            ),
+            decoration: InputDecoration(
+              isDense: true,
+              contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8.5),
+              filled: true,
+              fillColor: isDark ? AppColors.surfaceDark : Theme.of(context).cardColor,
+              prefixIconConstraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+              prefixIcon: const Padding(
+                padding: EdgeInsets.only(left: 8, right: 6),
+                child: Icon(
+                  Icons.storefront_outlined,
+                  size: 16,
+                  color: AppColors.primary,
+                ),
+              ),
+              border: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(10),
+                borderSide: BorderSide(
+                  color: isDark ? AppColors.borderDark : AppColors.borderLight,
+                  width: 1.0,
+                ),
+              ),
+              enabledBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(10),
+                borderSide: BorderSide(
+                  color: isDark ? AppColors.borderDark : AppColors.borderLight,
+                  width: 1.0,
+                ),
+              ),
+              focusedBorder: OutlineInputBorder(
+                borderRadius: BorderRadius.circular(10),
+                borderSide: const BorderSide(color: AppColors.primary, width: 1.5),
+              ),
+            ),
+          ),
+          popupProps: PopupProps.menu(
+            showSearchBox: items.length > 5,
+            fit: FlexFit.loose,
+            constraints: const BoxConstraints(maxHeight: 280),
+            menuProps: MenuProps(
+              backgroundColor: isDark ? AppColors.cardDark : AppColors.surfaceLight,
+              borderRadius: BorderRadius.circular(12),
+              elevation: 4,
+              shadowColor: Colors.black.withValues(alpha: 0.12),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+                side: BorderSide(
+                  color: isDark ? AppColors.borderDark : AppColors.borderLight,
+                ),
+              ),
+            ),
+            searchFieldProps: TextFieldProps(
+              autofocus: true,
+              style: TextStyle(
+                fontSize: 13,
+                color: isDark ? AppColors.textPrimaryDark : AppColors.textPrimaryLight,
+              ),
+              decoration: InputDecoration(
+                hintText: 'Search gaushala...',
+                hintStyle: TextStyle(
+                  fontSize: 12.5,
+                  color: isDark ? AppColors.textMutedDark : AppColors.textMutedLight,
+                ),
+                prefixIcon: Icon(
+                  PhosphorIconsRegular.magnifyingGlass,
+                  size: 15,
+                  color: isDark ? AppColors.textMutedDark : AppColors.textMutedLight,
+                ),
+                isDense: true,
+                contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+                filled: true,
+                fillColor: isDark ? AppColors.surfaceDark : AppColors.backgroundLight,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  borderSide: BorderSide(color: isDark ? AppColors.borderDark : AppColors.borderLight),
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  borderSide: BorderSide(color: isDark ? AppColors.borderDark : AppColors.borderLight),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(8),
+                  borderSide: const BorderSide(color: AppColors.primary, width: 1.5),
+                ),
+              ),
+            ),
+            itemBuilder: (context, item, isDisabled, isSelected) {
+              final bool isCurrentSelected = selectedName == item;
+
+              return Container(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                color: isCurrentSelected
+                    ? AppColors.primary.withValues(alpha: 0.1)
+                    : Colors.transparent,
+                child: Row(
+                  children: [
+                    Icon(
+                      Icons.storefront_outlined,
+                      size: 16,
+                      color: isCurrentSelected ? AppColors.primary : (isDark ? AppColors.textSecondaryDark : AppColors.textSecondaryLight),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        item,
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: isCurrentSelected ? FontWeight.bold : FontWeight.normal,
+                          color: isCurrentSelected
+                              ? AppColors.primary
+                              : (isDark ? AppColors.textPrimaryDark : AppColors.textPrimaryLight),
+                        ),
+                      ),
+                    ),
+                    if (isCurrentSelected)
+                      const Icon(Icons.check_rounded, size: 16, color: AppColors.primary),
+                  ],
+                ),
+              );
+            },
+          ),
+        ),
+      );
+    });
+  }
+
   Widget _buildTableHeaderCell(String title, {bool alignRight = false}) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
@@ -586,26 +805,33 @@ class TypeScreen extends GetView<TypeController> {
   // MOBILE / TABLET VIEWS
   // -------------------------------------------------------------
   Widget _buildSearchBox(BuildContext context) {
-    return TextField(
-      onChanged: (val) => controller.searchQuery.value = val,
-      decoration: InputDecoration(
-        hintText: 'Search types...',
-        prefixIcon: const Icon(Icons.search_rounded),
-        suffixIcon: Obx(
-          () => controller.searchQuery.value.isNotEmpty
-              ? IconButton(
-                  icon: const Icon(Icons.clear_rounded),
-                  onPressed: () => controller.searchQuery.value = '',
-                )
-              : const SizedBox.shrink(),
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return Column(
+      children: [
+        _buildGaushalaFilterDropdown(context, isDark, isExpanded: true),
+        const SizedBox(height: 12),
+        TextField(
+          onChanged: (val) => controller.searchQuery.value = val,
+          decoration: InputDecoration(
+            hintText: 'Search types...',
+            prefixIcon: const Icon(Icons.search_rounded),
+            suffixIcon: Obx(
+              () => controller.searchQuery.value.isNotEmpty
+                  ? IconButton(
+                      icon: const Icon(Icons.clear_rounded),
+                      onPressed: () => controller.searchQuery.value = '',
+                    )
+                  : const SizedBox.shrink(),
+            ),
+            filled: true,
+            fillColor: Theme.of(context).cardColor,
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(12),
+              borderSide: BorderSide.none,
+            ),
+          ),
         ),
-        filled: true,
-        fillColor: Theme.of(context).cardColor,
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide.none,
-        ),
-      ),
+      ],
     );
   }
 
@@ -619,14 +845,41 @@ class TypeScreen extends GetView<TypeController> {
 
       final list = controller.filteredTypes;
       if (list.isEmpty) {
+        final isSearching = controller.searchQuery.value.isNotEmpty;
+
         return Center(
           child: Padding(
             padding: const EdgeInsets.all(40.0),
-            child: Text(
-              controller.searchQuery.value.isNotEmpty
-                  ? 'No types match "${controller.searchQuery.value}"'
-                  : 'No types found.',
-              style: const TextStyle(color: AppColors.textSecondaryLight),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  isSearching
+                      ? 'No types match "${controller.searchQuery.value}"'
+                      : 'No types registered for ${controller.selectedGaushalaName}.',
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 6),
+                Text(
+                  isSearching
+                      ? 'Try different keywords'
+                      : 'Tap "+ Add Type" above to create a new cattle type',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: isDark ? AppColors.textSecondaryDark : AppColors.textSecondaryLight,
+                  ),
+                ),
+                if (isSearching) ...[
+                  const SizedBox(height: 16),
+                  TextButton.icon(
+                    icon: const Icon(Icons.clear_rounded, size: 16),
+                    label: const Text('Clear Search'),
+                    onPressed: controller.clearFilters,
+                  ),
+                ],
+              ],
             ),
           ),
         );
@@ -644,6 +897,13 @@ class TypeScreen extends GetView<TypeController> {
             separatorBuilder: (_, index) => const SizedBox(height: 10),
             itemBuilder: (context, index) {
               final TypeModel type = paginatedList[index];
+              String gaushalaName = type.gaushalaName ?? '';
+              if (gaushalaName.isEmpty && type.gaushalaId != null && type.gaushalaId!.isNotEmpty) {
+                final match = controller.gaushalas.firstWhereOrNull((g) => g.id == type.gaushalaId);
+                if (match != null) {
+                  gaushalaName = match.gaushalaName;
+                }
+              }
 
               return _HoverableListCard(
                 child: ListTile(
@@ -658,9 +918,69 @@ class TypeScreen extends GetView<TypeController> {
                   subtitle: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
+                      if (gaushalaName.isNotEmpty) ...[
+                        const SizedBox(height: 3),
+                        Row(
+                          children: [
+                            const Icon(Icons.storefront_outlined, size: 13, color: AppColors.secondary),
+                            const SizedBox(width: 4),
+                            Text(
+                              gaushalaName,
+                              style: const TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                                color: AppColors.secondary,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
                       const SizedBox(height: 4),
-                      Text('ID: ${type.id}', style: const TextStyle(fontSize: 11, fontFamily: 'monospace')),
-                      Text('Created: ${formatDate(type.createdAt)}', style: const TextStyle(fontSize: 11)),
+                      Text(
+                        'ID: ${type.id}',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(fontSize: 11, fontFamily: 'monospace'),
+                      ),
+                      Text(
+                        'Created: ${formatDate(type.createdAt)}',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(fontSize: 11),
+                      ),
+                    ],
+                  ),
+                  trailing: PopupMenuButton<String>(
+                    icon: const Icon(Icons.more_vert_rounded, size: 20),
+                    padding: EdgeInsets.zero,
+                    onSelected: (val) {
+                      if (val == 'edit') {
+                        controller.openEditTypeDialog(context, type);
+                      } else if (val == 'delete') {
+                        controller.confirmDeleteType(context, type);
+                      }
+                    },
+                    itemBuilder: (ctx) => [
+                      const PopupMenuItem(
+                        value: 'edit',
+                        child: Row(
+                          children: [
+                            Icon(Icons.edit_outlined, size: 18, color: AppColors.info),
+                            SizedBox(width: 8),
+                            Text('Edit Type'),
+                          ],
+                        ),
+                      ),
+                      const PopupMenuItem(
+                        value: 'delete',
+                        child: Row(
+                          children: [
+                            Icon(Icons.delete_outline_rounded, size: 18, color: AppColors.error),
+                            SizedBox(width: 8),
+                            Text('Delete Type'),
+                          ],
+                        ),
+                      ),
                     ],
                   ),
                 ),
@@ -719,6 +1039,15 @@ class _HoverableTypeTableRowState extends State<_HoverableTypeTableRow> {
   Widget build(BuildContext context) {
     final type = widget.type;
     final isDark = widget.isDark;
+    final controller = Get.find<TypeController>();
+
+    String gaushalaName = type.gaushalaName ?? '';
+    if (gaushalaName.isEmpty && type.gaushalaId != null && type.gaushalaId!.isNotEmpty) {
+      final match = controller.gaushalas.firstWhereOrNull((g) => g.id == type.gaushalaId);
+      if (match != null) {
+        gaushalaName = match.gaushalaName;
+      }
+    }
 
     return MouseRegion(
       cursor: SystemMouseCursors.click,
@@ -770,7 +1099,7 @@ class _HoverableTypeTableRowState extends State<_HoverableTypeTableRow> {
 
             // Type Name Badge
             Expanded(
-              flex: 6,
+              flex: 5,
               child: Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                 child: Row(
@@ -820,9 +1149,61 @@ class _HoverableTypeTableRowState extends State<_HoverableTypeTableRow> {
               ),
             ),
 
+            // Gaushala Badge
+            Expanded(
+              flex: 4,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                child: gaushalaName.isNotEmpty
+                    ? Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Flexible(
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: AppColors.secondary.withValues(alpha: 0.1),
+                                borderRadius: BorderRadius.circular(6),
+                                border: Border.all(
+                                  color: AppColors.secondary.withValues(alpha: 0.25),
+                                  width: 1,
+                                ),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const Icon(Icons.storefront_outlined, size: 13, color: AppColors.secondary),
+                                  const SizedBox(width: 5),
+                                  Flexible(
+                                    child: Text(
+                                      gaushalaName,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: const TextStyle(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.w600,
+                                        color: AppColors.secondary,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ],
+                      )
+                    : Text(
+                        '-',
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: isDark ? AppColors.textMutedDark : AppColors.textMutedLight,
+                        ),
+                      ),
+              ),
+            ),
+
             // System ID (with copy feedback)
             Expanded(
-              flex: 6,
+              flex: 5,
               child: Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                 child: Row(
@@ -887,7 +1268,7 @@ class _HoverableTypeTableRowState extends State<_HoverableTypeTableRow> {
 
             // Created At
             Expanded(
-              flex: 5,
+              flex: 4,
               child: Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                 child: Text(

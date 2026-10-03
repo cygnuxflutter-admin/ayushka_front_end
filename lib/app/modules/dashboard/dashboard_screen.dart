@@ -1,30 +1,37 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import 'package:phosphor_flutter/phosphor_flutter.dart';
 import '../../core/utils/responsive_layout.dart';
 import '../../core/values/app_colors.dart';
 import '../../core/values/app_constants.dart';
-import 'dashboard_controller.dart';
-import 'widgets/mobile_drawer.dart';
-import 'widgets/web_sidebar.dart';
-import 'package:phosphor_flutter/phosphor_flutter.dart';
 import '../../core/widgets/global_gaushala_selector.dart';
+import '../../core/widgets/header_user_profile_badge.dart';
 import '../../routes/app_routes.dart';
+import '../notification/widgets/notification_bell_widget.dart';
+import 'dashboard_controller.dart';
+import 'widgets/dashboard_farm_telemetry_card.dart';
+import 'widgets/dashboard_hero_banner.dart';
+import 'widgets/dashboard_kpi_strip.dart';
+import 'widgets/mobile_drawer.dart';
+import 'widgets/smart_alerts_center.dart';
+import 'widgets/web_sidebar.dart';
 
-/// Responsive Cattle Management Dashboard screen adapting to Web, Tablet, and Mobile.
+/// Production-ready Smart Alerts Center & Dashboard for Ayushka Admin Portal.
+/// Features module-wise operational alerts, inline fast actions, and telemetry KPIs.
 class DashboardScreen extends GetView<DashboardController> {
   const DashboardScreen({super.key});
 
   @override
   Widget build(BuildContext context) {
     return ResponsiveLayout(
-      mobile: _buildMobileScaffold(context),
-      tablet: _buildTabletScaffold(context),
-      desktop: _buildDesktopScaffold(context),
+      mobileBuilder: (context) => _buildMobileScaffold(context),
+      tabletBuilder: (context) => _buildTabletScaffold(context),
+      desktopBuilder: (context) => _buildDesktopScaffold(context),
     );
   }
 
   // -------------------------------------------------------------
-  // DESKTOP & WIDE WEB SCAFFOLD
+  // DESKTOP SCAFFOLD
   // -------------------------------------------------------------
   Widget _buildDesktopScaffold(BuildContext context) {
     return Scaffold(
@@ -50,32 +57,11 @@ class DashboardScreen extends GetView<DashboardController> {
                 // Main Content Body
                 Expanded(
                   child: SingleChildScrollView(
-                    padding: const EdgeInsets.all(28.0),
+                    padding: const EdgeInsets.symmetric(horizontal: 28.0, vertical: 24.0),
                     child: Center(
                       child: ConstrainedBox(
-                        constraints: const BoxConstraints(maxWidth: AppConstants.maxContentWidth),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            // Farm Welcome Banner
-                            _buildFarmWelcomeBanner(context),
-                            const SizedBox(height: 24),
-
-                            // Farm KPI Metric Cards
-                            _buildDesktopKpiGrid(context),
-                            const SizedBox(height: 28),
-
-                            // Quick Farm Operations & Health Alerts
-                            Row(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Expanded(flex: 7, child: _buildFarmQuickActionsCard(context)),
-                                const SizedBox(width: 24),
-                                Expanded(flex: 5, child: _buildHealthAlertsCard(context)),
-                              ],
-                            ),
-                          ],
-                        ),
+                        constraints: const BoxConstraints(maxWidth: 1280),
+                        child: _buildDashboardContent(context),
                       ),
                     ),
                   ),
@@ -94,12 +80,15 @@ class DashboardScreen extends GetView<DashboardController> {
   Widget _buildTabletScaffold(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Ayushka Cattle Dashboard'),
+        title: const Text('Ayushka Farm Dashboard'),
         actions: [
+          const NotificationBellWidget(),
           IconButton(
             icon: const Icon(Icons.refresh_rounded),
             onPressed: controller.refreshFarmData,
+            tooltip: 'Refresh Farm Data',
           ),
+          const SizedBox(width: 8),
         ],
       ),
       drawer: Obx(
@@ -109,18 +98,12 @@ class DashboardScreen extends GetView<DashboardController> {
         ),
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(20.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            _buildFarmWelcomeBanner(context),
-            const SizedBox(height: 20),
-            _buildTabletKpiGrid(context),
-            const SizedBox(height: 24),
-            _buildFarmQuickActionsCard(context),
-            const SizedBox(height: 20),
-            _buildHealthAlertsCard(context),
-          ],
+        padding: const EdgeInsets.symmetric(horizontal: 20.0, vertical: 20.0),
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 800),
+            child: _buildDashboardContent(context),
+          ),
         ),
       ),
     );
@@ -137,10 +120,13 @@ class DashboardScreen extends GetView<DashboardController> {
           style: TextStyle(fontWeight: FontWeight.bold),
         ),
         actions: [
+          const NotificationBellWidget(),
           IconButton(
             icon: const Icon(Icons.refresh_rounded),
             onPressed: controller.refreshFarmData,
+            tooltip: 'Refresh Farm Data',
           ),
+          const SizedBox(width: 8),
         ],
       ),
       drawer: Obx(
@@ -149,29 +135,15 @@ class DashboardScreen extends GetView<DashboardController> {
           onLogout: controller.logout,
         ),
       ),
-      body: RefreshIndicator(
-        onRefresh: controller.refreshFarmData,
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(16.0),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              _buildFarmWelcomeBanner(context),
-              const SizedBox(height: 16),
-              _buildMobileKpiGrid(context),
-              const SizedBox(height: 20),
-              _buildFarmQuickActionsCard(context),
-              const SizedBox(height: 16),
-              _buildHealthAlertsCard(context),
-            ],
-          ),
-        ),
+      body: SingleChildScrollView(
+        padding: const EdgeInsets.all(16.0),
+        child: _buildDashboardContent(context),
       ),
     );
   }
 
   // -------------------------------------------------------------
-  // DESKTOP TOP HEADER
+  // TOP DESKTOP HEADER
   // -------------------------------------------------------------
   Widget _buildDesktopHeader(BuildContext context) {
     final theme = Theme.of(context);
@@ -214,15 +186,30 @@ class DashboardScreen extends GetView<DashboardController> {
                 decoration: BoxDecoration(
                   color: AppColors.successBg,
                   borderRadius: BorderRadius.circular(6),
+                  border: Border.all(color: AppColors.success.withValues(alpha: 0.2)),
                 ),
-                child: const Text(
-                  'FARM ACTIVE',
-                  style: TextStyle(color: AppColors.success, fontSize: 11, fontWeight: FontWeight.bold),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      width: 6,
+                      height: 6,
+                      decoration: const BoxDecoration(
+                        color: AppColors.success,
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                    const SizedBox(width: 6),
+                    const Text(
+                      'STATION ONLINE',
+                      style: TextStyle(color: AppColors.success, fontSize: 11, fontWeight: FontWeight.bold),
+                    ),
+                  ],
                 ),
               ),
               const SizedBox(width: 14),
               const Text(
-                'Live Herd Telemetry & Milk Collection Station',
+                'Ayushka Smart Dairy Workplace',
                 style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
               ),
             ],
@@ -230,43 +217,16 @@ class DashboardScreen extends GetView<DashboardController> {
           Row(
             children: [
               const GlobalGaushalaSelector(),
-              const SizedBox(width: 12),
+              const SizedBox(width: 8),
+              const NotificationBellWidget(),
+              const SizedBox(width: 8),
               IconButton(
                 icon: const Icon(Icons.refresh_rounded, size: 20),
                 tooltip: 'Refresh Farm Data',
                 onPressed: controller.refreshFarmData,
               ),
-              const SizedBox(width: 8),
-              Obx(() {
-                final user = controller.currentUser.value;
-                return Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: isDark ? AppColors.cardDark : AppColors.backgroundLight,
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(
-                      color: isDark ? AppColors.borderDark : AppColors.borderLight,
-                    ),
-                  ),
-                  child: Row(
-                    children: [
-                      CircleAvatar(
-                        radius: 13,
-                        backgroundColor: AppColors.primary,
-                        child: Text(
-                          user?.name.substring(0, 1).toUpperCase() ?? 'F',
-                          style: const TextStyle(color: Colors.white, fontSize: 11, fontWeight: FontWeight.bold),
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Text(
-                        user?.name ?? 'Farm Manager',
-                        style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
-                      ),
-                    ],
-                  ),
-                );
-              }),
+              const SizedBox(width: 10),
+              Obx(() => HeaderUserProfileBadge(user: controller.currentUser.value)),
             ],
           ),
         ],
@@ -275,559 +235,231 @@ class DashboardScreen extends GetView<DashboardController> {
   }
 
   // -------------------------------------------------------------
-  // WELCOME BANNER
+  // MAIN DASHBOARD CONTENT
   // -------------------------------------------------------------
-  Widget _buildFarmWelcomeBanner(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 22),
-      decoration: BoxDecoration(
-        color: AppColors.primary,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: AppColors.primary.withValues(alpha: 0.28),
-            blurRadius: 18,
-            offset: const Offset(0, 6),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Obx(
-                  () => Text(
-                    'Welcome to Ayushka Farm, ${controller.currentUser.value?.name ?? 'Farm Manager'} 🌿',
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontSize: 21,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 6),
-                const Text(
-                  'Ayushka Organic Living & Happiness • Cattle & Dairy Management Station. All herd telemetry, A2 milk testing, and breeding records are synced.',
-                  style: TextStyle(
-                    color: Colors.white,
-                    fontSize: 13,
-                    height: 1.4,
-                  ),
-                ),
-              ],
-            ),
-          ),
-          if (!ResponsiveLayout.isMobile(context)) ...[
-            const SizedBox(width: 16),
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-              decoration: BoxDecoration(
-                color: Colors.white,
-                borderRadius: BorderRadius.circular(14),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.14),
-                    blurRadius: 14,
-                    offset: const Offset(0, 3),
-                  ),
-                ],
-              ),
-              child: Row(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  Image.asset(
-                    AppConstants.logoIconPath,
-                    height: 44,
-                    width: 44,
-                    fit: BoxFit.contain,
-                    filterQuality: FilterQuality.high,
-                  ),
-                  const SizedBox(width: 10),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.min,
-                    children: const [
-                      Text(
-                        'ayushka',
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w800,
-                          color: Color(0xFF1E2D17),
-                          letterSpacing: 0.5,
-                        ),
-                      ),
-                      Text(
-                        'Organic Dairy',
-                        style: TextStyle(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w600,
-                          color: AppColors.primary,
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ],
-      ),
-    );
-  }
-
-  // -------------------------------------------------------------
-  // KPI GRIDS
-  // -------------------------------------------------------------
-  Widget _buildDesktopKpiGrid(BuildContext context) {
-    return Row(
-      children: [
-        Expanded(
-          child: Obx(
-            () => _buildMetricCard(
-              context,
-              title: 'Total Herd',
-              value: '${controller.totalCattle.value}',
-              subtitle: 'Active Cattle',
-              icon: PhosphorIconsRegular.cow,
-              color: AppColors.primary,
-            ),
-          ),
-        ),
-        const SizedBox(width: 16),
-        Expanded(
-          child: Obx(
-            () => _buildMetricCard(
-              context,
-              title: 'Milking Cows',
-              value: '${controller.milkingCattle.value}',
-              subtitle: 'Lactation Cycle Active',
-              icon: PhosphorIconsRegular.drop,
-              color: AppColors.info,
-            ),
-          ),
-        ),
-        const SizedBox(width: 16),
-        Expanded(
-          child: Obx(
-            () => _buildMetricCard(
-              context,
-              title: 'Daily Milk Yield',
-              value: '${controller.dailyMilkLiters.value} L',
-              subtitle: 'Morning + Evening Yield',
-              icon: PhosphorIconsRegular.drop,
-              color: AppColors.primaryLight,
-            ),
-          ),
-        ),
-        const SizedBox(width: 16),
-        Expanded(
-          child: Obx(
-            () => _buildMetricCard(
-              context,
-              title: 'Health / Vet Alerts',
-              value: '${controller.healthAlerts.value}',
-              subtitle: 'Checkup Scheduled',
-              icon: PhosphorIconsRegular.heartbeat,
-              color: AppColors.warning,
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildTabletKpiGrid(BuildContext context) {
-    return GridView.count(
-      crossAxisCount: 2,
-      crossAxisSpacing: 16,
-      mainAxisSpacing: 16,
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      childAspectRatio: 2.2,
-      children: [
-        Obx(() => _buildMetricCard(context, title: 'Total Herd', value: '${controller.totalCattle.value}', subtitle: 'Active Cattle', icon: PhosphorIconsRegular.cow, color: AppColors.primary)),
-        Obx(() => _buildMetricCard(context, title: 'Milking Cows', value: '${controller.milkingCattle.value}', subtitle: 'In Lactation', icon: PhosphorIconsRegular.drop, color: AppColors.info)),
-        Obx(() => _buildMetricCard(context, title: 'Daily Yield', value: '${controller.dailyMilkLiters.value} L', subtitle: 'Today', icon: PhosphorIconsRegular.drop, color: AppColors.primaryLight)),
-        Obx(() => _buildMetricCard(context, title: 'Health Alerts', value: '${controller.healthAlerts.value}', subtitle: 'Checkup needed', icon: PhosphorIconsRegular.heartbeat, color: AppColors.warning)),
-      ],
-    );
-  }
-
-  Widget _buildMobileKpiGrid(BuildContext context) {
-    return GridView.count(
-      crossAxisCount: 2,
-      crossAxisSpacing: 12,
-      mainAxisSpacing: 12,
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      childAspectRatio: 1.1,
-      children: [
-        Obx(() => _buildMetricCard(context, title: 'Total Herd', value: '${controller.totalCattle.value}', subtitle: 'Cattle', icon: PhosphorIconsRegular.cow, color: AppColors.primary, isCompact: true)),
-        Obx(() => _buildMetricCard(context, title: 'Milking', value: '${controller.milkingCattle.value}', subtitle: 'In Lactation', icon: PhosphorIconsRegular.drop, color: AppColors.info, isCompact: true)),
-        Obx(() => _buildMetricCard(context, title: 'Daily Milk', value: '${controller.dailyMilkLiters.value} L', subtitle: 'Yield', icon: PhosphorIconsRegular.drop, color: AppColors.primaryLight, isCompact: true)),
-        Obx(() => _buildMetricCard(context, title: 'Health', value: '${controller.healthAlerts.value}', subtitle: 'Alerts', icon: PhosphorIconsRegular.heartbeat, color: AppColors.warning, isCompact: true)),
-      ],
-    );
-  }
-
-  Widget _buildMetricCard(
-    BuildContext context, {
-    required String title,
-    required String value,
-    required String subtitle,
-    required IconData icon,
-    required Color color,
-    bool isCompact = false,
-  }) {
-    return _HoverableKpiCard(
-      title: title,
-      value: value,
-      subtitle: subtitle,
-      icon: icon,
-      color: color,
-      isCompact: isCompact,
-    );
-  }
-
-  // -------------------------------------------------------------
-  // QUICK ACTIONS
-  // -------------------------------------------------------------
-  Widget _buildFarmQuickActionsCard(BuildContext context) {
+  Widget _buildDashboardContent(BuildContext context) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
+    final isMobile = ResponsiveLayout.isMobile(context);
+    final isTablet = ResponsiveLayout.isTablet(context);
 
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: isDark ? AppColors.cardDark : AppColors.cardLight,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(
-          color: isDark ? AppColors.borderDark : AppColors.borderLight,
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        // 1. Ultra-Creative Forest Green Hero Station Banner
+        DashboardHeroBanner(controller: controller),
+        const SizedBox(height: 20),
+
+        // 2. Interactive KPI Header Strip with Live Metric Status
+        Obx(
+          () => DashboardKpiStrip(
+            counts: controller.alertCounts.value,
+            selectedTabIndex: controller.selectedTabIndex.value,
+            onTabSelected: controller.changeTab,
+          ),
         ),
+        const SizedBox(height: 20),
+
+        // 3. Operational Main Workspace (Two-column layout on Desktop, stacked on Mobile/Tablet)
+        if (!isMobile && !isTablet)
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Left Column: 67% for Smart Alerts & Operations Center
+              Expanded(
+                flex: 67,
+                child: SmartAlertsCenter(controller: controller),
+              ),
+              const SizedBox(width: 20),
+              // Right Column: 33% for Herd Demographics, Shifts & Fast Actions
+              Expanded(
+                flex: 33,
+                child: DashboardFarmTelemetryCard(controller: controller),
+              ),
+            ],
+          )
+        else ...[
+          SmartAlertsCenter(controller: controller),
+          const SizedBox(height: 20),
+          DashboardFarmTelemetryCard(controller: controller),
+        ],
+        const SizedBox(height: 24),
+
+        // 4. Quick Module Navigation Strip
+        _buildModuleShortcuts(context, isDark, isMobile),
+      ],
+    );
+  }
+
+  Widget _buildModuleShortcuts(BuildContext context, bool isDark, bool isMobile) {
+    final shortcuts = [
+      _ShortcutItem(
+        title: 'Cattle Herd',
+        icon: PhosphorIconsRegular.cow,
+        route: AppRoutes.cows,
+        color: AppColors.primary,
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Quick Farm Actions',
+      _ShortcutItem(
+        title: 'Barn Sheds',
+        icon: PhosphorIconsRegular.warehouse,
+        route: AppRoutes.sheds,
+        color: const Color(0xFF3B82F6),
+      ),
+      _ShortcutItem(
+        title: 'Vet & Treatments',
+        icon: PhosphorIconsRegular.firstAidKit,
+        route: AppRoutes.treatments,
+        color: const Color(0xFFEF4444),
+      ),
+      _ShortcutItem(
+        title: 'Pharmacy Stock',
+        icon: PhosphorIconsRegular.pill,
+        route: AppRoutes.medicalStock,
+        color: const Color(0xFF8B5CF6),
+      ),
+      _ShortcutItem(
+        title: 'Feed Inventory',
+        icon: PhosphorIconsRegular.plant,
+        route: AppRoutes.feedItems,
+        color: const Color(0xFF10B981),
+      ),
+    ];
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
+          child: Text(
+            'Quick Module Navigation',
             style: TextStyle(
-              fontSize: 16,
+              fontSize: 14,
               fontWeight: FontWeight.bold,
               color: isDark ? AppColors.textPrimaryDark : AppColors.textPrimaryLight,
             ),
           ),
-          const SizedBox(height: 6),
-          Text(
-            'Log daily farm operations or record livestock data',
-            style: TextStyle(
-              fontSize: 12,
-              color: isDark ? AppColors.textMutedDark : AppColors.textMutedLight,
-            ),
-          ),
-          const SizedBox(height: 18),
-          Wrap(
-            spacing: 12,
-            runSpacing: 12,
-            children: [
-              _buildActionButton(
-                icon: Icons.add_circle_outline_rounded,
-                label: 'Register Cattle',
-                color: AppColors.primary,
-                onTap: () => Get.toNamed(AppRoutes.addCow),
-              ),
-              _buildActionButton(
-                icon: Icons.water_drop_outlined,
-                label: 'Log Milk Yield',
-                color: AppColors.info,
-                onTap: () => Get.snackbar('Milk Log', 'Daily milk collection logging.', maxWidth: 400),
-              ),
-              _buildActionButton(
-                icon: Icons.medical_services_outlined,
-                label: 'Schedule Vet Check',
-                color: AppColors.warning,
-                onTap: () => Get.snackbar('Veterinary', 'Vaccination and medical appointment schedule.', maxWidth: 400),
-              ),
-              _buildActionButton(
-                icon: Icons.child_care_rounded,
-                label: 'Breeding Record',
-                color: AppColors.secondary,
-                onTap: () => Get.snackbar('Breeding', 'Insemination and gestation records.', maxWidth: 400),
-              ),
-            ],
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildActionButton({
-    required IconData icon,
-    required String label,
-    required Color color,
-    required VoidCallback onTap,
-  }) {
-    return MouseRegion(
-      cursor: SystemMouseCursors.click,
-      child: InkWell(
-        onTap: onTap,
-        borderRadius: BorderRadius.circular(10),
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-          decoration: BoxDecoration(
-            color: color.withValues(alpha: 0.1),
-            borderRadius: BorderRadius.circular(10),
-            border: Border.all(color: color.withValues(alpha: 0.25)),
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(icon, color: color, size: 20),
-              const SizedBox(width: 8),
-              Text(
-                label,
-                style: TextStyle(
-                  color: color,
-                  fontSize: 13,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ],
-          ),
         ),
-      ),
-    );
-  }
-
-  // -------------------------------------------------------------
-  // HEALTH & BREEDING ALERTS
-  // -------------------------------------------------------------
-  Widget _buildHealthAlertsCard(BuildContext context) {
-    final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
-
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: isDark ? AppColors.cardDark : AppColors.cardLight,
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(
-          color: isDark ? AppColors.borderDark : AppColors.borderLight,
-        ),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                'Herd Health Alerts',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.bold,
-                  color: isDark ? AppColors.textPrimaryDark : AppColors.textPrimaryLight,
-                ),
-              ),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                decoration: BoxDecoration(
-                  color: AppColors.warningBg,
-                  borderRadius: BorderRadius.circular(6),
-                ),
-                child: const Text(
-                  '2 PENDING',
-                  style: TextStyle(color: AppColors.warning, fontSize: 10, fontWeight: FontWeight.bold),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          _buildAlertItem(
-            title: 'Cow #104 (Gir Breed)',
-            description: 'Due for Foot & Mouth (FMD) booster vaccination.',
-            icon: Icons.vaccines_rounded,
-            color: AppColors.warning,
-          ),
-          const SizedBox(height: 12),
-          _buildAlertItem(
-            title: 'Cow #112 (Sahiwal Breed)',
-            description: 'Expected calving date in 5 days. Relocated to maternity pen.',
-            icon: Icons.child_care_rounded,
-            color: AppColors.info,
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildAlertItem({
-    required String title,
-    required String description,
-    required IconData icon,
-    required Color color,
-  }) {
-    return Row(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Container(
-          padding: const EdgeInsets.all(8),
-          decoration: BoxDecoration(
-            color: color.withValues(alpha: 0.12),
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: Icon(icon, color: color, size: 18),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                title,
-                style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
-              ),
-              const SizedBox(height: 2),
-              Text(
-                description,
-                style: const TextStyle(fontSize: 12, color: AppColors.textSecondaryLight),
-              ),
-            ],
-          ),
+        const SizedBox(height: 8),
+        Wrap(
+          spacing: 12,
+          runSpacing: 12,
+          children: shortcuts.map((s) {
+            return _ShortcutChip(
+              item: s,
+              isDark: isDark,
+              onTap: () => Get.toNamed(s.route),
+            );
+          }).toList(),
         ),
       ],
     );
   }
 }
 
-/// Interactive hoverable KPI card with smooth elevation lift, border glow,
-/// and reactive theme adaptation.
-class _HoverableKpiCard extends StatefulWidget {
-  final String title;
-  final String value;
-  final String subtitle;
-  final IconData icon;
-  final Color color;
-  final bool isCompact;
+class _ShortcutChip extends StatefulWidget {
+  final _ShortcutItem item;
+  final bool isDark;
+  final VoidCallback onTap;
 
-  const _HoverableKpiCard({
-    required this.title,
-    required this.value,
-    required this.subtitle,
-    required this.icon,
-    required this.color,
-    this.isCompact = false,
+  const _ShortcutChip({
+    required this.item,
+    required this.isDark,
+    required this.onTap,
   });
 
   @override
-  State<_HoverableKpiCard> createState() => _HoverableKpiCardState();
+  State<_ShortcutChip> createState() => _ShortcutChipState();
 }
 
-class _HoverableKpiCardState extends State<_HoverableKpiCard> {
+class _ShortcutChipState extends State<_ShortcutChip> {
   bool _isHovered = false;
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final isDark = theme.brightness == Brightness.dark;
-    final isCompact = widget.isCompact;
-    final color = widget.color;
+    final item = widget.item;
 
     return MouseRegion(
-      cursor: SystemMouseCursors.basic,
+      cursor: SystemMouseCursors.click,
       onEnter: (_) => setState(() => _isHovered = true),
       onExit: (_) => setState(() => _isHovered = false),
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 200),
-        curve: Curves.easeOutCubic,
-        transform: Matrix4.translationValues(0, _isHovered ? -4 : 0, 0),
-        padding: EdgeInsets.all(isCompact ? 12 : 18),
-        decoration: BoxDecoration(
-          color: isDark
-              ? (_isHovered ? AppColors.surfaceDark : AppColors.cardDark)
-              : (_isHovered ? Colors.white : AppColors.cardLight),
-          borderRadius: BorderRadius.circular(14),
-          border: Border.all(
-            color: _isHovered
-                ? color.withValues(alpha: 0.55)
-                : (isDark ? AppColors.borderDark : AppColors.borderLight),
-            width: _isHovered ? 1.4 : 1.0,
+      child: GestureDetector(
+        onTap: widget.onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 180),
+          curve: Curves.easeOutCubic,
+          transform: _isHovered
+              ? Matrix4.translationValues(0.0, -3.0, 0.0)
+              : Matrix4.identity(),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+          decoration: BoxDecoration(
+            color: widget.isDark
+                ? (_isHovered ? Colors.white.withValues(alpha: 0.08) : AppColors.cardDark)
+                : (_isHovered ? Colors.white : AppColors.cardLight),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(
+              color: _isHovered
+                  ? item.color.withValues(alpha: 0.6)
+                  : (widget.isDark ? AppColors.borderDark : AppColors.borderLight),
+              width: _isHovered ? 1.2 : 1.0,
+            ),
+            boxShadow: _isHovered
+                ? [
+                    BoxShadow(
+                      color: item.color.withValues(alpha: 0.16),
+                      blurRadius: 12,
+                      offset: const Offset(0, 4),
+                    ),
+                  ]
+                : null,
           ),
-          boxShadow: [
-            if (_isHovered) ...[
-              BoxShadow(
-                color: color.withValues(alpha: 0.16),
-                blurRadius: 16,
-                spreadRadius: 1,
-                offset: const Offset(0, 8),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              AnimatedScale(
+                scale: _isHovered ? 1.15 : 1.0,
+                duration: const Duration(milliseconds: 180),
+                child: Icon(item.icon, size: 16, color: item.color),
               ),
-              BoxShadow(
-                color: Colors.black.withValues(alpha: isDark ? 0.25 : 0.04),
-                blurRadius: 6,
-                offset: const Offset(0, 2),
+              const SizedBox(width: 8),
+              Text(
+                item.title,
+                style: TextStyle(
+                  fontSize: 12.5,
+                  fontWeight: FontWeight.w600,
+                  color: _isHovered && !widget.isDark ? item.color : null,
+                ),
               ),
-            ] else ...[
-              BoxShadow(
-                color: Colors.black.withValues(alpha: isDark ? 0.18 : 0.03),
-                blurRadius: 8,
-                offset: const Offset(0, 2),
+              const SizedBox(width: 6),
+              AnimatedSlide(
+                offset: _isHovered ? const Offset(0.25, 0.0) : Offset.zero,
+                duration: const Duration(milliseconds: 180),
+                curve: Curves.easeOutCubic,
+                child: Icon(
+                  Icons.chevron_right_rounded,
+                  size: 16,
+                  color: _isHovered
+                      ? item.color
+                      : (widget.isDark ? AppColors.textMutedDark : AppColors.textMutedLight),
+                ),
               ),
             ],
-          ],
-        ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                AnimatedContainer(
-                  duration: const Duration(milliseconds: 200),
-                  curve: Curves.easeOutCubic,
-                  padding: EdgeInsets.all(isCompact ? 6 : 8),
-                  decoration: BoxDecoration(
-                    color: color.withValues(alpha: _isHovered ? 0.22 : 0.12),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: Icon(widget.icon, color: color, size: isCompact ? 18 : 22),
-                ),
-              ],
-            ),
-            SizedBox(height: isCompact ? 6 : 12),
-            Text(
-              widget.value,
-              style: TextStyle(
-                fontSize: isCompact ? 20 : 26,
-                fontWeight: FontWeight.bold,
-                color: isDark ? AppColors.textPrimaryDark : AppColors.textPrimaryLight,
-              ),
-            ),
-            SizedBox(height: isCompact ? 2 : 4),
-            Text(
-              widget.title,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                fontSize: isCompact ? 12 : 13,
-                fontWeight: FontWeight.w600,
-                color: isDark ? AppColors.textSecondaryDark : AppColors.textSecondaryLight,
-              ),
-            ),
-            Text(
-              widget.subtitle,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                fontSize: isCompact ? 10 : 11,
-                color: AppColors.textMutedLight,
-              ),
-            ),
-          ],
+          ),
         ),
       ),
     );
   }
 }
 
+class _ShortcutItem {
+  final String title;
+  final IconData icon;
+  final String route;
+  final Color color;
+
+  const _ShortcutItem({
+    required this.title,
+    required this.icon,
+    required this.route,
+    required this.color,
+  });
+}

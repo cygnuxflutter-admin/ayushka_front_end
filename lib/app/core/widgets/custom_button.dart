@@ -15,6 +15,8 @@ class CustomButton extends StatefulWidget {
   final double height;
   final double borderRadius;
   final EdgeInsetsGeometry? padding;
+  final Color? backgroundColor;
+  final Color? textColor;
 
   const CustomButton({
     super.key,
@@ -27,6 +29,8 @@ class CustomButton extends StatefulWidget {
     this.height = 48.0,
     this.borderRadius = AppConstants.defaultBorderRadius,
     this.padding,
+    this.backgroundColor,
+    this.textColor,
   });
 
   @override
@@ -78,6 +82,16 @@ class _CustomButtonState extends State<CustomButton> {
         break;
     }
 
+    if (widget.backgroundColor != null) {
+      backgroundColor = _isHovered
+          ? widget.backgroundColor!.withValues(alpha: 0.85)
+          : widget.backgroundColor!;
+    }
+
+    if (widget.textColor != null) {
+      foregroundColor = widget.textColor!;
+    }
+
     if (!isEnabled) {
       backgroundColor = backgroundColor.withValues(alpha: 0.5);
       foregroundColor = foregroundColor.withValues(alpha: 0.7);
@@ -113,27 +127,27 @@ class _CustomButtonState extends State<CustomButton> {
           child: InkWell(
             borderRadius: BorderRadius.circular(widget.borderRadius),
             onTap: isEnabled ? widget.onPressed : null,
-            child: Container(
-              padding: widget.padding ?? const EdgeInsets.symmetric(horizontal: 16.0),
-              alignment: Alignment.center,
-              child: widget.isLoading
-                  ? SizedBox(
-                      width: 20,
-                      height: 20,
-                      child: CircularProgressIndicator(
-                        strokeWidth: 2.2,
-                        valueColor: AlwaysStoppedAnimation<Color>(foregroundColor),
-                      ),
-                    )
-                  : Row(
-                      mainAxisSize: MainAxisSize.min,
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        if (widget.icon != null) ...[
-                          Icon(widget.icon, size: 18, color: foregroundColor),
-                          const SizedBox(width: 8),
-                        ],
-                        if (widget.width != null)
+            child: Center(
+              widthFactor: widget.width == null ? 1.0 : null,
+              child: Padding(
+                padding: widget.padding ?? const EdgeInsets.symmetric(horizontal: 16.0),
+                child: widget.isLoading
+                    ? SizedBox(
+                        width: 20,
+                        height: 20,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 2.2,
+                          valueColor: AlwaysStoppedAnimation<Color>(foregroundColor),
+                        ),
+                      )
+                    : Row(
+                        mainAxisSize: MainAxisSize.min,
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          if (widget.icon != null) ...[
+                            Icon(widget.icon, size: 18, color: foregroundColor),
+                            const SizedBox(width: 8),
+                          ],
                           Flexible(
                             child: Text(
                               widget.text,
@@ -146,19 +160,10 @@ class _CustomButtonState extends State<CustomButton> {
                                 letterSpacing: 0.3,
                               ),
                             ),
-                          )
-                        else
-                          Text(
-                            widget.text,
-                            style: TextStyle(
-                              color: foregroundColor,
-                              fontSize: 14,
-                              fontWeight: FontWeight.w600,
-                              letterSpacing: 0.3,
-                            ),
                           ),
-                      ],
-                    ),
+                        ],
+                      ),
+              ),
             ),
           ),
         ),

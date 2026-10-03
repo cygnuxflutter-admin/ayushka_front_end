@@ -76,12 +76,14 @@ class LogoutConfirmationDialog extends StatelessWidget {
 
     return Dialog(
       backgroundColor: Colors.transparent,
-      insetPadding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 24.0),
       elevation: 0,
-      child: Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 420.0),
-          child: Container(
+      shadowColor: Colors.transparent,
+      surfaceTintColor: Colors.transparent,
+      shape: const RoundedRectangleBorder(side: BorderSide.none),
+      insetPadding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 24.0),
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 420.0),
+        child: Container(
             decoration: BoxDecoration(
               color: isDark ? AppColors.surfaceDark : AppColors.surfaceLight,
               borderRadius: BorderRadius.circular(20),
@@ -365,7 +367,6 @@ class LogoutConfirmationDialog extends StatelessWidget {
             ),
           ),
         ),
-      ),
     );
   }
 }

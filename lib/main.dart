@@ -9,7 +9,9 @@ import 'app/core/values/app_constants.dart';
 import 'app/data/services/api_service.dart';
 import 'app/data/services/connectivity_service.dart';
 import 'app/data/services/gaushala_session_service.dart';
+import 'app/data/services/permission_service.dart';
 import 'app/data/services/storage_service.dart';
+import 'app/modules/notification/notification_controller.dart';
 import 'app/routes/app_pages.dart';
 import 'app/routes/app_routes.dart';
 
@@ -26,33 +28,43 @@ void main() async {
   final storageService = await Get.putAsync(() => StorageService().init());
   Get.put(ConnectivityService());
   Get.put(ApiService());
+  final permissionService = Get.put(PermissionService(), permanent: true);
   final gaushalaService = Get.put(GaushalaSessionService());
 
   if (storageService.hasToken) {
+    await permissionService.initPermissions();
     await gaushalaService.initSession(user: storageService.getUser());
+    Get.put(NotificationController(), permanent: true);
   }
 
   // 4. Determine initial route:
-  // On Web, skip splash completely! Direct to Dashboard if logged in, else Auth.
-  final String initialRoute = kIsWeb
-      ? (storageService.hasToken ? AppRoutes.dashboard : AppRoutes.auth)
-      : AppRoutes.splash;
+  // On Web, preserve the active route if authenticated (e.g. /sheds), otherwise direct to Dashboard or Auth.
+  String initialRoute;
+  if (kIsWeb) {
+    if (!storageService.hasToken) {
+      initialRoute = AppRoutes.auth;
+    } else {
+      final browserRoute = WidgetsBinding.instance.platformDispatcher.defaultRouteName;
+      initialRoute = (browserRoute.isNotEmpty && browserRoute != '/' && browserRoute != AppRoutes.auth)
+          ? browserRoute
+          : AppRoutes.dashboard;
+    }
+  } else {
+    initialRoute = AppRoutes.splash;
+  }
 
   // 5. Run the GetX application
   runApp(AyushkaApp(
-    isDarkMode: storageService.isDarkMode,
     initialRoute: initialRoute,
   ));
 }
 
 /// Root Application Widget configuring GetMaterialApp, themes, and modular routing.
 class AyushkaApp extends StatelessWidget {
-  final bool isDarkMode;
   final String initialRoute;
 
   const AyushkaApp({
     super.key,
-    this.isDarkMode = false,
     required this.initialRoute,
   });
 
@@ -62,8 +74,7 @@ class AyushkaApp extends StatelessWidget {
       title: AppConstants.appName,
       debugShowCheckedModeBanner: false,
       theme: AppTheme.lightTheme,
-      darkTheme: AppTheme.darkTheme,
-      themeMode: isDarkMode ? ThemeMode.dark : ThemeMode.light,
+      themeMode: ThemeMode.light,
       initialRoute: initialRoute,
       getPages: AppPages.routes,
       defaultTransition: kIsWeb ? Transition.fadeIn : Transition.cupertino,

@@ -390,8 +390,8 @@ class _AuthVisualHeroState extends State<_AuthVisualHero> {
   final List<Map<String, String>> _slides = const [
     {
       'image': 'assets/images/gir_cattle_herd.jpg',
-      'tag': 'GIR CATTLE HERD • ગીર ગાયોનું જૂંડ',
-      'title': 'Indigenous Gir Cattle Herd (ગીર ગાય)',
+      'tag': 'GIR CATTLE HERD',
+      'title': 'Indigenous Gir Cattle Herd',
       'subtitle': 'Vast herd of pedigree Gir cattle & calves grazing freely in open pastures.',
       'badge1': '🌿 100% Organic Pasture',
       'badge2': '🥛 Pure A2 Vedic Milk',
@@ -399,7 +399,7 @@ class _AuthVisualHeroState extends State<_AuthVisualHero> {
     },
     {
       'image': 'assets/images/vedic_gaushala_herd.jpg',
-      'tag': 'VEDIC GAUSHALA • વૈદિક ગૌશાળા',
+      'tag': 'VEDIC GAUSHALA',
       'title': 'Traditional Dairy Gaushala',
       'subtitle': 'Ethical open-air shelter with balanced green fodder & cruelty-free care.',
       'badge1': '🌾 Fresh Green Fodder',
@@ -408,7 +408,7 @@ class _AuthVisualHeroState extends State<_AuthVisualHero> {
     },
     {
       'image': 'assets/images/sahiwal_gir_herd.jpg',
-      'tag': 'FREE-RANGE PASTURE • દેશી ગોધન',
+      'tag': 'FREE-RANGE PASTURE',
       'title': 'Sahiwal & Gir Pasture Cattle Herd',
       'subtitle': 'Free-range grazing supporting natural vitality, high immunity, and premium milk.',
       'badge1': '🧈 High Fat & SNF',
@@ -417,7 +417,7 @@ class _AuthVisualHeroState extends State<_AuthVisualHero> {
     },
     {
       'image': 'assets/images/gir_pasture_herd.jpg',
-      'tag': 'SUNSET GRAZING • ગોધૂલિ વેળા',
+      'tag': 'SUNSET GRAZING',
       'title': 'Vedic Godhuli Evening Herd',
       'subtitle': 'Calves and mothers resting peacefully across organic natural farmland.',
       'badge1': '🐄 Healthy Cattle Herd',

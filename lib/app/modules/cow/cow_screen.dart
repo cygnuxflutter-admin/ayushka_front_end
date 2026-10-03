@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'package:dropdown_search/dropdown_search.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
@@ -10,10 +11,12 @@ import '../../core/widgets/custom_loader.dart';
 import '../../core/widgets/custom_pagination.dart';
 import '../../core/widgets/custom_shimmer.dart';
 import '../../core/widgets/global_gaushala_selector.dart';
+import '../../core/widgets/header_user_profile_badge.dart';
 import '../../data/models/cow_model.dart';
 import '../../routes/app_routes.dart';
 import '../dashboard/widgets/mobile_drawer.dart';
 import '../dashboard/widgets/web_sidebar.dart';
+import '../notification/widgets/notification_bell_widget.dart';
 import 'cow_controller.dart';
 import 'widgets/download_progress_banner.dart';
 
@@ -94,6 +97,7 @@ class CowScreen extends GetView<CowController> {
       appBar: AppBar(
         title: const Text('Herd & Cattle'),
         actions: [
+          const NotificationBellWidget(),
           Obx(() {
             final isBusy = controller.isRefreshing.value || controller.isLoading.value;
             return IconButton(
@@ -104,20 +108,50 @@ class CowScreen extends GetView<CowController> {
               onPressed: isBusy ? null : controller.refreshCows,
             );
           }),
-          Obx(() {
-            final isDownloading = controller.isDownloadingTemplate.value;
-            return IconButton(
-              icon: isDownloading
-                  ? const CustomInlineLoader(size: 18, strokeWidth: 2)
-                  : const Icon(PhosphorIconsRegular.fileArrowDown),
-              tooltip: 'Download Template (.xlsx)',
-              onPressed: isDownloading ? null : controller.downloadTemplate,
-            );
-          }),
+          IconButton(
+            icon: const Icon(PhosphorIconsRegular.arrowsLeftRight),
+            tooltip: 'Transfer Shed',
+            onPressed: () => controller.openShedTransferDialog(context),
+          ),
           IconButton(
             icon: const Icon(PhosphorIconsRegular.fileArrowUp),
             tooltip: 'Import Excel (.xlsx)',
             onPressed: () => controller.pickAndUploadExcel(context),
+          ),
+          PopupMenuButton<String>(
+            tooltip: 'More Actions',
+            icon: const Icon(PhosphorIconsRegular.dotsThreeVertical),
+            onSelected: (val) {
+              if (val == 'download_template') {
+                if (!controller.isDownloadingTemplate.value) {
+                  controller.downloadTemplate();
+                }
+              } else if (val == 'transfer_history') {
+                controller.openShedTransferHistoryDialog(context);
+              }
+            },
+            itemBuilder: (ctx) => [
+              PopupMenuItem(
+                value: 'download_template',
+                child: Row(
+                  children: [
+                    const Icon(PhosphorIconsRegular.fileArrowDown, size: 18),
+                    const SizedBox(width: 10),
+                    const Text('Download Template'),
+                  ],
+                ),
+              ),
+              PopupMenuItem(
+                value: 'transfer_history',
+                child: Row(
+                  children: [
+                    const Icon(PhosphorIconsRegular.clockCounterClockwise, size: 18),
+                    const SizedBox(width: 10),
+                    const Text('Transfer History'),
+                  ],
+                ),
+              ),
+            ],
           ),
           IconButton(
             icon: const Icon(Icons.add_rounded),
@@ -163,43 +197,90 @@ class CowScreen extends GetView<CowController> {
   // MOBILE SCAFFOLD
   // ---------------------------------------------------------------------------
   Widget _buildMobileScaffold(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Herd & Cattle'),
-        actions: [
-          Obx(() {
-            final isBusy = controller.isRefreshing.value || controller.isLoading.value;
-            return IconButton(
-              icon: isBusy
-                  ? const CustomInlineLoader(size: 18, strokeWidth: 2)
-                  : const Icon(Icons.refresh_rounded),
-              tooltip: isBusy ? 'Refreshing...' : 'Refresh',
-              onPressed: isBusy ? null : controller.refreshCows,
-            );
-          }),
-          Obx(() {
-            final isDownloading = controller.isDownloadingTemplate.value;
-            return IconButton(
-              icon: isDownloading
-                  ? const CustomInlineLoader(size: 18, strokeWidth: 2)
-                  : const Icon(PhosphorIconsRegular.fileArrowDown),
-              tooltip: 'Download Template (.xlsx)',
-              onPressed: isDownloading ? null : controller.downloadTemplate,
-            );
-          }),
-          IconButton(
-            icon: const Icon(PhosphorIconsRegular.fileArrowUp),
-            tooltip: 'Import Excel (.xlsx)',
-            onPressed: () => controller.pickAndUploadExcel(context),
-          ),
-        ],
-      ),
-      drawer: Obx(
-        () => MobileDrawer(
-          currentUser: controller.currentUser.value,
-          onLogout: controller.logout,
+    return GestureDetector(
+      onTap: () => FocusScope.of(context).unfocus(),
+      child: Scaffold(
+        appBar: AppBar(
+          title: const Text('Herd & Cattle'),
+          actions: [
+            const NotificationBellWidget(),
+            Obx(() {
+              final isBusy = controller.isRefreshing.value || controller.isLoading.value;
+              return IconButton(
+                icon: isBusy
+                    ? const CustomInlineLoader(size: 18, strokeWidth: 2)
+                    : const Icon(Icons.refresh_rounded),
+                tooltip: isBusy ? 'Refreshing...' : 'Refresh',
+                onPressed: isBusy ? null : controller.refreshCows,
+              );
+            }),
+            PopupMenuButton<String>(
+              tooltip: 'Actions',
+              icon: const Icon(PhosphorIconsRegular.dotsThreeVertical),
+              onSelected: (val) {
+                if (val == 'transfer_shed') {
+                  controller.openShedTransferDialog(context);
+                } else if (val == 'import_excel') {
+                  controller.pickAndUploadExcel(context);
+                } else if (val == 'download_template') {
+                  if (!controller.isDownloadingTemplate.value) {
+                    controller.downloadTemplate();
+                  }
+                } else if (val == 'transfer_history') {
+                  controller.openShedTransferHistoryDialog(context);
+                }
+              },
+              itemBuilder: (ctx) => [
+                PopupMenuItem(
+                  value: 'transfer_shed',
+                  child: Row(
+                    children: [
+                      const Icon(PhosphorIconsRegular.arrowsLeftRight, size: 18, color: AppColors.primary),
+                      const SizedBox(width: 10),
+                      const Text('Transfer Shed'),
+                    ],
+                  ),
+                ),
+                PopupMenuItem(
+                  value: 'import_excel',
+                  child: Row(
+                    children: [
+                      const Icon(PhosphorIconsRegular.fileArrowUp, size: 18, color: AppColors.primary),
+                      const SizedBox(width: 10),
+                      const Text('Import Excel (.xlsx)'),
+                    ],
+                  ),
+                ),
+                PopupMenuItem(
+                  value: 'download_template',
+                  child: Row(
+                    children: [
+                      const Icon(PhosphorIconsRegular.fileArrowDown, size: 18),
+                      const SizedBox(width: 10),
+                      const Text('Download Template'),
+                    ],
+                  ),
+                ),
+                PopupMenuItem(
+                  value: 'transfer_history',
+                  child: Row(
+                    children: [
+                      const Icon(PhosphorIconsRegular.clockCounterClockwise, size: 18),
+                      const SizedBox(width: 10),
+                      const Text('Transfer History'),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ],
         ),
-      ),
+        drawer: Obx(
+          () => MobileDrawer(
+            currentUser: controller.currentUser.value,
+            onLogout: controller.logout,
+          ),
+        ),
       floatingActionButton: FloatingActionButton.extended(
         backgroundColor: AppColors.primary,
         icon: const Icon(Icons.add_rounded, color: Colors.white),
@@ -234,8 +315,9 @@ class CowScreen extends GetView<CowController> {
           ),
         ],
       ),
-    );
-  }
+    ),
+  );
+}
 
   // ---------------------------------------------------------------------------
   // DESKTOP TOP HEADER
@@ -311,7 +393,9 @@ class CowScreen extends GetView<CowController> {
           children: [
               // Global Gaushala Selector in top header bar (Admin can switch; User sees assigned)
               const GlobalGaushalaSelector(),
-              const SizedBox(width: 12),
+              const SizedBox(width: 8),
+              const NotificationBellWidget(),
+              const SizedBox(width: 8),
               Obx(() {
                 final isBusy = controller.isRefreshing.value || controller.isLoading.value;
                 return IconButton(
@@ -323,42 +407,7 @@ class CowScreen extends GetView<CowController> {
                 );
               }),
               const SizedBox(width: 8),
-              Obx(() {
-                final user = controller.currentUser.value;
-                return Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: isDark ? AppColors.cardDark : AppColors.backgroundLight,
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(
-                      color: isDark ? AppColors.borderDark : AppColors.borderLight,
-                    ),
-                  ),
-                  child: Row(
-                    children: [
-                      CircleAvatar(
-                        radius: 13,
-                        backgroundColor: AppColors.primary,
-                        child: Text(
-                          user?.name.isNotEmpty == true
-                              ? user!.name.substring(0, 1).toUpperCase()
-                              : 'A',
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 11,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Text(
-                        user?.name ?? 'Admin',
-                        style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
-                      ),
-                    ],
-                  ),
-                );
-              }),
+              Obx(() => HeaderUserProfileBadge(user: controller.currentUser.value)),
             ],
           ),
         ],
@@ -429,20 +478,14 @@ class CowScreen extends GetView<CowController> {
           runSpacing: 10,
           crossAxisAlignment: WrapCrossAlignment.center,
           children: [
-            Obx(() {
-              final isDownloading = controller.isDownloadingTemplate.value;
-              final progress = controller.downloadProgress.value;
-              final pct = (progress * 100).toInt();
-              return CustomButton(
-                text: isDownloading ? 'Downloading ($pct%)' : 'Download Template',
-                icon: isDownloading ? null : PhosphorIconsRegular.fileArrowDown,
-                isLoading: isDownloading,
-                variant: ButtonVariant.outlined,
-                height: 42,
-                padding: const EdgeInsets.symmetric(horizontal: 14),
-                onPressed: isDownloading ? null : controller.downloadTemplate,
-              );
-            }),
+            CustomButton(
+              text: 'Transfer Shed',
+              icon: PhosphorIconsRegular.arrowsLeftRight,
+              variant: ButtonVariant.outlined,
+              height: 42,
+              padding: const EdgeInsets.symmetric(horizontal: 14),
+              onPressed: () => controller.openShedTransferDialog(context),
+            ),
             CustomButton(
               text: 'Import Excel',
               icon: PhosphorIconsRegular.fileArrowUp,
@@ -450,6 +493,10 @@ class CowScreen extends GetView<CowController> {
               height: 42,
               padding: const EdgeInsets.symmetric(horizontal: 14),
               onPressed: () => controller.pickAndUploadExcel(context),
+            ),
+            _HeaderMoreMenu(
+              controller: controller,
+              isDark: isDark,
             ),
             CustomButton(
               text: 'Register New Cow',
@@ -501,47 +548,99 @@ class CowScreen extends GetView<CowController> {
       final selectedGaushalaName = controller.activeGaushalaName;
 
       if (isCompact) {
-        return Row(
-          children: [
-            Expanded(
-              child: _buildMetricTile(
-                context,
-                title: 'Total Herd',
-                value: '$totalCattle',
-                icon: PhosphorIconsRegular.cow,
-                color: AppColors.primary,
-                isDark: isDark,
-                isCompact: true,
-                onTap: () => controller.selectedGenderFilter.value = 'all',
-              ),
-            ),
-            const SizedBox(width: 8),
-            Expanded(
-              child: _buildMetricTile(
-                context,
-                title: 'Female (Cows)',
-                value: '$femaleCattle',
-                icon: PhosphorIconsRegular.genderFemale,
-                color: const Color(0xFF2E7D32),
-                isDark: isDark,
-                isCompact: true,
-                onTap: () => controller.selectedGenderFilter.value = 'female',
-              ),
-            ),
-            const SizedBox(width: 8),
-            Expanded(
-              child: _buildMetricTile(
-                context,
-                title: 'Male (Bulls)',
-                value: '$maleCattle',
-                icon: PhosphorIconsRegular.genderMale,
-                color: Colors.blue.shade700,
-                isDark: isDark,
-                isCompact: true,
-                onTap: () => controller.selectedGenderFilter.value = 'male',
-              ),
-            ),
-          ],
+        return LayoutBuilder(
+          builder: (context, constraints) {
+            final isVeryNarrow = constraints.maxWidth < 420;
+            if (isVeryNarrow) {
+              return Column(
+                children: [
+                  _buildMetricTile(
+                    context,
+                    title: 'Total Herd',
+                    value: '$totalCattle',
+                    subtitle: 'Active Registered Cattle',
+                    icon: PhosphorIconsRegular.cow,
+                    color: AppColors.primary,
+                    isDark: isDark,
+                    isCompact: true,
+                    onTap: () => controller.selectedGenderFilter.value = 'all',
+                  ),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _buildMetricTile(
+                          context,
+                          title: 'Female (Cows)',
+                          value: '$femaleCattle',
+                          icon: PhosphorIconsRegular.genderFemale,
+                          color: const Color(0xFF2E7D32),
+                          isDark: isDark,
+                          isCompact: true,
+                          onTap: () => controller.selectedGenderFilter.value = 'female',
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: _buildMetricTile(
+                          context,
+                          title: 'Male (Bulls)',
+                          value: '$maleCattle',
+                          icon: PhosphorIconsRegular.genderMale,
+                          color: Colors.blue.shade700,
+                          isDark: isDark,
+                          isCompact: true,
+                          onTap: () => controller.selectedGenderFilter.value = 'male',
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              );
+            }
+            return Row(
+              children: [
+                Expanded(
+                  child: _buildMetricTile(
+                    context,
+                    title: 'Total Herd',
+                    value: '$totalCattle',
+                    icon: PhosphorIconsRegular.cow,
+                    color: AppColors.primary,
+                    isDark: isDark,
+                    isCompact: true,
+                    onTap: () => controller.selectedGenderFilter.value = 'all',
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: _buildMetricTile(
+                    context,
+                    title: 'Female (Cows)',
+                    value: '$femaleCattle',
+                    icon: PhosphorIconsRegular.genderFemale,
+                    color: const Color(0xFF2E7D32),
+                    isDark: isDark,
+                    isCompact: true,
+                    onTap: () => controller.selectedGenderFilter.value = 'female',
+                  ),
+                ),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: _buildMetricTile(
+                    context,
+                    title: 'Male (Bulls)',
+                    value: '$maleCattle',
+                    icon: PhosphorIconsRegular.genderMale,
+                    color: Colors.blue.shade700,
+                    isDark: isDark,
+                    isCompact: true,
+                    onTap: () => controller.selectedGenderFilter.value = 'male',
+                  ),
+                ),
+              ],
+            );
+          },
         );
       }
 
@@ -814,81 +913,87 @@ class CowScreen extends GetView<CowController> {
           const Divider(height: 1),
 
           // Content: Table or Loading or Empty
-          Obx(() {
-            if (controller.isLoading.value) {
-              return const CustomTableShimmer(
-                rowCount: 6,
-                columnFlexes: [4, 3, 3, 4, 3, 4, 3, 3, 2],
-                headers: ['#', 'TAG ID', 'ALIAS', 'GENDER', 'BREED', 'TYPE', 'GAUSHALA', 'SHED & NO.', 'STATUS', 'ACTIONS'],
-              );
-            }
+          LayoutBuilder(
+            builder: (context, constraints) {
+              const double minTableWidth = 1100.0;
+              final double tableWidth = constraints.maxWidth < minTableWidth
+                  ? minTableWidth
+                  : constraints.maxWidth;
 
-            final list = controller.filteredCows;
-            if (list.isEmpty) {
-              final isSearching = controller.searchQuery.value.isNotEmpty;
-              final isGenderFiltered = controller.selectedGenderFilter.value != 'all';
-              final isGaushalaFiltered = controller.selectedGaushalaId.value != null &&
-                  controller.selectedGaushalaId.value != controller.globalGaushalaId;
-              final hasActiveFilter = isSearching || isGenderFiltered || isGaushalaFiltered;
-
-              return Padding(
-                padding: const EdgeInsets.all(60.0),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: AppColors.primary.withValues(alpha: 0.1),
-                        shape: BoxShape.circle,
+              return Obx(() {
+                if (controller.isLoading.value) {
+                  return SingleChildScrollView(
+                    scrollDirection: Axis.horizontal,
+                    child: SizedBox(
+                      width: tableWidth,
+                      child: const CustomTableShimmer(
+                        rowCount: 6,
+                        columnFlexes: [4, 3, 3, 4, 3, 4, 3, 3, 2],
+                        headers: ['#', 'TAG ID', 'ALIAS', 'GENDER', 'BREED', 'TYPE', 'GAUSHALA', 'SHED & NO.', 'STATUS', 'ACTIONS'],
                       ),
-                      child: const Icon(PhosphorIconsRegular.cow, size: 36, color: AppColors.primary),
                     ),
-                    const SizedBox(height: 16),
-                    Text(
-                      isSearching
-                          ? 'No cattle match "${controller.searchQuery.value}"'
-                          : (isGenderFiltered
-                              ? 'No cattle found for ${controller.selectedGenderFilter.value} filter'
-                              : 'No cattle registered in this gaushala'),
-                      style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
-                    ),
-                    const SizedBox(height: 6),
-                    Text(
-                      hasActiveFilter
-                          ? 'Try clearing the filters or modifying your search keyword.'
-                          : 'Click below to register the first cow into the system.',
-                      style: const TextStyle(fontSize: 13, color: AppColors.textSecondaryLight),
-                    ),
-                    const SizedBox(height: 18),
-                    if (hasActiveFilter)
-                      CustomButton(
-                        text: 'Clear Filters',
-                        icon: Icons.filter_alt_off_rounded,
-                        variant: ButtonVariant.outlined,
-                        width: 160,
-                        height: 40,
-                        onPressed: controller.clearFilters,
-                      )
-                    else
-                      CustomButton(
-                        text: 'Register First Cow',
-                        icon: Icons.add_rounded,
-                        width: 200,
-                        height: 40,
-                        onPressed: controller.goToAddCow,
-                      ),
-                  ],
-                ),
-              );
-            }
+                  );
+                }
 
-            return LayoutBuilder(
-              builder: (context, constraints) {
-                const double minTableWidth = 1100.0;
-                final double tableWidth = constraints.maxWidth < minTableWidth
-                    ? minTableWidth
-                    : constraints.maxWidth;
+                final list = controller.filteredCows;
+                if (list.isEmpty) {
+                  final isSearching = controller.searchQuery.value.isNotEmpty;
+                  final isGenderFiltered = controller.selectedGenderFilter.value != 'all';
+                  final isGaushalaFiltered = controller.selectedGaushalaId.value != null &&
+                      controller.selectedGaushalaId.value != controller.globalGaushalaId;
+                  final hasActiveFilter = isSearching || isGenderFiltered || isGaushalaFiltered;
+
+                  return Padding(
+                    padding: const EdgeInsets.all(60.0),
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: AppColors.primary.withValues(alpha: 0.1),
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Icon(PhosphorIconsRegular.cow, size: 36, color: AppColors.primary),
+                        ),
+                        const SizedBox(height: 16),
+                        Text(
+                          isSearching
+                              ? 'No cattle match "${controller.searchQuery.value}"'
+                              : (isGenderFiltered
+                                  ? 'No cattle found for ${controller.selectedGenderFilter.value} filter'
+                                  : 'No cattle registered in this gaushala'),
+                          style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold),
+                        ),
+                        const SizedBox(height: 6),
+                        Text(
+                          hasActiveFilter
+                              ? 'Try clearing the filters or modifying your search keyword.'
+                              : 'Click below to register the first cow into the system.',
+                          style: const TextStyle(fontSize: 13, color: AppColors.textSecondaryLight),
+                        ),
+                        const SizedBox(height: 18),
+                        if (hasActiveFilter)
+                          CustomButton(
+                            text: 'Clear Filters',
+                            icon: Icons.filter_alt_off_rounded,
+                            variant: ButtonVariant.outlined,
+                            width: 160,
+                            height: 40,
+                            onPressed: controller.clearFilters,
+                          )
+                        else
+                          CustomButton(
+                            text: 'Register First Cow',
+                            icon: Icons.add_rounded,
+                            width: 200,
+                            height: 40,
+                            onPressed: controller.goToAddCow,
+                          ),
+                      ],
+                    ),
+                  );
+                }
 
                 return Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -939,6 +1044,8 @@ class CowScreen extends GetView<CowController> {
                                 isUpdatingDied: controller.updatingDiedCowIds.contains(cow.id),
                                 onView: () => controller.openCowDetailsDialog(context, cow),
                                 onEdit: () => controller.goToEditCow(cow),
+                                onTransferShed: () => controller.openShedTransferDialog(context, cow: cow),
+                                onViewHistory: () => controller.openShedTransferHistoryDialog(context, cow: cow),
                                 onToggleStatus: () => controller.toggleCowStatus(cow),
                                 onMarkDied: () => controller.showMarkDiedDialog(context, cow),
                                 onDelete: () => controller.confirmDeleteCow(context, cow),
@@ -958,9 +1065,9 @@ class CowScreen extends GetView<CowController> {
                     ),
                   ],
                 );
-              },
-            );
-          }),
+              });
+            },
+          ),
         ],
       ),
     );
@@ -1322,18 +1429,12 @@ class CowScreen extends GetView<CowController> {
       return Column(
         children: [
           ...list.map((cow) {
-          return Container(
+          return _HoverableListCard(
             margin: const EdgeInsets.only(bottom: 12),
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: isDark ? AppColors.cardDark : AppColors.cardLight,
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(
-                color: isDark ? AppColors.borderDark : AppColors.borderLight,
-              ),
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -1457,94 +1558,16 @@ class CowScreen extends GetView<CowController> {
                             tooltip: 'Edit Cattle',
                             onPressed: () => controller.goToEditCow(cow),
                           ),
-                        Theme(
-                          data: Theme.of(context).copyWith(
-                            cardColor: isDark ? AppColors.cardDark : AppColors.cardLight,
-                          ),
-                          child: PopupMenuButton<String>(
-                            tooltip: 'More options',
-                            icon: const Icon(PhosphorIconsRegular.dotsThreeVertical, size: 18),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(12),
-                              side: BorderSide(
-                                color: isDark ? AppColors.borderDark : AppColors.borderLight,
-                              ),
-                            ),
-                            color: isDark ? AppColors.cardDark : AppColors.cardLight,
-                            elevation: 6,
-                            onSelected: (val) {
-                              if (val == 'status') {
-                                controller.toggleCowStatus(cow);
-                              } else if (val == 'died') {
-                                controller.showMarkDiedDialog(context, cow);
-                              } else if (val == 'delete') {
-                                controller.confirmDeleteCow(context, cow);
-                              }
-                            },
-                            itemBuilder: (ctx) => [
-                              if (!cow.isDeleted && !cow.isDelete && !cow.isDead && !cow.isDied)
-                                PopupMenuItem(
-                                  value: 'status',
-                                  height: 38,
-                                  child: Row(
-                                    children: [
-                                      Icon(
-                                        cow.isActive
-                                            ? Icons.power_settings_new_rounded
-                                            : Icons.check_circle_outline_rounded,
-                                        size: 16,
-                                        color: cow.isActive ? Colors.orange : AppColors.primary,
-                                      ),
-                                      const SizedBox(width: 10),
-                                      Text(
-                                        cow.isActive ? 'Set InActive' : 'Set Active',
-                                        style: const TextStyle(fontSize: 13),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              if (!cow.isDeleted && !cow.isDelete)
-                                PopupMenuItem(
-                                  value: 'died',
-                                  height: 38,
-                                  child: Row(
-                                    children: [
-                                      Icon(
-                                        Icons.heart_broken_rounded,
-                                        size: 16,
-                                        color: Colors.red.shade700,
-                                      ),
-                                      const SizedBox(width: 10),
-                                      Text(
-                                        (cow.isDead || cow.isDied) ? 'Update Death Date' : 'Mark as Died',
-                                        style: TextStyle(fontSize: 13, color: Colors.red.shade700),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              if (!cow.isDeleted && !cow.isDelete) ...[
-                                const PopupMenuDivider(height: 1),
-                                const PopupMenuItem(
-                                  value: 'delete',
-                                  height: 38,
-                                  child: Row(
-                                    children: [
-                                      Icon(
-                                        PhosphorIconsRegular.trash,
-                                        size: 16,
-                                        color: AppColors.error,
-                                      ),
-                                      SizedBox(width: 10),
-                                      Text(
-                                        'Delete Record',
-                                        style: TextStyle(fontSize: 13, color: AppColors.error),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ],
-                            ],
-                          ),
+                        const SizedBox(width: 3),
+                        _CowActionHoverMenu(
+                          cow: cow,
+                          isDark: isDark,
+                          isRowHovered: false,
+                          onTransferShed: () => controller.openShedTransferDialog(context, cow: cow),
+                          onViewHistory: () => controller.openShedTransferHistoryDialog(context, cow: cow),
+                          onToggleStatus: () => controller.toggleCowStatus(cow),
+                          onMarkDied: () => controller.showMarkDiedDialog(context, cow),
+                          onDelete: () => controller.confirmDeleteCow(context, cow),
                         ),
                       ],
                     ),
@@ -1552,8 +1575,9 @@ class CowScreen extends GetView<CowController> {
                 ),
               ],
             ),
-            );
-          }),
+          ),
+        );
+      }),
           const SizedBox(height: 8),
           CustomPagination(
             totalItems: controller.filteredCows.length,
@@ -1747,6 +1771,8 @@ class _HoverableCowTableRow extends StatefulWidget {
   final bool isDark;
   final VoidCallback onView;
   final VoidCallback onEdit;
+  final VoidCallback onTransferShed;
+  final VoidCallback onViewHistory;
   final VoidCallback onToggleStatus;
   final VoidCallback onMarkDied;
   final VoidCallback onDelete;
@@ -1760,6 +1786,8 @@ class _HoverableCowTableRow extends StatefulWidget {
     required this.isDark,
     required this.onView,
     required this.onEdit,
+    required this.onTransferShed,
+    required this.onViewHistory,
     required this.onToggleStatus,
     required this.onMarkDied,
     required this.onDelete,
@@ -2186,114 +2214,16 @@ class _HoverableCowTableRowState extends State<_HoverableCowTableRow> {
                             ),
                           ),
                         ],
-                        const SizedBox(width: 3),
-                        Theme(
-                          data: Theme.of(context).copyWith(
-                            cardColor: isDark ? AppColors.cardDark : AppColors.cardLight,
-                          ),
-                          child: SizedBox(
-                            width: 28,
-                            height: 28,
-                            child: PopupMenuButton<String>(
-                              tooltip: 'More actions',
-                              padding: EdgeInsets.zero,
-                              constraints: const BoxConstraints(),
-                              icon: Icon(
-                                PhosphorIconsRegular.dotsThreeVertical,
-                                size: 18,
-                                color: _isHovered
-                                    ? (isDark ? Colors.white : Colors.black87)
-                                    : (isDark ? AppColors.textSecondaryDark : AppColors.textSecondaryLight),
-                              ),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
-                                side: BorderSide(
-                                  color: isDark ? AppColors.borderDark : AppColors.borderLight,
-                                ),
-                              ),
-                              color: isDark ? AppColors.cardDark : AppColors.cardLight,
-                              elevation: 6,
-                              onSelected: (val) {
-                                if (val == 'status') {
-                                  widget.onToggleStatus();
-                                } else if (val == 'died') {
-                                  widget.onMarkDied();
-                                } else if (val == 'delete') {
-                                  widget.onDelete();
-                                }
-                              },
-                        itemBuilder: (ctx) => [
-                          if (!cow.isDeleted && !cow.isDelete && !cow.isDead && !cow.isDied)
-                            PopupMenuItem(
-                              value: 'status',
-                              height: 38,
-                              child: Row(
-                                children: [
-                                  Icon(
-                                    cow.isActive
-                                        ? Icons.power_settings_new_rounded
-                                        : Icons.check_circle_outline_rounded,
-                                    size: 16,
-                                    color: cow.isActive ? Colors.orange : AppColors.primary,
-                                  ),
-                                  const SizedBox(width: 10),
-                                  Text(
-                                    cow.isActive ? 'Set InActive' : 'Set Active',
-                                    style: const TextStyle(fontSize: 13),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          if (!cow.isDeleted && !cow.isDelete)
-                            PopupMenuItem(
-                              value: 'died',
-                              height: 38,
-                              child: Row(
-                                children: [
-                                  Icon(
-                                    Icons.heart_broken_rounded,
-                                    size: 16,
-                                    color: Colors.red.shade700,
-                                  ),
-                                  const SizedBox(width: 10),
-                                  Text(
-                                    (cow.isDead || cow.isDied) ? 'Update Death Date' : 'Mark as Died',
-                                    style: TextStyle(
-                                      fontSize: 13,
-                                      color: Colors.red.shade700,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          if (!cow.isDeleted && !cow.isDelete) ...[
-                            const PopupMenuDivider(height: 1),
-                            const PopupMenuItem(
-                              value: 'delete',
-                              height: 38,
-                              child: Row(
-                                children: [
-                                  Icon(
-                                    PhosphorIconsRegular.trash,
-                                    size: 16,
-                                    color: AppColors.error,
-                                  ),
-                                  SizedBox(width: 10),
-                                  Text(
-                                    'Delete Record',
-                                    style: TextStyle(
-                                      fontSize: 13,
-                                      color: AppColors.error,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
-                        ],
-                      ),
-                    ),
-                  ),
+                        _CowActionHoverMenu(
+                          cow: cow,
+                          isDark: isDark,
+                          isRowHovered: _isHovered,
+                          onTransferShed: widget.onTransferShed,
+                          onViewHistory: widget.onViewHistory,
+                          onToggleStatus: widget.onToggleStatus,
+                          onMarkDied: widget.onMarkDied,
+                          onDelete: widget.onDelete,
+                        ),
                 ],
               ),
             ),
@@ -2456,3 +2386,783 @@ class _HoverableMetricTileState extends State<_HoverableMetricTile> {
   }
 }
 
+/// Dropdown menu for secondary actions in header (Download Template, Transfer History).
+/// Automatically opens on hover, and allows clicking.
+class _HeaderMoreMenu extends StatefulWidget {
+  final CowController controller;
+  final bool isDark;
+
+  const _HeaderMoreMenu({
+    required this.controller,
+    required this.isDark,
+  });
+
+  @override
+  State<_HeaderMoreMenu> createState() => _HeaderMoreMenuState();
+}
+
+class _HeaderMoreMenuState extends State<_HeaderMoreMenu> {
+  final LayerLink _layerLink = LayerLink();
+  final OverlayPortalController _overlayController = OverlayPortalController();
+  Timer? _hideTimer;
+  bool _isHovered = false;
+
+  @override
+  void dispose() {
+    _hideTimer?.cancel();
+    if (_overlayController.isShowing) {
+      _overlayController.hide();
+    }
+    super.dispose();
+  }
+
+  void _showMenu() {
+    _hideTimer?.cancel();
+    if (!_overlayController.isShowing) {
+      _overlayController.show();
+    }
+    if (!_isHovered) {
+      setState(() => _isHovered = true);
+    }
+  }
+
+  void _scheduleHideMenu() {
+    _hideTimer?.cancel();
+    _hideTimer = Timer(const Duration(milliseconds: 200), () {
+      if (mounted) {
+        if (_overlayController.isShowing) {
+          _overlayController.hide();
+        }
+        if (_isHovered) {
+          setState(() => _isHovered = false);
+        }
+      }
+    });
+  }
+
+  void _hideMenuImmediately() {
+    _hideTimer?.cancel();
+    if (_overlayController.isShowing) {
+      _overlayController.hide();
+    }
+    if (_isHovered) {
+      setState(() => _isHovered = false);
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = widget.isDark;
+
+    return CompositedTransformTarget(
+      link: _layerLink,
+      child: OverlayPortal(
+        controller: _overlayController,
+        overlayChildBuilder: (context) {
+          return Align(
+            alignment: Alignment.topLeft,
+            child: CompositedTransformFollower(
+              link: _layerLink,
+              targetAnchor: Alignment.bottomRight,
+              followerAnchor: Alignment.topRight,
+              offset: const Offset(0, 4),
+              showWhenUnlinked: false,
+              child: TapRegion(
+                groupId: _layerLink,
+                onTapOutside: (_) => _hideMenuImmediately(),
+                child: MouseRegion(
+                  onEnter: (_) => _showMenu(),
+                  onExit: (_) => _scheduleHideMenu(),
+                  child: Padding(
+                    // Small top padding acts as a hover bridge from button to dropdown
+                    padding: const EdgeInsets.only(top: 4.0),
+                    child: Material(
+                      color: Colors.transparent,
+                      elevation: 8,
+                      shadowColor: Colors.black.withValues(alpha: isDark ? 0.4 : 0.15),
+                      borderRadius: BorderRadius.circular(12),
+                      child: Container(
+                        width: 250,
+                        padding: const EdgeInsets.all(6),
+                        decoration: BoxDecoration(
+                          color: isDark ? AppColors.surfaceDark : AppColors.surfaceLight,
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: isDark ? AppColors.borderDark : AppColors.borderLight,
+                            width: 1,
+                          ),
+                        ),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Obx(() {
+                              final isDownloading = widget.controller.isDownloadingTemplate.value;
+                              final pct = (widget.controller.downloadProgress.value * 100).toInt();
+                              return _HoverMenuItem(
+                                isDark: isDark,
+                                icon: PhosphorIconsRegular.fileArrowDown,
+                                iconColor: AppColors.primary,
+                                title: isDownloading
+                                    ? 'Downloading ($pct%)'
+                                    : 'Download Template',
+                                subtitle: 'Sample Excel (.xlsx) file',
+                                isLoading: isDownloading,
+                                onTap: () {
+                                  _hideMenuImmediately();
+                                  if (!isDownloading) {
+                                    widget.controller.downloadTemplate();
+                                  }
+                                },
+                              );
+                            }),
+                            Divider(
+                              height: 8,
+                              thickness: 0.8,
+                              color: isDark ? AppColors.borderDark : AppColors.borderLight,
+                            ),
+                            _HoverMenuItem(
+                              isDark: isDark,
+                              icon: PhosphorIconsRegular.clockCounterClockwise,
+                              iconColor: AppColors.secondary,
+                              title: 'Transfer History',
+                              subtitle: 'Past shed movements log',
+                              onTap: () {
+                                _hideMenuImmediately();
+                                widget.controller.openShedTransferHistoryDialog(context);
+                              },
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          );
+        },
+        child: TapRegion(
+          groupId: _layerLink,
+          child: MouseRegion(
+            cursor: SystemMouseCursors.click,
+            onEnter: (_) => _showMenu(),
+            onExit: (_) => _scheduleHideMenu(),
+            child: GestureDetector(
+              onTap: () {
+                if (_overlayController.isShowing) {
+                  _hideMenuImmediately();
+                } else {
+                  _showMenu();
+                }
+              },
+              child: AnimatedContainer(
+                duration: AppConstants.animationFast,
+                height: 42,
+                padding: const EdgeInsets.symmetric(horizontal: 14),
+                decoration: BoxDecoration(
+                  color: _isHovered
+                      ? AppColors.primary.withValues(alpha: 0.08)
+                      : Colors.transparent,
+                  borderRadius: BorderRadius.circular(AppConstants.defaultBorderRadius),
+                  border: Border.all(
+                    color: _isHovered
+                        ? AppColors.primary
+                        : (isDark ? AppColors.borderDark : AppColors.borderLight),
+                    width: 1.2,
+                  ),
+                ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Obx(() {
+                      final isDownloading = widget.controller.isDownloadingTemplate.value;
+                      if (isDownloading) {
+                        return const Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            CustomInlineLoader(size: 14, strokeWidth: 2),
+                            SizedBox(width: 6),
+                          ],
+                        );
+                      }
+                      return Icon(
+                        PhosphorIconsRegular.dotsThreeVertical,
+                        size: 16,
+                        color: _isHovered
+                            ? AppColors.primary
+                            : (isDark ? AppColors.textPrimaryDark : AppColors.textPrimaryLight),
+                      );
+                    }),
+                    const SizedBox(width: 6),
+                    Text(
+                      'More',
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: _isHovered
+                            ? AppColors.primary
+                            : (isDark ? AppColors.textPrimaryDark : AppColors.textPrimaryLight),
+                      ),
+                    ),
+                    const SizedBox(width: 4),
+                    AnimatedRotation(
+                      turns: _isHovered ? 0.5 : 0.0,
+                      duration: const Duration(milliseconds: 180),
+                      child: Icon(
+                        Icons.keyboard_arrow_down_rounded,
+                        size: 18,
+                        color: _isHovered
+                            ? AppColors.primary
+                            : (isDark ? AppColors.textSecondaryDark : AppColors.textSecondaryLight),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Item inside the hover dropdown menu.
+class _HoverMenuItem extends StatefulWidget {
+  final bool isDark;
+  final IconData icon;
+  final Color iconColor;
+  final String title;
+  final String subtitle;
+  final bool isLoading;
+  final VoidCallback onTap;
+
+  const _HoverMenuItem({
+    required this.isDark,
+    required this.icon,
+    required this.iconColor,
+    required this.title,
+    required this.subtitle,
+    required this.onTap,
+    this.isLoading = false,
+  });
+
+  @override
+  State<_HoverMenuItem> createState() => _HoverMenuItemState();
+}
+
+class _HoverMenuItemState extends State<_HoverMenuItem> {
+  bool _itemHovered = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = widget.isDark;
+
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      onEnter: (_) => setState(() => _itemHovered = true),
+      onExit: (_) => setState(() => _itemHovered = false),
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: widget.onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 140),
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+          decoration: BoxDecoration(
+            color: _itemHovered
+                ? (isDark
+                    ? AppColors.primary.withValues(alpha: 0.18)
+                    : AppColors.primary.withValues(alpha: 0.08))
+                : Colors.transparent,
+            borderRadius: BorderRadius.circular(8),
+          ),
+          child: Row(
+            children: [
+              Container(
+                width: 32,
+                height: 32,
+                decoration: BoxDecoration(
+                  color: widget.iconColor.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Center(
+                  child: widget.isLoading
+                      ? const CustomInlineLoader(size: 16, strokeWidth: 2)
+                      : Icon(widget.icon, size: 16, color: widget.iconColor),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      widget.title,
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: _itemHovered
+                            ? AppColors.primary
+                            : (isDark ? AppColors.textPrimaryDark : AppColors.textPrimaryLight),
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      widget.subtitle,
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: isDark ? AppColors.textSecondaryDark : AppColors.textSecondaryLight,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Action menu for cattle table rows and cards that opens on hover (and tap).
+class _CowActionHoverMenu extends StatefulWidget {
+  final CowModel cow;
+  final bool isDark;
+  final bool isRowHovered;
+  final VoidCallback onTransferShed;
+  final VoidCallback onViewHistory;
+  final VoidCallback onToggleStatus;
+  final VoidCallback onMarkDied;
+  final VoidCallback onDelete;
+
+  const _CowActionHoverMenu({
+    required this.cow,
+    required this.isDark,
+    this.isRowHovered = false,
+    required this.onTransferShed,
+    required this.onViewHistory,
+    required this.onToggleStatus,
+    required this.onMarkDied,
+    required this.onDelete,
+  });
+
+  @override
+  State<_CowActionHoverMenu> createState() => _CowActionHoverMenuState();
+}
+
+class _CowActionHoverMenuState extends State<_CowActionHoverMenu> {
+  static _CowActionHoverMenuState? _currentOpenMenu;
+
+  final LayerLink _layerLink = LayerLink();
+  final OverlayPortalController _overlayController = OverlayPortalController();
+  Timer? _hideTimer;
+  bool _isButtonHovered = false;
+  bool _openUpwards = false;
+
+  @override
+  void dispose() {
+    _hideTimer?.cancel();
+    if (_currentOpenMenu == this) {
+      _currentOpenMenu = null;
+    }
+    if (_overlayController.isShowing) {
+      _overlayController.hide();
+    }
+    super.dispose();
+  }
+
+  void _calculatePosition() {
+    if (!mounted) return;
+    final renderBox = context.findRenderObject() as RenderBox?;
+    if (renderBox != null && renderBox.hasSize) {
+      final position = renderBox.localToGlobal(Offset.zero);
+      final screenHeight = MediaQuery.of(context).size.height;
+      final spaceBelow = screenHeight - (position.dy + renderBox.size.height);
+      final shouldOpenUp = spaceBelow < 220 && position.dy > spaceBelow;
+      if (_openUpwards != shouldOpenUp) {
+        setState(() {
+          _openUpwards = shouldOpenUp;
+        });
+      }
+    }
+  }
+
+  void _showMenu() {
+    _hideTimer?.cancel();
+    if (_currentOpenMenu != null && _currentOpenMenu != this && _currentOpenMenu!.mounted) {
+      _currentOpenMenu!._hideMenuImmediately();
+    }
+    _currentOpenMenu = this;
+
+    _calculatePosition();
+
+    if (!_overlayController.isShowing) {
+      _overlayController.show();
+    }
+    if (!_isButtonHovered) {
+      setState(() => _isButtonHovered = true);
+    }
+  }
+
+  void _scheduleHideMenu() {
+    _hideTimer?.cancel();
+    _hideTimer = Timer(const Duration(milliseconds: 200), () {
+      if (mounted) {
+        if (_overlayController.isShowing) {
+          _overlayController.hide();
+        }
+        if (_isButtonHovered) {
+          setState(() => _isButtonHovered = false);
+        }
+        if (_currentOpenMenu == this) {
+          _currentOpenMenu = null;
+        }
+      }
+    });
+  }
+
+  void _hideMenuImmediately() {
+    _hideTimer?.cancel();
+    if (_overlayController.isShowing) {
+      _overlayController.hide();
+    }
+    if (_isButtonHovered) {
+      setState(() => _isButtonHovered = false);
+    }
+    if (_currentOpenMenu == this) {
+      _currentOpenMenu = null;
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final cow = widget.cow;
+    final isDark = widget.isDark;
+    final hasTransfer = cow.canTransferShed;
+    final canMarkDied = !cow.isDeleted && !cow.isDelete;
+    final canDelete = !cow.isDeleted && !cow.isDelete;
+
+    if (!hasTransfer && !canMarkDied && !canDelete) {
+      return const SizedBox.shrink();
+    }
+
+    final isShowing = _overlayController.isShowing;
+    final isActiveHover = _isButtonHovered || isShowing;
+    final openUp = _openUpwards;
+
+    return CompositedTransformTarget(
+      link: _layerLink,
+      child: OverlayPortal(
+        controller: _overlayController,
+        overlayChildBuilder: (context) {
+          return Align(
+            alignment: Alignment.topLeft,
+            child: CompositedTransformFollower(
+              link: _layerLink,
+              targetAnchor: openUp ? Alignment.topRight : Alignment.bottomRight,
+              followerAnchor: openUp ? Alignment.bottomRight : Alignment.topRight,
+              offset: Offset(0, openUp ? -2 : 2),
+              showWhenUnlinked: false,
+              child: TapRegion(
+                groupId: _layerLink,
+                onTapOutside: (_) => _hideMenuImmediately(),
+                child: MouseRegion(
+                  onEnter: (_) => _showMenu(),
+                  onExit: (_) => _scheduleHideMenu(),
+                  child: Padding(
+                    padding: EdgeInsets.only(
+                      top: openUp ? 0 : 3.0,
+                      bottom: openUp ? 3.0 : 0,
+                    ),
+                    child: Material(
+                      color: Colors.transparent,
+                      elevation: 8,
+                      shadowColor: Colors.black.withValues(alpha: isDark ? 0.40 : 0.15),
+                      borderRadius: BorderRadius.circular(10),
+                      child: Container(
+                        width: 195,
+                        padding: const EdgeInsets.all(5),
+                        decoration: BoxDecoration(
+                          color: isDark ? AppColors.surfaceDark : AppColors.surfaceLight,
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(
+                            color: isDark ? AppColors.borderDark : AppColors.borderLight,
+                            width: 1,
+                          ),
+                        ),
+                        child: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            if (hasTransfer) ...[
+                              _CowRowHoverMenuItem(
+                                isDark: isDark,
+                                icon: PhosphorIconsRegular.arrowsLeftRight,
+                                iconColor: AppColors.primary,
+                                title: 'Transfer Shed',
+                                onTap: () {
+                                  _hideMenuImmediately();
+                                  widget.onTransferShed();
+                                },
+                              ),
+                              _CowRowHoverMenuItem(
+                                isDark: isDark,
+                                icon: PhosphorIconsRegular.clockCounterClockwise,
+                                iconColor: AppColors.secondary,
+                                title: 'Shed History',
+                                onTap: () {
+                                  _hideMenuImmediately();
+                                  widget.onViewHistory();
+                                },
+                              ),
+                              _CowRowHoverMenuItem(
+                                isDark: isDark,
+                                icon: cow.isActive
+                                    ? Icons.power_settings_new_rounded
+                                    : Icons.check_circle_outline_rounded,
+                                iconColor: cow.isActive ? Colors.orange : AppColors.primary,
+                                title: cow.isActive ? 'Set InActive' : 'Set Active',
+                                onTap: () {
+                                  _hideMenuImmediately();
+                                  widget.onToggleStatus();
+                                },
+                              ),
+                            ],
+                            if (canMarkDied) ...[
+                              if (hasTransfer)
+                                Divider(
+                                  height: 6,
+                                  thickness: 0.8,
+                                  color: isDark ? AppColors.borderDark : AppColors.borderLight,
+                                ),
+                              _CowRowHoverMenuItem(
+                                isDark: isDark,
+                                icon: Icons.heart_broken_rounded,
+                                iconColor: Colors.red.shade700,
+                                textColor: Colors.red.shade700,
+                                title: (cow.isDead || cow.isDied)
+                                    ? 'Update Death Date'
+                                    : 'Mark as Died',
+                                onTap: () {
+                                  _hideMenuImmediately();
+                                  widget.onMarkDied();
+                                },
+                              ),
+                            ],
+                            if (canDelete) ...[
+                              Divider(
+                                height: 6,
+                                thickness: 0.8,
+                                color: isDark ? AppColors.borderDark : AppColors.borderLight,
+                              ),
+                              _CowRowHoverMenuItem(
+                                isDark: isDark,
+                                icon: PhosphorIconsRegular.trash,
+                                iconColor: AppColors.error,
+                                textColor: AppColors.error,
+                                isDestructive: true,
+                                title: 'Delete Record',
+                                onTap: () {
+                                  _hideMenuImmediately();
+                                  widget.onDelete();
+                                },
+                              ),
+                            ],
+                          ],
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          );
+        },
+        child: TapRegion(
+          groupId: _layerLink,
+          child: MouseRegion(
+            cursor: SystemMouseCursors.click,
+            onEnter: (_) => _showMenu(),
+            onExit: (_) => _scheduleHideMenu(),
+            child: GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTap: () {
+                if (_overlayController.isShowing) {
+                  _hideMenuImmediately();
+                } else {
+                  _showMenu();
+                }
+              },
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 140),
+                width: 28,
+                height: 28,
+                decoration: BoxDecoration(
+                  color: isActiveHover
+                      ? (isDark
+                          ? Colors.white.withValues(alpha: 0.12)
+                          : AppColors.primary.withValues(alpha: 0.10))
+                      : Colors.transparent,
+                  borderRadius: BorderRadius.circular(6),
+                  border: Border.all(
+                    color: isActiveHover
+                        ? (isDark ? AppColors.borderDark : AppColors.borderLight)
+                        : Colors.transparent,
+                    width: 1,
+                  ),
+                ),
+                child: Center(
+                  child: Icon(
+                    PhosphorIconsRegular.dotsThreeVertical,
+                    size: 18,
+                    color: isActiveHover
+                        ? (isDark ? Colors.white : AppColors.primary)
+                        : (widget.isRowHovered
+                            ? (isDark ? Colors.white : Colors.black87)
+                            : (isDark
+                                ? AppColors.textSecondaryDark
+                                : AppColors.textSecondaryLight)),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Item inside the cow row action hover dropdown menu.
+class _CowRowHoverMenuItem extends StatefulWidget {
+  final bool isDark;
+  final IconData icon;
+  final Color iconColor;
+  final String title;
+  final Color? textColor;
+  final bool isDestructive;
+  final VoidCallback onTap;
+
+  const _CowRowHoverMenuItem({
+    required this.isDark,
+    required this.icon,
+    required this.iconColor,
+    required this.title,
+    this.textColor,
+    this.isDestructive = false,
+    required this.onTap,
+  });
+
+  @override
+  State<_CowRowHoverMenuItem> createState() => _CowRowHoverMenuItemState();
+}
+
+class _CowRowHoverMenuItemState extends State<_CowRowHoverMenuItem> {
+  bool _isItemHovered = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = widget.isDark;
+    final defaultTextColor = isDark ? AppColors.textPrimaryDark : AppColors.textPrimaryLight;
+    final itemTextColor = widget.textColor ?? defaultTextColor;
+
+    final hoverBg = widget.isDestructive
+        ? AppColors.error.withValues(alpha: isDark ? 0.22 : 0.08)
+        : (isDark
+            ? AppColors.primary.withValues(alpha: 0.18)
+            : AppColors.primary.withValues(alpha: 0.08));
+
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      onEnter: (_) => setState(() => _isItemHovered = true),
+      onExit: (_) => setState(() => _isItemHovered = false),
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTap: widget.onTap,
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 130),
+          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+          decoration: BoxDecoration(
+            color: _isItemHovered ? hoverBg : Colors.transparent,
+            borderRadius: BorderRadius.circular(7),
+          ),
+          child: Row(
+            children: [
+              Icon(
+                widget.icon,
+                size: 16,
+                color: _isItemHovered && !widget.isDestructive && widget.textColor == null
+                    ? AppColors.primary
+                    : widget.iconColor,
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  widget.title,
+                  style: TextStyle(
+                    fontSize: 13,
+                    fontWeight: _isItemHovered ? FontWeight.w600 : FontWeight.w500,
+                    color: _isItemHovered && !widget.isDestructive && widget.textColor == null
+                        ? AppColors.primary
+                        : itemTextColor,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// -------------------------------------------------------------
+// HOVERABLE CARD (MOBILE / TABLET)
+// -------------------------------------------------------------
+class _HoverableListCard extends StatefulWidget {
+  final Widget child;
+  final EdgeInsetsGeometry? margin;
+  const _HoverableListCard({required this.child, this.margin});
+
+  @override
+  State<_HoverableListCard> createState() => _HoverableListCardState();
+}
+
+class _HoverableListCardState extends State<_HoverableListCard> {
+  bool _isHovered = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      onEnter: (_) => setState(() => _isHovered = true),
+      onExit: (_) => setState(() => _isHovered = false),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 160),
+        curve: Curves.easeInOut,
+        margin: widget.margin,
+        decoration: BoxDecoration(
+          color: Theme.of(context).cardColor,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(
+            color: _isHovered
+                ? (isDark ? AppColors.primaryLight : AppColors.primary.withValues(alpha: 0.45))
+                : (isDark ? AppColors.borderDark : AppColors.borderLight),
+            width: _isHovered ? 1.2 : 1.0,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: _isHovered ? 0.08 : 0.03),
+              blurRadius: _isHovered ? 8 : 3,
+              offset: Offset(0, _isHovered ? 3 : 1),
+            ),
+          ],
+        ),
+        child: widget.child,
+      ),
+    );
+  }
+}

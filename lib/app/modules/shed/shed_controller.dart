@@ -1,9 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:dropdown_search/dropdown_search.dart';
 import '../../core/values/app_colors.dart';
-import '../../core/values/app_constants.dart';
 import '../../core/widgets/custom_button.dart';
+import '../../core/widgets/custom_dropdown_search.dart';
 import '../../core/widgets/custom_snackbar.dart';
 import '../../core/widgets/custom_text_field.dart';
 import '../../data/models/gaushala_model.dart';
@@ -14,6 +13,7 @@ import '../../data/services/gaushala_session_service.dart';
 import '../../data/services/storage_service.dart';
 import '../../routes/app_routes.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
+import '../cow/widgets/shed_transfer_history_dialog.dart';
 
 /// Controller managing Sheds Master state, operations, and navigation.
 class ShedController extends GetxController {
@@ -345,20 +345,19 @@ class ShedController extends GetxController {
     required BuildContext context,
     required Rxn<GaushalaModel> selectedGaushala,
   }) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Obx(() {
-      final list = gaushalas.toList();
-      return DropdownSearch<GaushalaModel>(
-        items: (filter, infiniteScrollProps) {
-          if (filter.isEmpty) return list;
-          return list
-              .where((g) => g.gaushalaName.toLowerCase().contains(filter.toLowerCase()))
-              .toList();
-        },
+      return CustomDropdownSearch<GaushalaModel>(
+        label: 'Gaushala',
+        isRequired: true,
+        hint: isLoadingGaushalas.value ? 'Loading gaushalas...' : 'Select Gaushala',
+        prefixIcon: Icons.storefront_outlined,
+        selectedItem: selectedGaushala.value,
+        items: gaushalas.toList(),
         itemAsString: (g) => g.gaushalaName,
         compareFn: (g1, g2) => g1.id == g2.id,
-        selectedItem: selectedGaushala.value,
-        onSelected: (selected) {
+        searchable: true,
+        searchHint: 'Search Gaushala...',
+        onChanged: (selected) {
           selectedGaushala.value = selected;
         },
         validator: (selected) {
@@ -367,142 +366,6 @@ class ShedController extends GetxController {
           }
           return null;
         },
-        suffixProps: DropdownSuffixProps(
-          dropdownButtonProps: DropdownButtonProps(
-            iconClosed: Icon(
-              Icons.keyboard_arrow_down_rounded,
-              size: 20,
-              color: isDark ? AppColors.textMutedDark : AppColors.textMutedLight,
-            ),
-          ),
-        ),
-        decoratorProps: DropDownDecoratorProps(
-          baseStyle: TextStyle(
-            fontSize: 14,
-            color: isDark ? AppColors.textPrimaryDark : AppColors.textPrimaryLight,
-          ),
-          decoration: InputDecoration(
-            labelText: 'Gaushala *',
-            labelStyle: TextStyle(
-              fontSize: 14,
-              color: isDark ? AppColors.textSecondaryDark : AppColors.textSecondaryLight,
-            ),
-            hintText: isLoadingGaushalas.value ? 'Loading gaushalas...' : 'Select Gaushala',
-            hintStyle: TextStyle(
-              fontSize: 14,
-              color: isDark ? AppColors.textMutedDark : AppColors.textMutedLight,
-            ),
-            prefixIcon: const Icon(
-              Icons.storefront_outlined,
-              size: 20,
-            ),
-            filled: true,
-            fillColor: isDark ? AppColors.cardDark : AppColors.surfaceLight,
-            contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-            border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(AppConstants.defaultBorderRadius),
-              borderSide: BorderSide(
-                color: isDark ? AppColors.borderDark : AppColors.borderLight,
-              ),
-            ),
-            enabledBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(AppConstants.defaultBorderRadius),
-              borderSide: BorderSide(
-                color: isDark ? AppColors.borderDark : AppColors.borderLight,
-              ),
-            ),
-            focusedBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(AppConstants.defaultBorderRadius),
-              borderSide: const BorderSide(
-                color: AppColors.primary,
-                width: 1.8,
-              ),
-            ),
-            errorBorder: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(AppConstants.defaultBorderRadius),
-              borderSide: const BorderSide(
-                color: AppColors.error,
-              ),
-            ),
-          ),
-        ),
-        popupProps: PopupProps.menu(
-          showSearchBox: list.length > 5,
-          fit: FlexFit.loose,
-          constraints: const BoxConstraints(maxHeight: 280),
-          menuProps: MenuProps(
-            backgroundColor: isDark ? AppColors.cardDark : AppColors.surfaceLight,
-            borderRadius: BorderRadius.circular(AppConstants.defaultBorderRadius),
-            elevation: 4,
-            barrierColor: Colors.transparent,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(AppConstants.defaultBorderRadius),
-              side: BorderSide(
-                color: isDark ? AppColors.borderDark : AppColors.borderLight,
-              ),
-            ),
-          ),
-          searchFieldProps: TextFieldProps(
-            autofocus: true,
-            style: TextStyle(
-              fontSize: 14,
-              color: isDark ? AppColors.textPrimaryDark : AppColors.textPrimaryLight,
-            ),
-            decoration: InputDecoration(
-              hintText: 'Search gaushala...',
-              hintStyle: TextStyle(
-                fontSize: 13,
-                color: isDark ? AppColors.textMutedDark : AppColors.textMutedLight,
-              ),
-              prefixIcon: const Icon(
-                Icons.search_rounded,
-                size: 18,
-              ),
-              isDense: true,
-              contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-              filled: true,
-              fillColor: isDark ? AppColors.surfaceDark : AppColors.backgroundLight,
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(8),
-                borderSide: BorderSide(color: isDark ? AppColors.borderDark : AppColors.borderLight),
-              ),
-              enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(8),
-                borderSide: BorderSide(color: isDark ? AppColors.borderDark : AppColors.borderLight),
-              ),
-              focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(8),
-                borderSide: const BorderSide(color: AppColors.primary, width: 1.5),
-              ),
-            ),
-          ),
-          itemBuilder: (ctx, item, isDisabled, isSelected) {
-            return Container(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-              color: isSelected ? AppColors.primary.withValues(alpha: 0.1) : Colors.transparent,
-              child: Row(
-                children: [
-                  const Icon(Icons.storefront_outlined, size: 16, color: AppColors.primary),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Text(
-                      item.gaushalaName,
-                      style: TextStyle(
-                        fontSize: 13,
-                        fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
-                        color: isSelected
-                            ? AppColors.primary
-                            : (isDark ? AppColors.textPrimaryDark : AppColors.textPrimaryLight),
-                      ),
-                    ),
-                  ),
-                  if (isSelected)
-                    const Icon(Icons.check_rounded, size: 16, color: AppColors.primary),
-                ],
-              ),
-            );
-          },
-        ),
       );
     });
   }
@@ -530,9 +393,10 @@ class ShedController extends GetxController {
     Get.dialog(
       Dialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 460),
-          child: Padding(
+          child: SingleChildScrollView(
             padding: const EdgeInsets.all(24.0),
             child: Form(
               key: formKey,
@@ -570,10 +434,10 @@ class ShedController extends GetxController {
                       IconButton(
                         icon: const Icon(Icons.close_rounded, size: 20),
                         onPressed: () {
-                          if (context.mounted) {
-                            Navigator.of(context, rootNavigator: true).pop();
-                          } else {
+                          if (Get.isDialogOpen ?? false) {
                             Get.back();
+                          } else if (context.mounted) {
+                            Navigator.of(context, rootNavigator: true).pop();
                           }
                         },
                       ),
@@ -625,10 +489,10 @@ class ShedController extends GetxController {
                     children: [
                       TextButton(
                         onPressed: () {
-                          if (context.mounted) {
-                            Navigator.of(context, rootNavigator: true).pop();
-                          } else {
+                          if (Get.isDialogOpen ?? false) {
                             Get.back();
+                          } else if (context.mounted) {
+                            Navigator.of(context, rootNavigator: true).pop();
                           }
                         },
                         child: const Text('Cancel'),
@@ -656,10 +520,10 @@ class ShedController extends GetxController {
                                 gaushalaId: selectedGaushala.value!.id,
                               );
                               if (success) {
-                                if (context.mounted) {
-                                  Navigator.of(context, rootNavigator: true).pop();
-                                } else {
+                                if (Get.isDialogOpen ?? false) {
                                   Get.back();
+                                } else if (context.mounted) {
+                                  Navigator.of(context, rootNavigator: true).pop();
                                 }
                               }
                             }
@@ -700,9 +564,10 @@ class ShedController extends GetxController {
     Get.dialog(
       Dialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 460),
-          child: Padding(
+          child: SingleChildScrollView(
             padding: const EdgeInsets.all(24.0),
             child: Form(
               key: formKey,
@@ -740,10 +605,10 @@ class ShedController extends GetxController {
                       IconButton(
                         icon: const Icon(Icons.close_rounded, size: 20),
                         onPressed: () {
-                          if (context.mounted) {
-                            Navigator.of(context, rootNavigator: true).pop();
-                          } else {
+                          if (Get.isDialogOpen ?? false) {
                             Get.back();
+                          } else if (context.mounted) {
+                            Navigator.of(context, rootNavigator: true).pop();
                           }
                         },
                       ),
@@ -795,10 +660,10 @@ class ShedController extends GetxController {
                     children: [
                       TextButton(
                         onPressed: () {
-                          if (context.mounted) {
-                            Navigator.of(context, rootNavigator: true).pop();
-                          } else {
+                          if (Get.isDialogOpen ?? false) {
                             Get.back();
+                          } else if (context.mounted) {
+                            Navigator.of(context, rootNavigator: true).pop();
                           }
                         },
                         child: const Text('Cancel'),
@@ -827,10 +692,10 @@ class ShedController extends GetxController {
                                 gaushalaId: selectedGaushala.value!.id,
                               );
                               if (success) {
-                                if (context.mounted) {
-                                  Navigator.of(context, rootNavigator: true).pop();
-                                } else {
+                                if (Get.isDialogOpen ?? false) {
                                   Get.back();
+                                } else if (context.mounted) {
+                                  Navigator.of(context, rootNavigator: true).pop();
                                 }
                               }
                             }
@@ -892,6 +757,16 @@ class ShedController extends GetxController {
           ),
         ],
       ),
+    );
+  }
+
+  /// Opens the Shed Transfer History Dialog modal.
+  void openTransferHistoryDialog(BuildContext context) {
+    final gId = selectedGaushalaFilter.value ?? _gaushalaService.selectedGaushalaId;
+    ShedTransferHistoryDialog.show(
+      context: context,
+      gaushalaId: (gId.isNotEmpty && gId != 'all') ? gId : null,
+      gaushalaName: _gaushalaService.selectedGaushalaName,
     );
   }
 }

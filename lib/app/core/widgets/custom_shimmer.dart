@@ -277,9 +277,12 @@ class CustomTableShimmer extends StatelessWidget {
                     flex: columnFlexes.isNotEmpty ? columnFlexes[0] : 6,
                     child: Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                      child: Row(
-                        children: [
-                          Container(
+                      child: Align(
+                        alignment: Alignment.centerLeft,
+                        child: FittedBox(
+                          fit: BoxFit.scaleDown,
+                          alignment: Alignment.centerLeft,
+                          child: Container(
                             padding: const EdgeInsets.symmetric(
                               horizontal: 10,
                               vertical: 5,
@@ -297,7 +300,7 @@ class CustomTableShimmer extends StatelessWidget {
                               ],
                             ),
                           ),
-                        ],
+                        ),
                       ),
                     ),
                   ),
@@ -310,10 +313,14 @@ class CustomTableShimmer extends StatelessWidget {
                         padding: EdgeInsets.symmetric(horizontal: 16, vertical: 15),
                         child: Align(
                           alignment: Alignment.centerLeft,
-                          child: ShimmerPlaceholder(
-                            width: 140,
-                            height: 13,
-                            borderRadius: 4,
+                          child: FittedBox(
+                            fit: BoxFit.scaleDown,
+                            alignment: Alignment.centerLeft,
+                            child: ShimmerPlaceholder(
+                              width: 140,
+                              height: 13,
+                              borderRadius: 4,
+                            ),
                           ),
                         ),
                       ),
@@ -327,10 +334,14 @@ class CustomTableShimmer extends StatelessWidget {
                         padding: EdgeInsets.symmetric(horizontal: 16, vertical: 15),
                         child: Align(
                           alignment: Alignment.centerLeft,
-                          child: ShimmerPlaceholder(
-                            width: 105,
-                            height: 13,
-                            borderRadius: 4,
+                          child: FittedBox(
+                            fit: BoxFit.scaleDown,
+                            alignment: Alignment.centerLeft,
+                            child: ShimmerPlaceholder(
+                              width: 105,
+                              height: 13,
+                              borderRadius: 4,
+                            ),
                           ),
                         ),
                       ),
@@ -345,10 +356,14 @@ class CustomTableShimmer extends StatelessWidget {
                           padding: EdgeInsets.symmetric(horizontal: 16, vertical: 15),
                           child: Align(
                             alignment: Alignment.centerLeft,
-                            child: ShimmerPlaceholder(
-                              width: 80,
-                              height: 13,
-                              borderRadius: 4,
+                            child: FittedBox(
+                              fit: BoxFit.scaleDown,
+                              alignment: Alignment.centerLeft,
+                              child: ShimmerPlaceholder(
+                                width: 80,
+                                height: 13,
+                                borderRadius: 4,
+                              ),
                             ),
                           ),
                         ),

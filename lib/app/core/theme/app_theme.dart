@@ -125,9 +125,10 @@ class AppTheme {
         mouseCursor: WidgetStatePropertyAll(SystemMouseCursors.click),
       ),
       inputDecorationTheme: InputDecorationTheme(
+        isDense: true,
         filled: true,
         fillColor: AppColors.surfaceLight,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(AppConstants.defaultBorderRadius),
           borderSide: const BorderSide(color: AppColors.borderLight),
@@ -160,6 +161,93 @@ class AppTheme {
         color: AppColors.dividerLight,
         thickness: 1,
         space: 1,
+      ),
+      scrollbarTheme: ScrollbarThemeData(
+        thumbColor: WidgetStateProperty.resolveWith((states) {
+          if (states.contains(WidgetState.hovered)) {
+            return AppColors.primary.withValues(alpha: 0.7);
+          }
+          return AppColors.primary.withValues(alpha: 0.35);
+        }),
+        radius: const Radius.circular(8),
+        thickness: const WidgetStatePropertyAll(6.0),
+      ),
+      tooltipTheme: TooltipThemeData(
+        decoration: BoxDecoration(
+          color: const Color(0xFF1E2D17),
+          borderRadius: BorderRadius.circular(8),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.15),
+              blurRadius: 6,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        textStyle: const TextStyle(
+          fontFamily: fontFamily,
+          color: Colors.white,
+          fontSize: 11.5,
+          fontWeight: FontWeight.w500,
+        ),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      ),
+      dialogTheme: DialogThemeData(
+        backgroundColor: AppColors.cardLight,
+        elevation: 10,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+          side: const BorderSide(color: AppColors.borderLight, width: 1),
+        ),
+        titleTextStyle: const TextStyle(
+          fontFamily: fontFamily,
+          fontSize: 18,
+          fontWeight: FontWeight.w700,
+          color: AppColors.textPrimaryLight,
+        ),
+      ),
+      snackBarTheme: SnackBarThemeData(
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        backgroundColor: const Color(0xFF1E2D17),
+        contentTextStyle: const TextStyle(
+          fontFamily: fontFamily,
+          color: Colors.white,
+          fontSize: 13,
+        ),
+      ),
+      chipTheme: ChipThemeData(
+        backgroundColor: Colors.white,
+        selectedColor: AppColors.primary,
+        disabledColor: Colors.grey.shade200,
+        color: WidgetStateProperty.resolveWith<Color?>((states) {
+          if (states.contains(WidgetState.selected)) {
+            return AppColors.primary;
+          }
+          if (states.contains(WidgetState.disabled)) {
+            return Colors.grey.shade200;
+          }
+          return Colors.white;
+        }),
+        checkmarkColor: Colors.white,
+        labelStyle: const TextStyle(
+          fontFamily: fontFamily,
+          fontSize: 12,
+          fontWeight: FontWeight.w500,
+          color: AppColors.textPrimaryLight,
+        ),
+        secondaryLabelStyle: const TextStyle(
+          fontFamily: fontFamily,
+          fontSize: 12,
+          fontWeight: FontWeight.w600,
+          color: Colors.white,
+        ),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(8),
+        ),
+        side: const BorderSide(color: AppColors.borderLight),
+        showCheckmark: false,
       ),
     );
   }
@@ -280,9 +368,10 @@ class AppTheme {
         mouseCursor: WidgetStatePropertyAll(SystemMouseCursors.click),
       ),
       inputDecorationTheme: InputDecorationTheme(
+        isDense: true,
         filled: true,
         fillColor: AppColors.surfaceDark,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+        contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(AppConstants.defaultBorderRadius),
           borderSide: const BorderSide(color: AppColors.borderDark),
@@ -315,6 +404,93 @@ class AppTheme {
         color: AppColors.dividerDark,
         thickness: 1,
         space: 1,
+      ),
+      scrollbarTheme: ScrollbarThemeData(
+        thumbColor: WidgetStateProperty.resolveWith((states) {
+          if (states.contains(WidgetState.hovered)) {
+            return AppColors.primaryLight.withValues(alpha: 0.6);
+          }
+          return AppColors.primaryLight.withValues(alpha: 0.3);
+        }),
+        radius: const Radius.circular(8),
+        thickness: const WidgetStatePropertyAll(6.0),
+      ),
+      tooltipTheme: TooltipThemeData(
+        decoration: BoxDecoration(
+          color: const Color(0xFF2A3D22),
+          borderRadius: BorderRadius.circular(8),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.3),
+              blurRadius: 6,
+              offset: const Offset(0, 2),
+            ),
+          ],
+        ),
+        textStyle: const TextStyle(
+          fontFamily: fontFamily,
+          color: Colors.white,
+          fontSize: 11.5,
+          fontWeight: FontWeight.w500,
+        ),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      ),
+      dialogTheme: DialogThemeData(
+        backgroundColor: AppColors.cardDark,
+        elevation: 12,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(16),
+          side: const BorderSide(color: AppColors.borderDark, width: 1),
+        ),
+        titleTextStyle: const TextStyle(
+          fontFamily: fontFamily,
+          fontSize: 18,
+          fontWeight: FontWeight.w700,
+          color: AppColors.textPrimaryDark,
+        ),
+      ),
+      snackBarTheme: SnackBarThemeData(
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        backgroundColor: const Color(0xFF263A20),
+        contentTextStyle: const TextStyle(
+          fontFamily: fontFamily,
+          color: Colors.white,
+          fontSize: 13,
+        ),
+      ),
+      chipTheme: ChipThemeData(
+        backgroundColor: AppColors.surfaceDark,
+        selectedColor: AppColors.primary,
+        disabledColor: Colors.grey.shade800,
+        color: WidgetStateProperty.resolveWith<Color?>((states) {
+          if (states.contains(WidgetState.selected)) {
+            return AppColors.primary;
+          }
+          if (states.contains(WidgetState.disabled)) {
+            return Colors.grey.shade800;
+          }
+          return AppColors.surfaceDark;
+        }),
+        checkmarkColor: Colors.white,
+        labelStyle: const TextStyle(
+          fontFamily: fontFamily,
+          fontSize: 12,
+          fontWeight: FontWeight.w500,
+          color: AppColors.textPrimaryDark,
+        ),
+        secondaryLabelStyle: const TextStyle(
+          fontFamily: fontFamily,
+          fontSize: 12,
+          fontWeight: FontWeight.w600,
+          color: Colors.white,
+        ),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(8),
+        ),
+        side: const BorderSide(color: AppColors.borderDark),
+        showCheckmark: false,
       ),
     );
   }

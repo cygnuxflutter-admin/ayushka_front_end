@@ -236,43 +236,47 @@ class CustomPagination extends StatelessWidget {
           final bool isSelected = p == currentPage;
           return Padding(
             padding: const EdgeInsets.symmetric(horizontal: 2.5),
-            child: InkWell(
-              borderRadius: BorderRadius.circular(8),
-              onTap: () => onPageChanged(p),
-              child: AnimatedContainer(
-                duration: const Duration(milliseconds: 180),
-                width: 32,
-                height: 32,
-                alignment: Alignment.center,
-                decoration: BoxDecoration(
-                  color: isSelected
-                      ? AppColors.primary
-                      : (isDark ? AppColors.surfaceDark.withValues(alpha: 0.5) : Colors.transparent),
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(
+            child: Material(
+              color: Colors.transparent,
+              child: InkWell(
+                mouseCursor: SystemMouseCursors.click,
+                borderRadius: BorderRadius.circular(8),
+                onTap: () => onPageChanged(p),
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 180),
+                  width: 32,
+                  height: 32,
+                  alignment: Alignment.center,
+                  decoration: BoxDecoration(
                     color: isSelected
                         ? AppColors.primary
-                        : (isDark ? AppColors.borderDark : AppColors.borderLight),
-                    width: isSelected ? 1.4 : 1.0,
+                        : (isDark ? AppColors.surfaceDark.withValues(alpha: 0.5) : Colors.transparent),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(
+                      color: isSelected
+                          ? AppColors.primary
+                          : (isDark ? AppColors.borderDark : AppColors.borderLight),
+                      width: isSelected ? 1.4 : 1.0,
+                    ),
+                    boxShadow: isSelected
+                        ? [
+                            BoxShadow(
+                              color: AppColors.primary.withValues(alpha: 0.28),
+                              blurRadius: 6,
+                              offset: const Offset(0, 2),
+                            ),
+                          ]
+                        : null,
                   ),
-                  boxShadow: isSelected
-                      ? [
-                          BoxShadow(
-                            color: AppColors.primary.withValues(alpha: 0.28),
-                            blurRadius: 6,
-                            offset: const Offset(0, 2),
-                          ),
-                        ]
-                      : null,
-                ),
-                child: Text(
-                  '$p',
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
-                    color: isSelected
-                        ? Colors.white
-                        : (isDark ? AppColors.textPrimaryDark : AppColors.textPrimaryLight),
+                  child: Text(
+                    '$p',
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
+                      color: isSelected
+                          ? Colors.white
+                          : (isDark ? AppColors.textPrimaryDark : AppColors.textPrimaryLight),
+                    ),
                   ),
                 ),
               ),
@@ -316,6 +320,7 @@ class CustomPagination extends StatelessWidget {
       child: Material(
         color: Colors.transparent,
         child: InkWell(
+          mouseCursor: isEnabled ? SystemMouseCursors.click : SystemMouseCursors.basic,
           borderRadius: BorderRadius.circular(8),
           onTap: isEnabled ? onTap : null,
           child: Container(

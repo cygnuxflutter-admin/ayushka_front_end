@@ -95,6 +95,7 @@ class AddCowController extends GetxController {
       }
     });
     ever(selectedGaushala, (GaushalaModel? g) {
+      fetchTypesForGaushala(g?.id);
       fetchShedsForGaushala(g?.id);
       fetchCowsForGaushala(g?.id);
     });
@@ -147,6 +148,33 @@ class AddCowController extends GetxController {
         }
       }
     }
+  }
+
+  String? _lastLoadedTypesGaushalaId = '';
+
+  Future<void> fetchTypesForGaushala(String? gaushalaId) async {
+    final cleanId = (gaushalaId != null && gaushalaId.trim().isNotEmpty) ? gaushalaId.trim() : null;
+    if (_lastLoadedTypesGaushalaId == cleanId && types.isNotEmpty) return;
+    _lastLoadedTypesGaushalaId = cleanId;
+
+    try {
+      final list = await _apiService.getTypes(gaushalaId: cleanId);
+      types.assignAll(list);
+      if (isEditMode && selectedType.value == null && editingCow.value?.cowType != null) {
+        final match = list.firstWhereOrNull(
+          (t) => t.id == editingCow.value!.cowType!.id || t.typeName.toLowerCase() == editingCow.value!.cowType!.typeName.toLowerCase(),
+        );
+        if (match != null) {
+          selectedType.value = match;
+        }
+      } else if (selectedType.value != null && !list.any((t) => t.id == selectedType.value!.id)) {
+        if (isFemale.value) {
+          selectedType.value = null;
+        } else {
+          _autoSelectNaType();
+        }
+      }
+    } catch (_) {}
   }
 
   String? _lastLoadedGaushalaId = '';
@@ -290,6 +318,7 @@ class AddCowController extends GetxController {
       // Fetch cows for Dam and Sire dropdowns if gaushala is selected
       if (selectedGaushala.value != null) {
         await Future.wait([
+          fetchTypesForGaushala(selectedGaushala.value!.id),
           fetchShedsForGaushala(selectedGaushala.value!.id),
           fetchCowsForGaushala(selectedGaushala.value!.id),
         ]);

@@ -2,11 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../../core/values/app_colors.dart';
 import '../../core/widgets/custom_button.dart';
+import '../../core/widgets/custom_dropdown_search.dart';
 import '../../core/widgets/custom_snackbar.dart';
 import '../../core/widgets/custom_text_field.dart';
+import '../../data/models/gaushala_model.dart';
 import '../../data/models/type_model.dart';
 import '../../data/models/user_model.dart';
 import '../../data/services/api_service.dart';
+import '../../data/services/gaushala_session_service.dart';
 import '../../data/services/storage_service.dart';
 import '../../routes/app_routes.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
@@ -15,9 +18,11 @@ import 'package:phosphor_flutter/phosphor_flutter.dart';
 class TypeController extends GetxController {
   final ApiService _apiService = Get.find<ApiService>();
   final StorageService _storageService = Get.find<StorageService>();
+  final GaushalaSessionService _gaushalaService = Get.find<GaushalaSessionService>();
 
   // Static in-memory cache to prevent flickering / repeated loading animations on navigation
   static final List<TypeModel> _cachedTypes = [];
+  static String? _cachedGaushalaId;
 
   final Rxn<UserModel> currentUser = Rxn<UserModel>();
   final RxBool isSidebarCollapsed = false.obs;
@@ -26,7 +31,27 @@ class TypeController extends GetxController {
   final RxBool isSubmitting = false.obs;
 
   final RxList<TypeModel> types = <TypeModel>[].obs;
+  final RxList<GaushalaModel> gaushalas = <GaushalaModel>[].obs;
+  final RxBool isLoadingGaushalas = false.obs;
   final RxString searchQuery = ''.obs;
+  final Rxn<String> selectedGaushalaFilter = Rxn<String>();
+
+  bool get canChangeGaushala => _gaushalaService.canChangeGaushala;
+
+  String get selectedGaushalaName {
+    final gId = selectedGaushalaFilter.value;
+    if (gId != null && gId.isNotEmpty) {
+      final g = findGaushala(gId);
+      if (g != null) return g.gaushalaName;
+    }
+    return _gaushalaService.selectedGaushalaName;
+  }
+
+  GaushalaModel? findGaushala(String? idOrName) {
+    if (idOrName == null || idOrName.isEmpty) return null;
+    return gaushalas.firstWhereOrNull((g) => g.id == idOrName || g.gaushalaName == idOrName) ??
+        _gaushalaService.findGaushala(idOrName);
+  }
 
   // Pagination states
   final RxInt currentPage = 1.obs;
@@ -34,11 +59,26 @@ class TypeController extends GetxController {
 
   List<TypeModel> get filteredTypes {
     final query = searchQuery.value.trim().toLowerCase();
-    if (query.isEmpty) return types;
+    final filterGId = selectedGaushalaFilter.value;
+
     return types.where((t) {
+      // 1. Gaushala Filter
+      if (filterGId != null && filterGId.isNotEmpty) {
+        final matchesId = t.gaushalaId == filterGId;
+        final matchesName = t.gaushalaName != null &&
+            gaushalas.any((g) => g.id == filterGId && g.gaushalaName.toLowerCase() == t.gaushalaName!.toLowerCase());
+        if (!matchesId && !matchesName) {
+          return false;
+        }
+      }
+
+      // 2. Search Query Filter
+      if (query.isEmpty) return true;
       final nameMatches = t.typeName.toLowerCase().contains(query);
       final idMatches = t.id.toLowerCase().contains(query);
-      return nameMatches || idMatches;
+      final gaushalaMatches = (t.gaushalaName?.toLowerCase().contains(query) ?? false) ||
+          gaushalas.any((g) => g.id == t.gaushalaId && g.gaushalaName.toLowerCase() == query);
+      return nameMatches || idMatches || gaushalaMatches;
     }).toList();
   }
 
@@ -74,17 +114,75 @@ class TypeController extends GetxController {
     currentPage.value = 1;
   }
 
+  void setGaushalaFilter(String? gaushalaId) {
+    if (gaushalaId == null || gaushalaId.isEmpty || gaushalaId == 'all') return;
+    if (selectedGaushalaFilter.value == gaushalaId) return;
+
+    selectedGaushalaFilter.value = gaushalaId;
+    currentPage.value = 1;
+
+    // Sync global session if admin
+    final match = findGaushala(gaushalaId);
+    if (match != null && _gaushalaService.canChangeGaushala && _gaushalaService.selectedGaushalaId != gaushalaId) {
+      _gaushalaService.setGaushala(match);
+    }
+
+    fetchTypes(gaushalaId: gaushalaId, showLoading: true);
+  }
+
+  void clearFilters() {
+    searchQuery.value = '';
+    currentPage.value = 1;
+  }
+
   @override
   void onInit() {
     super.onInit();
     _loadUser();
     debounce(searchQuery, (_) => currentPage.value = 1, time: const Duration(milliseconds: 100));
-    // Instantly hydrate existing data from cache if present
-    if (_cachedTypes.isNotEmpty) {
+
+    // Listen to global AppBar gaushala changes
+    ever(_gaushalaService.selectedGaushala, (GaushalaModel? g) {
+      if (g != null && g.id.isNotEmpty && selectedGaushalaFilter.value != g.id) {
+        selectedGaushalaFilter.value = g.id;
+        currentPage.value = 1;
+        fetchTypes(gaushalaId: g.id, showLoading: true);
+      }
+    });
+
+    _initData();
+  }
+
+  Future<void> _initData() async {
+    // 1. Ensure gaushalas are loaded
+    if (_gaushalaService.gaushalas.isEmpty) {
+      await _gaushalaService.initSession(user: currentUser.value);
+    }
+    await fetchGaushalas();
+
+    // 2. Resolve target Gaushala ID (guaranteed valid specific gaushala)
+    String targetGId = _gaushalaService.selectedGaushalaId;
+    if (targetGId.isEmpty) {
+      final defaultG = _gaushalaService.getUserDefaultGaushala(currentUser.value) ??
+          (gaushalas.isNotEmpty ? gaushalas.first : null);
+      if (defaultG != null) {
+        targetGId = defaultG.id;
+        _gaushalaService.selectedGaushala.value = defaultG;
+      }
+    }
+
+    if (targetGId.isNotEmpty) {
+      selectedGaushalaFilter.value = targetGId;
+    }
+
+    // 3. Hydrate cache if matching
+    if (_cachedTypes.isNotEmpty && _cachedGaushalaId == targetGId) {
       types.assignAll(_cachedTypes);
     }
-    // Only show full loader if cache is empty, otherwise refresh silently in background
-    fetchTypes(showLoading: _cachedTypes.isEmpty);
+
+    if (targetGId.isNotEmpty) {
+      await fetchTypes(gaushalaId: targetGId, showLoading: types.isEmpty);
+    }
   }
 
   void _loadUser() {
@@ -97,16 +195,23 @@ class TypeController extends GetxController {
 
   Future<void> logout() async {
     _cachedTypes.clear();
+    _cachedGaushalaId = null;
     await _storageService.removeToken();
     await _storageService.removeUser();
     Get.offAllNamed(AppRoutes.auth);
   }
 
-  /// Fetches all types from GET /api/v1/types
+  /// Fetches types from GET /api/v1/types (requires valid gaushalaId)
   Future<void> fetchTypes({
+    String? gaushalaId,
     bool showLoading = false,
     bool isManualRefresh = false,
   }) async {
+    final gId = gaushalaId ?? selectedGaushalaFilter.value ?? _gaushalaService.selectedGaushalaId;
+    if (gId.isEmpty || gId == 'all') {
+      return;
+    }
+
     if (showLoading || types.isEmpty) {
       isLoading.value = true;
     }
@@ -114,7 +219,8 @@ class TypeController extends GetxController {
       isRefreshing.value = true;
     }
     try {
-      final result = await _apiService.getTypes();
+      final result = await _apiService.getTypes(gaushalaId: gId);
+      _cachedGaushalaId = gId;
       _cachedTypes
         ..clear()
         ..addAll(result);
@@ -133,14 +239,34 @@ class TypeController extends GetxController {
     }
   }
 
+  /// Fetches gaushalas for dropdown filter and selection
+  Future<void> fetchGaushalas() async {
+    isLoadingGaushalas.value = true;
+    try {
+      final result = await _apiService.getGaushalas();
+      gaushalas.assignAll(result);
+    } catch (e) {
+      // Handled by Dio interceptor
+    } finally {
+      isLoadingGaushalas.value = false;
+    }
+  }
+
   /// User-initiated refresh action (triggers shimmer + spinning icon)
   Future<void> refreshTypes() async {
     if (isLoading.value || isRefreshing.value) return;
-    await fetchTypes(showLoading: true, isManualRefresh: true);
+    await Future.wait([
+      fetchTypes(
+        gaushalaId: selectedGaushalaFilter.value,
+        showLoading: true,
+        isManualRefresh: true,
+      ),
+      fetchGaushalas(),
+    ]);
   }
 
   /// Creates a new type via POST /api/v1/types
-  Future<bool> createType(String typeName) async {
+  Future<bool> createType(String typeName, {String? gaushalaId}) async {
     final trimmed = typeName.trim();
     if (trimmed.isEmpty) {
       CustomSnackbar.showError(
@@ -150,9 +276,21 @@ class TypeController extends GetxController {
       return false;
     }
 
+    final targetGaushalaId = (gaushalaId != null && gaushalaId.isNotEmpty)
+        ? gaushalaId
+        : (selectedGaushalaFilter.value ?? _gaushalaService.selectedGaushalaId);
+
+    if (targetGaushalaId.isEmpty) {
+      CustomSnackbar.showError(
+        title: 'Validation Error',
+        message: 'Please select a Gaushala for this type.',
+      );
+      return false;
+    }
+
     isSubmitting.value = true;
     try {
-      final newType = await _apiService.createType(trimmed);
+      final newType = await _apiService.createType(trimmed, gaushalaId: targetGaushalaId);
       _cachedTypes.insert(0, newType);
       types.insert(0, newType);
       CustomSnackbar.showSuccess(
@@ -168,7 +306,7 @@ class TypeController extends GetxController {
   }
 
   /// Updates an existing type via PUT /api/v1/types/:id
-  Future<bool> updateType(String id, String typeName) async {
+  Future<bool> updateType(String id, String typeName, {String? gaushalaId}) async {
     final trimmed = typeName.trim();
     if (trimmed.isEmpty) {
       CustomSnackbar.showError(
@@ -180,7 +318,7 @@ class TypeController extends GetxController {
 
     isSubmitting.value = true;
     try {
-      final updated = await _apiService.updateType(id, trimmed);
+      final updated = await _apiService.updateType(id, trimmed, gaushalaId: gaushalaId);
       final index = types.indexWhere((t) => t.id == id);
       if (index != -1) {
         types[index] = updated;
@@ -221,17 +359,67 @@ class TypeController extends GetxController {
     }
   }
 
+  /// Reusable Gaushala Dropdown widget
+  Widget _buildGaushalaDropdown({
+    required BuildContext context,
+    required Rxn<GaushalaModel> selectedGaushala,
+  }) {
+    return Obx(() {
+      return CustomDropdownSearch<GaushalaModel>(
+        label: 'Gaushala',
+        isRequired: true,
+        hint: isLoadingGaushalas.value ? 'Loading gaushalas...' : 'Select Gaushala',
+        prefixIcon: Icons.storefront_outlined,
+        selectedItem: selectedGaushala.value,
+        items: gaushalas.toList(),
+        itemAsString: (g) => g.gaushalaName,
+        compareFn: (g1, g2) => g1.id == g2.id,
+        searchable: true,
+        searchHint: 'Search Gaushala...',
+        onChanged: (selected) {
+          selectedGaushala.value = selected;
+        },
+        validator: (selected) {
+          if (selected == null && selectedGaushala.value == null) {
+            return 'Gaushala is required';
+          }
+          return null;
+        },
+      );
+    });
+  }
+
   /// Open Dialog to Add a New Type
   void openAddTypeDialog(BuildContext context) {
     final formKey = GlobalKey<FormState>();
     final nameController = TextEditingController();
 
+    if (gaushalas.isEmpty) {
+      fetchGaushalas();
+    }
+
+    GaushalaModel? defaultGaushala;
+    final activeGId = selectedGaushalaFilter.value ?? _gaushalaService.selectedGaushalaId;
+    if (activeGId.isNotEmpty) {
+      defaultGaushala = gaushalas.firstWhereOrNull((g) => g.id == activeGId) ??
+          _gaushalaService.findGaushala(activeGId);
+    }
+    final userGId = currentUser.value?.gaushalaId;
+    if (defaultGaushala == null && userGId != null && userGId.isNotEmpty) {
+      defaultGaushala = gaushalas.firstWhereOrNull((g) => g.id == userGId);
+    }
+    if (defaultGaushala == null && gaushalas.length == 1) {
+      defaultGaushala = gaushalas.first;
+    }
+    final Rxn<GaushalaModel> selectedGaushala = Rxn<GaushalaModel>(defaultGaushala);
+
     Get.dialog(
       Dialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
         child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 440),
-          child: Padding(
+          constraints: const BoxConstraints(maxWidth: 460),
+          child: SingleChildScrollView(
             padding: const EdgeInsets.all(24.0),
             child: Form(
               key: formKey,
@@ -269,10 +457,10 @@ class TypeController extends GetxController {
                       IconButton(
                         icon: const Icon(Icons.close_rounded, size: 20),
                         onPressed: () {
-                          if (context.mounted) {
-                            Navigator.of(context, rootNavigator: true).pop();
-                          } else {
+                          if (Get.isDialogOpen ?? false) {
                             Get.back();
+                          } else if (context.mounted) {
+                            Navigator.of(context, rootNavigator: true).pop();
                           }
                         },
                       ),
@@ -284,6 +472,11 @@ class TypeController extends GetxController {
                     style: TextStyle(fontSize: 12, color: AppColors.textSecondaryLight),
                   ),
                   const SizedBox(height: 20),
+                  _buildGaushalaDropdown(
+                    context: context,
+                    selectedGaushala: selectedGaushala,
+                  ),
+                  const SizedBox(height: 16),
                   CustomTextField(
                     controller: nameController,
                     label: 'Type Name',
@@ -305,10 +498,10 @@ class TypeController extends GetxController {
                     children: [
                       TextButton(
                         onPressed: () {
-                          if (context.mounted) {
-                            Navigator.of(context, rootNavigator: true).pop();
-                          } else {
+                          if (Get.isDialogOpen ?? false) {
                             Get.back();
+                          } else if (context.mounted) {
+                            Navigator.of(context, rootNavigator: true).pop();
                           }
                         },
                         child: const Text('Cancel'),
@@ -323,12 +516,22 @@ class TypeController extends GetxController {
                           height: 42,
                           onPressed: () async {
                             if (formKey.currentState?.validate() ?? false) {
-                              final success = await createType(nameController.text);
+                              if (selectedGaushala.value == null) {
+                                CustomSnackbar.showError(
+                                  title: 'Validation Error',
+                                  message: 'Please select a Gaushala for this type.',
+                                );
+                                return;
+                              }
+                              final success = await createType(
+                                nameController.text,
+                                gaushalaId: selectedGaushala.value!.id,
+                              );
                               if (success) {
-                                if (context.mounted) {
-                                  Navigator.of(context, rootNavigator: true).pop();
-                                } else {
+                                if (Get.isDialogOpen ?? false) {
                                   Get.back();
+                                } else if (context.mounted) {
+                                  Navigator.of(context, rootNavigator: true).pop();
                                 }
                               }
                             }
@@ -352,12 +555,24 @@ class TypeController extends GetxController {
     final formKey = GlobalKey<FormState>();
     final nameController = TextEditingController(text: type.typeName);
 
+    if (gaushalas.isEmpty) {
+      fetchGaushalas();
+    }
+
+    GaushalaModel? initialGaushala;
+    if (type.gaushalaId != null && type.gaushalaId!.isNotEmpty) {
+      initialGaushala = gaushalas.firstWhereOrNull((g) => g.id == type.gaushalaId);
+    }
+    initialGaushala ??= _gaushalaService.selectedGaushala.value;
+    final Rxn<GaushalaModel> selectedGaushala = Rxn<GaushalaModel>(initialGaushala);
+
     Get.dialog(
       Dialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
         child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 440),
-          child: Padding(
+          constraints: const BoxConstraints(maxWidth: 460),
+          child: SingleChildScrollView(
             padding: const EdgeInsets.all(24.0),
             child: Form(
               key: formKey,
@@ -395,10 +610,10 @@ class TypeController extends GetxController {
                       IconButton(
                         icon: const Icon(Icons.close_rounded, size: 20),
                         onPressed: () {
-                          if (context.mounted) {
-                            Navigator.of(context, rootNavigator: true).pop();
-                          } else {
+                          if (Get.isDialogOpen ?? false) {
                             Get.back();
+                          } else if (context.mounted) {
+                            Navigator.of(context, rootNavigator: true).pop();
                           }
                         },
                       ),
@@ -410,6 +625,11 @@ class TypeController extends GetxController {
                     style: const TextStyle(fontSize: 12, color: AppColors.textSecondaryLight),
                   ),
                   const SizedBox(height: 20),
+                  _buildGaushalaDropdown(
+                    context: context,
+                    selectedGaushala: selectedGaushala,
+                  ),
+                  const SizedBox(height: 16),
                   CustomTextField(
                     controller: nameController,
                     label: 'Type Name',
@@ -431,10 +651,10 @@ class TypeController extends GetxController {
                     children: [
                       TextButton(
                         onPressed: () {
-                          if (context.mounted) {
-                            Navigator.of(context, rootNavigator: true).pop();
-                          } else {
+                          if (Get.isDialogOpen ?? false) {
                             Get.back();
+                          } else if (context.mounted) {
+                            Navigator.of(context, rootNavigator: true).pop();
                           }
                         },
                         child: const Text('Cancel'),
@@ -449,12 +669,16 @@ class TypeController extends GetxController {
                           height: 42,
                           onPressed: () async {
                             if (formKey.currentState?.validate() ?? false) {
-                              final success = await updateType(type.id, nameController.text);
+                              final success = await updateType(
+                                type.id,
+                                nameController.text,
+                                gaushalaId: selectedGaushala.value?.id,
+                              );
                               if (success) {
-                                if (context.mounted) {
-                                  Navigator.of(context, rootNavigator: true).pop();
-                                } else {
+                                if (Get.isDialogOpen ?? false) {
                                   Get.back();
+                                } else if (context.mounted) {
+                                  Navigator.of(context, rootNavigator: true).pop();
                                 }
                               }
                             }

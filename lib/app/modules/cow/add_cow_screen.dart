@@ -1,4 +1,3 @@
-import 'package:dropdown_search/dropdown_search.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
@@ -6,9 +5,12 @@ import '../../core/utils/responsive_layout.dart';
 import '../../core/values/app_colors.dart';
 import '../../core/values/app_constants.dart';
 import '../../core/widgets/custom_button.dart';
+import '../../core/widgets/custom_dropdown_search.dart';
 import '../../core/widgets/custom_loader.dart';
 import '../../core/widgets/custom_text_field.dart';
 import '../../core/widgets/global_gaushala_selector.dart';
+import '../../core/widgets/header_user_profile_badge.dart';
+import '../notification/widgets/notification_bell_widget.dart';
 import '../../data/models/breed_model.dart';
 import '../../data/models/cow_model.dart';
 import '../../data/models/gaushala_model.dart';
@@ -82,7 +84,12 @@ class AddCowScreen extends GetView<AddCowController> {
   // -------------------------------------------------------------------
   Widget _buildTabletScaffold(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: Text(controller.isEditMode ? 'Edit Cattle' : 'Add Cow')),
+      appBar: AppBar(
+        title: Text(controller.isEditMode ? 'Edit Cattle' : 'Add Cow'),
+        actions: const [
+          NotificationBellWidget(),
+        ],
+      ),
       drawer: Obx(
         () => MobileDrawer(
           currentUser: controller.currentUser.value,
@@ -105,17 +112,25 @@ class AddCowScreen extends GetView<AddCowController> {
   // MOBILE SCAFFOLD
   // -------------------------------------------------------------------
   Widget _buildMobileScaffold(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(title: Text(controller.isEditMode ? 'Edit Cattle' : 'Add Cow')),
-      drawer: Obx(
-        () => MobileDrawer(
-          currentUser: controller.currentUser.value,
-          onLogout: controller.logout,
+    return GestureDetector(
+      onTap: () => FocusScope.of(context).unfocus(),
+      child: Scaffold(
+        appBar: AppBar(
+          title: Text(controller.isEditMode ? 'Edit Cattle' : 'Add Cow'),
+          actions: const [
+            NotificationBellWidget(),
+          ],
         ),
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16.0),
-        child: _buildFormContent(context, crossAxisCount: 1),
+        drawer: Obx(
+          () => MobileDrawer(
+            currentUser: controller.currentUser.value,
+            onLogout: controller.logout,
+          ),
+        ),
+        body: SingleChildScrollView(
+          padding: const EdgeInsets.symmetric(horizontal: 14.0, vertical: 12.0),
+          child: _buildFormContent(context, crossAxisCount: 1),
+        ),
       ),
     );
   }
@@ -184,43 +199,10 @@ class AddCowScreen extends GetView<AddCowController> {
           Row(
             children: [
               const GlobalGaushalaSelector(),
-              const SizedBox(width: 12),
-              Obx(() {
-                final user = controller.currentUser.value;
-                return Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: isDark ? AppColors.cardDark : AppColors.backgroundLight,
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(
-                      color: isDark ? AppColors.borderDark : AppColors.borderLight,
-                    ),
-                  ),
-                  child: Row(
-                    children: [
-                      CircleAvatar(
-                        radius: 13,
-                        backgroundColor: AppColors.primary,
-                        child: Text(
-                          user?.name.isNotEmpty == true
-                              ? user!.name.substring(0, 1).toUpperCase()
-                              : 'A',
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 11,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Text(
-                        user?.name ?? 'Admin',
-                        style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
-                      ),
-                    ],
-                  ),
-                );
-              }),
+              const SizedBox(width: 8),
+              const NotificationBellWidget(),
+              const SizedBox(width: 8),
+              Obx(() => HeaderUserProfileBadge(user: controller.currentUser.value)),
             ],
           ),
         ],
@@ -408,7 +390,7 @@ class AddCowScreen extends GetView<AddCowController> {
           children: [
             // Card header
             Padding(
-              padding: const EdgeInsets.all(20.0),
+              padding: EdgeInsets.all(isSingleColumn ? 16.0 : 20.0),
               child: Row(
                 children: [
                   Container(
@@ -449,7 +431,7 @@ class AddCowScreen extends GetView<AddCowController> {
 
             // Form fields
             Padding(
-              padding: const EdgeInsets.all(24.0),
+              padding: EdgeInsets.all(isSingleColumn ? 16.0 : 24.0),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -615,7 +597,7 @@ class AddCowScreen extends GetView<AddCowController> {
                   const SizedBox(height: 32),
 
                   // ACTION BUTTONS
-                  _buildActionButtons(context),
+                  _buildActionButtons(context, isSingleColumn: isSingleColumn),
                 ],
               ),
             ),
@@ -967,216 +949,28 @@ class AddCowScreen extends GetView<AddCowController> {
     bool enabled = true,
     bool Function()? isEnabled,
   }) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: [
-        Text(
-          isRequired && !label.endsWith('*') ? '$label *' : label,
-          style: TextStyle(
-            fontSize: 13,
-            fontWeight: FontWeight.w600,
-            color: isDark ? AppColors.textSecondaryDark : AppColors.textSecondaryLight,
-          ),
-        ),
-        const SizedBox(height: 6),
-        Obx(() {
-          final active = isEnabled != null ? isEnabled() : enabled;
-          final val = selectedValue();
-          final list = items.toList();
-
-          final currentItem = list.firstWhereOrNull((item) {
-            if (val == null) return false;
-            return item == val || itemLabel(item) == itemLabel(val);
-          });
-
-          return DropdownSearch<T>(
-            key: ValueKey('dropdown_${label}_$active'),
-            enabled: active,
-            items: (filter, infiniteScrollProps) => list,
-            itemAsString: (item) => itemLabel(item),
-            compareFn: (item1, item2) => itemLabel(item1) == itemLabel(item2),
-            selectedItem: currentItem,
-            onSelected: active
-                ? (selected) {
-                    if (selected != null) {
-                      onSelected(selected);
-                    } else {
-                      onClear?.call();
-                    }
-                  }
-                : null,
-            validator: (isRequired && active)
-                ? (selected) {
-                    if (selected == null && currentItem == null) {
-                      return '$label is required';
-                    }
-                    return null;
-                  }
-                : null,
-            suffixProps: DropdownSuffixProps(
-              clearButtonProps: ClearButtonProps(
-                isVisible: active && onClear != null && currentItem != null,
-                icon: Icon(
-                  Icons.clear_rounded,
-                  size: 16,
-                  color: isDark ? AppColors.textMutedDark : AppColors.textMutedLight,
-                ),
-              ),
-              dropdownButtonProps: DropdownButtonProps(
-                isVisible: true,
-                iconClosed: Icon(
-                  active ? Icons.keyboard_arrow_down_rounded : Icons.lock_outline_rounded,
-                  size: active ? 20 : 18,
-                  color: isDark ? AppColors.textMutedDark : AppColors.textMutedLight,
-                ),
-              ),
-            ),
-            decoratorProps: DropDownDecoratorProps(
-              baseStyle: TextStyle(
-                fontSize: 14,
-                color: !active
-                    ? (isDark ? AppColors.textMutedDark : AppColors.textSecondaryLight)
-                    : (isDark ? AppColors.textPrimaryDark : AppColors.textPrimaryLight),
-              ),
-              decoration: InputDecoration(
-                hintText: hint,
-                hintStyle: TextStyle(
-                  fontSize: 14,
-                  color: isDark ? AppColors.textMutedDark : AppColors.textMutedLight,
-                ),
-                prefixIcon: Icon(
-                  icon,
-                  size: 18,
-                  color: !active
-                      ? (isDark ? AppColors.textMutedDark.withValues(alpha: 0.6) : AppColors.textMutedLight)
-                      : (isDark ? AppColors.textMutedDark : AppColors.textMutedLight),
-                ),
-                filled: true,
-                fillColor: !active
-                    ? (isDark ? AppColors.surfaceDark.withValues(alpha: 0.5) : const Color(0xFFF1F4EE))
-                    : (isDark ? AppColors.cardDark : AppColors.surfaceLight),
-                contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(AppConstants.defaultBorderRadius),
-                  borderSide: BorderSide(
-                    color: isDark ? AppColors.borderDark : AppColors.borderLight,
-                  ),
-                ),
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(AppConstants.defaultBorderRadius),
-                  borderSide: BorderSide(
-                    color: isDark ? AppColors.borderDark : AppColors.borderLight,
-                  ),
-                ),
-                disabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(AppConstants.defaultBorderRadius),
-                  borderSide: BorderSide(
-                    color: (isDark ? AppColors.borderDark : AppColors.borderLight).withValues(alpha: 0.6),
-                  ),
-                ),
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(AppConstants.defaultBorderRadius),
-                  borderSide: const BorderSide(
-                    color: AppColors.primary,
-                    width: 1.8,
-                  ),
-                ),
-                errorBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(AppConstants.defaultBorderRadius),
-                  borderSide: const BorderSide(
-                    color: AppColors.error,
-                  ),
-                ),
-              ),
-            ),
-            popupProps: PopupProps.menu(
-              showSearchBox: searchable,
-              fit: FlexFit.loose,
-              constraints: const BoxConstraints(maxHeight: 280),
-              menuProps: MenuProps(
-                backgroundColor: isDark ? AppColors.cardDark : AppColors.surfaceLight,
-                borderRadius: BorderRadius.circular(AppConstants.defaultBorderRadius),
-                elevation: 4,
-                barrierColor: Colors.transparent,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(AppConstants.defaultBorderRadius),
-                  side: BorderSide(
-                    color: isDark ? AppColors.borderDark : AppColors.borderLight,
-                  ),
-                ),
-              ),
-              searchFieldProps: TextFieldProps(
-                autofocus: true,
-                style: TextStyle(
-                  fontSize: 14,
-                  color: isDark ? AppColors.textPrimaryDark : AppColors.textPrimaryLight,
-                ),
-                decoration: InputDecoration(
-                  hintText: 'Search $label...',
-                  hintStyle: TextStyle(
-                    fontSize: 13,
-                    color: isDark ? AppColors.textMutedDark : AppColors.textMutedLight,
-                  ),
-                  prefixIcon: Icon(
-                    PhosphorIconsRegular.magnifyingGlass,
-                    size: 16,
-                    color: isDark ? AppColors.textMutedDark : AppColors.textMutedLight,
-                  ),
-                  isDense: true,
-                  contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-                  filled: true,
-                  fillColor: isDark ? AppColors.surfaceDark : AppColors.backgroundLight,
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
-                    borderSide: BorderSide(color: isDark ? AppColors.borderDark : AppColors.borderLight),
-                  ),
-                  enabledBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
-                    borderSide: BorderSide(color: isDark ? AppColors.borderDark : AppColors.borderLight),
-                  ),
-                  focusedBorder: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(8),
-                    borderSide: const BorderSide(color: AppColors.primary, width: 1.5),
-                  ),
-                ),
-              ),
-              itemBuilder: (context, item, isDisabled, isSelected) {
-                return Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                  color: isSelected
-                      ? AppColors.primary.withValues(alpha: isDark ? 0.16 : 0.08)
-                      : Colors.transparent,
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          itemLabel(item),
-                          style: TextStyle(
-                            fontSize: 14,
-                            fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
-                            color: isSelected
-                                ? AppColors.primary
-                                : (isDark ? AppColors.textPrimaryDark : AppColors.textPrimaryLight),
-                          ),
-                        ),
-                      ),
-                      if (isSelected)
-                        const Icon(
-                          PhosphorIconsRegular.check,
-                          size: 16,
-                          color: AppColors.primary,
-                        ),
-                    ],
-                  ),
-                );
-              },
-            ),
-          );
-        }),
-      ],
-    );
+    return Obx(() {
+      final active = isEnabled != null ? isEnabled() : enabled;
+      return CustomDropdownSearch<T>(
+        label: label,
+        isRequired: isRequired,
+        prefixIcon: icon,
+        hint: hint,
+        enabled: active,
+        selectedItem: selectedValue(),
+        items: items,
+        itemAsString: itemLabel,
+        searchable: searchable,
+        onChanged: (selected) {
+          if (selected != null) {
+            onSelected(selected);
+          } else {
+            onClear?.call();
+          }
+        },
+        onClear: onClear,
+      );
+    });
   }
 
   // -------------------------------------------------------------------
@@ -1313,7 +1107,36 @@ class AddCowScreen extends GetView<AddCowController> {
   // -------------------------------------------------------------------
   // ACTION BUTTONS
   // -------------------------------------------------------------------
-  Widget _buildActionButtons(BuildContext context) {
+  Widget _buildActionButtons(BuildContext context, {bool isSingleColumn = false}) {
+    if (isSingleColumn) {
+      return Row(
+        children: [
+          Expanded(
+            flex: 1,
+            child: CustomButton(
+              text: 'Cancel',
+              variant: ButtonVariant.outlined,
+              height: 44,
+              onPressed: controller.cancelForm,
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            flex: 2,
+            child: Obx(
+              () => CustomButton(
+                text: controller.isEditMode ? 'Update Cattle' : 'Add Cow',
+                icon: controller.isEditMode ? PhosphorIconsRegular.check : PhosphorIconsRegular.plus,
+                isLoading: controller.isSubmitting.value,
+                height: 44,
+                onPressed: controller.isSubmitting.value ? null : controller.submitAddCow,
+              ),
+            ),
+          ),
+        ],
+      );
+    }
+
     return Row(
       mainAxisAlignment: MainAxisAlignment.end,
       children: [

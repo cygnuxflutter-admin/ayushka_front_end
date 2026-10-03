@@ -7,10 +7,12 @@ import 'package:get/get.dart';
 import 'package:intl/intl.dart';
 import '../../core/utils/file_download_helper.dart';
 import '../../core/values/app_colors.dart';
+import '../../core/values/app_constants.dart';
 import '../../core/widgets/custom_button.dart';
 import '../../core/widgets/custom_snackbar.dart';
 import '../../data/models/cow_model.dart';
 import '../../data/models/gaushala_model.dart';
+import '../../data/models/shed_model.dart';
 import '../../data/models/user_model.dart';
 import '../../data/services/api_service.dart';
 import '../../data/services/gaushala_session_service.dart';
@@ -18,6 +20,8 @@ import '../../data/services/storage_service.dart';
 import '../../routes/app_routes.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'widgets/excel_import_dialog.dart';
+import 'widgets/shed_transfer_dialog.dart';
+import 'widgets/shed_transfer_history_dialog.dart';
 
 /// Controller managing Herd & Cattle (Cow List) state, operations, and navigation.
 class CowController extends GetxController {
@@ -45,6 +49,7 @@ class CowController extends GetxController {
   final RxBool isLoadingGaushalas = false.obs;
   final RxSet<String> updatingStatusCowIds = <String>{}.obs;
   final RxSet<String> updatingDiedCowIds = <String>{}.obs;
+  final RxBool isTransferringShed = false.obs;
 
   // Download Template State
   final RxBool isDownloadingTemplate = false.obs;
@@ -880,6 +885,128 @@ class CowController extends GetxController {
     }
   }
 
+  /// Executes cattle transfer to a new shed via POST /api/v1/cows/shed-transfer.
+  Future<bool> executeShedTransfer({
+    required String gaushalaId,
+    required List<String> cowIds,
+    required String toShedId,
+    required String reason,
+    required DateTime transferDate,
+    ShedModel? targetShed,
+  }) async {
+    if (cowIds.isEmpty) {
+      CustomSnackbar.showWarning(
+        title: 'Selection Required',
+        message: 'Please select at least one cattle to transfer.',
+      );
+      return false;
+    }
+    if (toShedId.isEmpty) {
+      CustomSnackbar.showWarning(
+        title: 'Target Shed Required',
+        message: 'Please select a destination shed.',
+      );
+      return false;
+    }
+
+    isTransferringShed.value = true;
+    try {
+      final request = ShedTransferRequestModel(
+        gaushalaId: gaushalaId,
+        cowIds: cowIds,
+        toShedId: toShedId,
+        reason: reason.trim().isNotEmpty ? reason.trim() : 'Moved to shed',
+        transferDate: transferDate.toUtc().toIso8601String(),
+      );
+
+      final res = await _apiService.transferCowShed(request);
+      final msg = res['message']?.toString() ?? 'Cattle transferred to shed successfully.';
+
+      // Immediately update local in-memory records
+      if (targetShed != null) {
+        final newShedRef = CowShedRef(
+          id: targetShed.id,
+          shedName: targetShed.shedName,
+          shedNumber: targetShed.shedNumber,
+        );
+        for (final cowId in cowIds) {
+          final idx = cows.indexWhere((c) => c.id == cowId);
+          if (idx != -1) {
+            cows[idx] = cows[idx].copyWith(shed: newShedRef);
+          }
+          final cIdx = _cachedCows.indexWhere((c) => c.id == cowId);
+          if (cIdx != -1) {
+            _cachedCows[cIdx] = _cachedCows[cIdx].copyWith(shed: newShedRef);
+          }
+        }
+        cows.refresh();
+      }
+
+      // Re-fetch herd data silently in background to keep all attributes consistent
+      fetchCows();
+
+      CustomSnackbar.showSuccess(
+        title: 'Transfer Complete',
+        message: msg,
+      );
+      return true;
+    } on DioException catch (dioErr) {
+      final errMsg = dioErr.response?.data?['message']?.toString() ??
+          dioErr.message ??
+          'Failed to transfer cattle to shed.';
+      CustomSnackbar.showError(
+        title: 'Transfer Failed',
+        message: errMsg,
+      );
+      return false;
+    } catch (e) {
+      CustomSnackbar.showError(
+        title: 'Error',
+        message: e.toString(),
+      );
+      return false;
+    } finally {
+      isTransferringShed.value = false;
+    }
+  }
+
+  /// Opens the Cattle Shed Transfer dialog modal.
+  Future<void> openShedTransferDialog(
+    BuildContext context, {
+    CowModel? cow,
+    List<CowModel>? preselectedCows,
+  }) async {
+    if (cow != null && !cow.canTransferShed) {
+      CustomSnackbar.showWarning(
+        title: 'Action Not Allowed',
+        message: 'Cannot transfer a ${cow.statusDisplay.toLowerCase()} cattle record.',
+      );
+      return;
+    }
+    await ShedTransferDialog.show(
+      context: context,
+      cow: cow,
+      preselectedCows: preselectedCows,
+      controller: this,
+    );
+  }
+
+  /// Opens the Cattle Shed Transfer History dialog modal.
+  Future<void> openShedTransferHistoryDialog(
+    BuildContext context, {
+    String? gaushalaId,
+    String? cowId,
+    CowModel? cow,
+  }) async {
+    await ShedTransferHistoryDialog.show(
+      context: context,
+      gaushalaId: gaushalaId ?? selectedGaushalaId.value ?? globalGaushalaId,
+      gaushalaName: selectedGaushalaName,
+      cowId: cowId ?? cow?.id,
+      cow: cow,
+    );
+  }
+
   /// Open comprehensive Cow Details Modal with modern executive UI
   void openCowDetailsDialog(BuildContext context, CowModel cow) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -1447,10 +1574,9 @@ class CowController extends GetxController {
               // 3. BOTTOM ACTION BAR & SYSTEM ID
               // -------------------------------------------------------------
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 14),
+                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
                 decoration: BoxDecoration(
                   color: isDark ? AppColors.surfaceDark.withValues(alpha: 0.6) : AppColors.backgroundLight,
-                  borderRadius: const BorderRadius.vertical(bottom: Radius.circular(24)),
                   border: Border(
                     top: BorderSide(
                       color: isDark ? AppColors.borderDark : AppColors.borderLight,
@@ -1458,118 +1584,258 @@ class CowController extends GetxController {
                     ),
                   ),
                 ),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
-                    // System Mongo ID & Creation date
-                    Flexible(
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Tooltip(
-                            message: 'Click to copy System ID (${cow.id})',
-                            child: InkWell(
-                              borderRadius: BorderRadius.circular(6),
-                              onTap: () {
-                                Clipboard.setData(ClipboardData(text: cow.id));
-                                CustomSnackbar.showInfo(
-                                  title: 'Copied',
-                                  message: 'Cattle System ID copied to clipboard',
-                                );
-                              },
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                                decoration: BoxDecoration(
-                                  color: isDark ? AppColors.cardDark : AppColors.surfaceLight,
-                                  borderRadius: BorderRadius.circular(6),
-                                  border: Border.all(
-                                    color: isDark ? AppColors.borderDark : AppColors.borderLight,
-                                  ),
+                    // System Mongo ID & Creation date metadata strip
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Tooltip(
+                          message: 'Click to copy System ID (${cow.id})',
+                          child: InkWell(
+                            borderRadius: BorderRadius.circular(6),
+                            onTap: () {
+                              Clipboard.setData(ClipboardData(text: cow.id));
+                              CustomSnackbar.showInfo(
+                                title: 'Copied',
+                                message: 'Cattle System ID copied to clipboard',
+                              );
+                            },
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                              decoration: BoxDecoration(
+                                color: isDark ? AppColors.cardDark : AppColors.surfaceLight,
+                                borderRadius: BorderRadius.circular(6),
+                                border: Border.all(
+                                  color: isDark ? AppColors.borderDark : AppColors.borderLight,
                                 ),
-                                child: Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    const Icon(Icons.tag_rounded, size: 12, color: AppColors.textSecondaryLight),
-                                    const SizedBox(width: 4),
-                                    Text(
-                                      cow.id.length > 12 ? '${cow.id.substring(0, 10)}...' : cow.id,
-                                      style: const TextStyle(
-                                        fontFamily: 'monospace',
-                                        fontSize: 11,
-                                        color: AppColors.textSecondaryLight,
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const Icon(Icons.tag_rounded, size: 12, color: AppColors.textSecondaryLight),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    cow.id.length > 12 ? '${cow.id.substring(0, 10)}...' : cow.id,
+                                    style: const TextStyle(
+                                      fontFamily: 'monospace',
+                                      fontSize: 11,
+                                      color: AppColors.textSecondaryLight,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 4),
+                                  const Icon(Icons.copy_rounded, size: 11, color: AppColors.textSecondaryLight),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                        if (cow.createdAt != null)
+                          Text(
+                            'Added on ${_formatDate(cow.createdAt!.toIso8601String())}',
+                            style: TextStyle(
+                              fontSize: 11.5,
+                              color: isDark ? AppColors.textSecondaryDark : AppColors.textSecondaryLight,
+                            ),
+                          ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+
+                    // Clean, modern horizontal action bar
+                    LayoutBuilder(
+                      builder: (context, constraints) {
+                        final isCompact = constraints.maxWidth < 620;
+
+                        final moreActionsButton = (!cow.isDead && !cow.isDied && !cow.isDeleted && !cow.isDelete)
+                            ? Theme(
+                                data: Theme.of(context).copyWith(
+                                  cardColor: isDark ? AppColors.cardDark : AppColors.cardLight,
+                                ),
+                                child: PopupMenuButton<String>(
+                                  tooltip: 'Status & dangerous actions',
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                    side: BorderSide(
+                                      color: isDark ? AppColors.borderDark : AppColors.borderLight,
+                                    ),
+                                  ),
+                                  color: isDark ? AppColors.cardDark : AppColors.cardLight,
+                                  elevation: 6,
+                                  onSelected: (val) {
+                                    if (val == 'status') {
+                                      Navigator.of(ctx).pop();
+                                      WidgetsBinding.instance.addPostFrameCallback((_) {
+                                        toggleCowStatus(cow);
+                                      });
+                                    } else if (val == 'died') {
+                                      Navigator.of(ctx).pop();
+                                      WidgetsBinding.instance.addPostFrameCallback((_) {
+                                        showMarkDiedDialog(context, cow);
+                                      });
+                                    }
+                                  },
+                                  itemBuilder: (menuCtx) => [
+                                    PopupMenuItem(
+                                      value: 'status',
+                                      height: 38,
+                                      child: Row(
+                                        children: [
+                                          Icon(
+                                            cow.isActive
+                                                ? Icons.power_settings_new_rounded
+                                                : Icons.check_circle_outline_rounded,
+                                            size: 16,
+                                            color: cow.isActive ? Colors.orange : AppColors.primary,
+                                          ),
+                                          const SizedBox(width: 10),
+                                          Text(
+                                            cow.isActive ? 'Deactivate Record' : 'Activate Record',
+                                            style: const TextStyle(fontSize: 13),
+                                          ),
+                                        ],
                                       ),
                                     ),
-                                    const SizedBox(width: 4),
-                                    const Icon(Icons.copy_rounded, size: 11, color: AppColors.textSecondaryLight),
+                                    PopupMenuItem(
+                                      value: 'died',
+                                      height: 38,
+                                      child: Row(
+                                        children: [
+                                          Icon(
+                                            Icons.heart_broken_rounded,
+                                            size: 16,
+                                            color: Colors.red.shade700,
+                                          ),
+                                          const SizedBox(width: 10),
+                                          Text(
+                                            (cow.isDead || cow.isDied) ? 'Update Death Date' : 'Mark as Died',
+                                            style: TextStyle(
+                                              fontSize: 13,
+                                              color: Colors.red.shade700,
+                                            ),
+                                          ),
+                                        ],
+                                      ),
+                                    ),
                                   ],
+                                  child: Container(
+                                    height: 36,
+                                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                                    decoration: BoxDecoration(
+                                      color: isDark ? AppColors.cardDark : Colors.transparent,
+                                      borderRadius: BorderRadius.circular(AppConstants.defaultBorderRadius),
+                                      border: Border.all(
+                                        color: isDark ? AppColors.borderDark : AppColors.borderLight,
+                                        width: 1.2,
+                                      ),
+                                    ),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Icon(
+                                          PhosphorIconsRegular.dotsThreeCircle,
+                                          size: 16,
+                                          color: isDark ? AppColors.textSecondaryDark : AppColors.textSecondaryLight,
+                                        ),
+                                        const SizedBox(width: 6),
+                                        Text(
+                                          'More Actions',
+                                          style: TextStyle(
+                                            fontSize: 13,
+                                            fontWeight: FontWeight.w600,
+                                            color: isDark ? AppColors.textSecondaryDark : AppColors.textSecondaryLight,
+                                          ),
+                                        ),
+                                        const SizedBox(width: 4),
+                                        Icon(
+                                          Icons.keyboard_arrow_down_rounded,
+                                          size: 16,
+                                          color: isDark ? AppColors.textSecondaryDark : AppColors.textSecondaryLight,
+                                        ),
+                                      ],
+                                    ),
+                                  ),
                                 ),
-                              ),
-                            ),
+                              )
+                            : const SizedBox.shrink();
+
+                        final actionButtons = <Widget>[
+                          CustomButton(
+                            text: 'Shed History',
+                            icon: PhosphorIconsRegular.clockCounterClockwise,
+                            variant: ButtonVariant.outlined,
+                            height: 36,
+                            padding: const EdgeInsets.symmetric(horizontal: 12),
+                            onPressed: () {
+                              openShedTransferHistoryDialog(context, cow: cow);
+                            },
                           ),
-                          if (cow.createdAt != null) ...[
-                            const SizedBox(width: 12),
-                            Flexible(
-                              child: Text(
-                                'Added on ${_formatDate(cow.createdAt!.toIso8601String())}',
-                                overflow: TextOverflow.ellipsis,
-                                style: const TextStyle(
-                                  fontSize: 12,
-                                  color: AppColors.textSecondaryLight,
-                                ),
-                              ),
+                          if (cow.canTransferShed)
+                            CustomButton(
+                              text: 'Transfer Shed',
+                              icon: PhosphorIconsRegular.arrowsLeftRight,
+                              variant: ButtonVariant.outlined,
+                              height: 36,
+                              padding: const EdgeInsets.symmetric(horizontal: 12),
+                              onPressed: () {
+                                Navigator.of(ctx).pop();
+                                WidgetsBinding.instance.addPostFrameCallback((_) {
+                                  openShedTransferDialog(context, cow: cow);
+                                });
+                              },
+                            ),
+                          CustomButton(
+                            text: 'Close',
+                            variant: ButtonVariant.outlined,
+                            height: 36,
+                            padding: const EdgeInsets.symmetric(horizontal: 14),
+                            onPressed: () => Navigator.of(ctx).pop(),
+                          ),
+                          if (cow.canEdit)
+                            CustomButton(
+                              text: 'Edit Cattle',
+                              icon: PhosphorIconsRegular.pencilSimple,
+                              variant: ButtonVariant.primary,
+                              height: 36,
+                              padding: const EdgeInsets.symmetric(horizontal: 14),
+                              onPressed: () {
+                                Navigator.of(ctx).pop();
+                                goToEditCow(cow);
+                              },
+                            ),
+                        ];
+
+                        if (isCompact) {
+                          return Wrap(
+                            spacing: 8,
+                            runSpacing: 8,
+                            alignment: WrapAlignment.end,
+                            crossAxisAlignment: WrapCrossAlignment.center,
+                            children: [
+                              moreActionsButton,
+                              ...actionButtons,
+                            ],
+                          );
+                        }
+
+                        return Row(
+                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                          children: [
+                            moreActionsButton,
+                            Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                for (int i = 0; i < actionButtons.length; i++) ...[
+                                  if (i > 0) const SizedBox(width: 8),
+                                  actionButtons[i],
+                                ],
+                              ],
                             ),
                           ],
-                        ],
-                      ),
-                    ),
-                    Wrap(
-                      spacing: 8,
-                      runSpacing: 8,
-                      children: [
-                        if (!cow.isDead && !cow.isDied && !cow.isDeleted && !cow.isDelete)
-                          CustomButton(
-                            text: 'Mark Died',
-                            icon: Icons.heart_broken_rounded,
-                            variant: ButtonVariant.danger,
-                            width: 125,
-                            height: 38,
-                            onPressed: () {
-                              Navigator.of(ctx).pop();
-                              showMarkDiedDialog(context, cow);
-                            },
-                          ),
-                        if (!cow.isDead && !cow.isDied && !cow.isDeleted && !cow.isDelete)
-                          CustomButton(
-                            text: cow.isActive ? 'Deactivate' : 'Activate',
-                            icon: cow.isActive ? Icons.power_settings_new_rounded : Icons.check_circle_outline_rounded,
-                            variant: ButtonVariant.outlined,
-                            width: 125,
-                            height: 38,
-                            onPressed: () {
-                              Navigator.of(ctx).pop();
-                              toggleCowStatus(cow);
-                            },
-                          ),
-                        if (cow.canEdit)
-                          CustomButton(
-                            text: 'Edit Cattle',
-                          icon: PhosphorIconsRegular.pencilSimple,
-                          variant: ButtonVariant.primary,
-                          width: 130,
-                          height: 38,
-                          onPressed: () {
-                            Navigator.of(ctx).pop();
-                            goToEditCow(cow);
-                          },
-                        ),
-                        CustomButton(
-                          text: 'Close',
-                          variant: ButtonVariant.outlined,
-                          width: 85,
-                          height: 38,
-                          onPressed: () => Navigator.of(ctx).pop(),
-                        ),
-                      ],
+                        );
+                      },
                     ),
                   ],
                 ),

@@ -179,10 +179,11 @@ class GaushalaController extends GetxController {
     Get.dialog(
       Dialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        insetPadding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 24.0),
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 440),
-          child: Padding(
-            padding: const EdgeInsets.all(24.0),
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(20.0),
             child: Form(
               key: formKey,
               child: Column(
@@ -218,7 +219,13 @@ class GaushalaController extends GetxController {
                       ),
                       IconButton(
                         icon: const Icon(Icons.close_rounded, size: 20),
-                        onPressed: () => Get.back(),
+                        onPressed: () {
+                          if (Get.isDialogOpen ?? false) {
+                            Get.back();
+                          } else if (context.mounted) {
+                            Navigator.of(context, rootNavigator: true).pop();
+                          }
+                        },
                       ),
                     ],
                   ),
@@ -248,7 +255,13 @@ class GaushalaController extends GetxController {
                     mainAxisAlignment: MainAxisAlignment.end,
                     children: [
                       TextButton(
-                        onPressed: () => Get.back(),
+                        onPressed: () {
+                          if (Get.isDialogOpen ?? false) {
+                            Get.back();
+                          } else if (context.mounted) {
+                            Navigator.of(context, rootNavigator: true).pop();
+                          }
+                        },
                         child: const Text('Cancel'),
                       ),
                       const SizedBox(width: 12),
@@ -263,7 +276,11 @@ class GaushalaController extends GetxController {
                             if (formKey.currentState?.validate() ?? false) {
                               final success = await createGaushala(nameController.text);
                               if (success) {
-                                Get.back();
+                                if (Get.isDialogOpen ?? false) {
+                                   Get.back();
+                                } else if (context.mounted) {
+                                  Navigator.of(context, rootNavigator: true).pop();
+                                }
                               }
                             }
                           },

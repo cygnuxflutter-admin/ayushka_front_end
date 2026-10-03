@@ -3,8 +3,10 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../../../core/values/app_colors.dart';
 import '../../../core/values/app_constants.dart';
+import '../../../core/values/permission_constants.dart';
 import '../../../core/widgets/logout_confirmation_dialog.dart';
 import '../../../data/models/user_model.dart';
+import '../../../data/services/permission_service.dart';
 import '../../../routes/app_routes.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 
@@ -238,155 +240,297 @@ class WebSidebar extends StatelessWidget {
               // Navigation Menu Links (with Section Dividers)
               // -------------------------------------------------------------
               Expanded(
-                child: ListView(
-                  padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 8),
-                  children: [
-                    // Section 1: Overview
-                    _SectionHeader(title: 'MAIN MENU', isCollapsed: collapsed),
-                    _SidebarNavItem(
-                      icon: PhosphorIconsRegular.squaresFour,
-                      label: 'Farm Overview',
-                      isSelected: currentRoute == AppRoutes.dashboard,
-                      isCollapsed: collapsed,
-                      onTap: () {
-                        if (currentRoute != AppRoutes.dashboard) {
-                          Get.offNamed(AppRoutes.dashboard);
-                        }
-                      },
-                    ),
-                    const SizedBox(height: 3),
-                    _SidebarNavItem(
-                      icon: PhosphorIconsRegular.cow,
-                      label: 'Herd & Cattle',
-                      isSelected: currentRoute == AppRoutes.cows || currentRoute == AppRoutes.addCow,
-                      isCollapsed: collapsed,
-                      onTap: () {
-                        if (currentRoute != AppRoutes.cows) {
-                          Get.offNamed(AppRoutes.cows);
-                        }
-                      },
-                    ),
+                child: Builder(
+                  builder: (context) {
+                    final perm = Get.isRegistered<PermissionService>()
+                        ? Get.find<PermissionService>()
+                        : null;
 
-                    const SizedBox(height: 3),
-                    _SidebarNavItem(
-                      icon: PhosphorIconsRegular.drop,
-                      label: 'Milk Production',
-                      isSelected: false,
-                      isCollapsed: collapsed,
-                      onTap: () {
-                        Get.snackbar(
-                          'Milk Records',
-                          'Daily milk yield logging module.',
-                          maxWidth: 400,
-                        );
-                      },
-                    ),
-                    const SizedBox(height: 3),
-                    _SidebarNavItem(
-                      icon: PhosphorIconsRegular.heartbeat,
-                      label: 'Breeding & Health',
-                      isSelected: false,
-                      isCollapsed: collapsed,
-                      onTap: () {
-                        Get.snackbar(
-                          'Health Records',
-                          'Vaccination schedules and breeding cycles.',
-                          maxWidth: 400,
-                        );
-                      },
-                    ),
+                    Widget buildNavItems() {
+                      bool canView(String m, String s) => perm?.canView(m, s) ?? true;
+                      bool isModuleVisible(String m) => perm?.isModuleVisible(m) ?? true;
 
-                    // Section 2: Masters (Expandable on hover)
-                    const SizedBox(height: 10),
-                    _SectionHeader(title: 'MASTERS', isCollapsed: collapsed),
-                    _SidebarExpandableGroup(
-                      icon: PhosphorIconsRegular.stack,
-                      label: 'Masters',
-                      isCollapsed: collapsed,
-                      isInitiallyExpanded: currentRoute == AppRoutes.roles || currentRoute == AppRoutes.users || currentRoute == AppRoutes.gaushalas || currentRoute == AppRoutes.sheds || currentRoute == AppRoutes.breeds || currentRoute == AppRoutes.types,
-                      children: [
-                        _SidebarSubNavItem(
-                          icon: PhosphorIconsRegular.shieldCheck,
-                          label: 'Roles',
-                          isSelected: currentRoute == AppRoutes.roles,
+                  // Evaluate visible master sub-items
+                  final List<_SidebarSubNavItem> masterItems = [];
+                  if (canView(PermissionModules.role, PermissionSubModules.roleList)) {
+                    masterItems.add(
+                      _SidebarSubNavItem(
+                        icon: PhosphorIconsRegular.shieldCheck,
+                        label: 'Roles',
+                        isSelected: currentRoute == AppRoutes.roles,
+                        onTap: () {
+                          if (currentRoute != AppRoutes.roles) {
+                            Get.offNamed(AppRoutes.roles);
+                          }
+                        },
+                      ),
+                    );
+                  }
+                  if (canView(PermissionModules.user, PermissionSubModules.userList)) {
+                    masterItems.add(
+                      _SidebarSubNavItem(
+                        icon: PhosphorIconsRegular.users,
+                        label: 'Users',
+                        isSelected: currentRoute == AppRoutes.users,
+                        onTap: () {
+                          if (currentRoute != AppRoutes.users) {
+                            Get.offNamed(AppRoutes.users);
+                          }
+                        },
+                      ),
+                    );
+                  }
+                  if (canView(PermissionModules.workerMgmt, PermissionSubModules.workerList) ||
+                      canView(PermissionModules.workerMgmt, PermissionSubModules.departmentList)) {
+                    masterItems.add(
+                      _SidebarSubNavItem(
+                        icon: PhosphorIconsRegular.identificationCard,
+                        label: 'Workers',
+                        isSelected: currentRoute == AppRoutes.workers || currentRoute == AppRoutes.departments,
+                        onTap: () {
+                          if (currentRoute != AppRoutes.workers) {
+                            Get.offNamed(AppRoutes.workers);
+                          }
+                        },
+                      ),
+                    );
+                  }
+                  if (canView(PermissionModules.gaushala, PermissionSubModules.gaushalaList)) {
+                    masterItems.add(
+                      _SidebarSubNavItem(
+                        icon: PhosphorIconsRegular.barn,
+                        label: 'Gaushalas',
+                        isSelected: currentRoute == AppRoutes.gaushalas,
+                        onTap: () {
+                          if (currentRoute != AppRoutes.gaushalas) {
+                            Get.offNamed(AppRoutes.gaushalas);
+                          }
+                        },
+                      ),
+                    );
+                  }
+                  if (canView(PermissionModules.shed, PermissionSubModules.shedList) ||
+                      canView(PermissionModules.shed, PermissionSubModules.shedTransfer)) {
+                    masterItems.add(
+                      _SidebarSubNavItem(
+                        icon: PhosphorIconsRegular.warehouse,
+                        label: 'Sheds',
+                        isSelected: currentRoute == AppRoutes.sheds,
+                        onTap: () {
+                          if (currentRoute != AppRoutes.sheds) {
+                            Get.offNamed(AppRoutes.sheds);
+                          }
+                        },
+                      ),
+                    );
+                  }
+                  if (canView(PermissionModules.breedType, PermissionSubModules.breedTypeList)) {
+                    masterItems.add(
+                      _SidebarSubNavItem(
+                        icon: PhosphorIconsRegular.dna,
+                        label: 'Breeds',
+                        isSelected: currentRoute == AppRoutes.breeds,
+                        onTap: () {
+                          if (currentRoute != AppRoutes.breeds) {
+                            Get.offNamed(AppRoutes.breeds);
+                          }
+                        },
+                      ),
+                    );
+                  }
+                  if (canView(PermissionModules.type, PermissionSubModules.typeList)) {
+                    masterItems.add(
+                      _SidebarSubNavItem(
+                        icon: PhosphorIconsRegular.tag,
+                        label: 'Types',
+                        isSelected: currentRoute == AppRoutes.types,
+                        onTap: () {
+                          if (currentRoute != AppRoutes.types) {
+                            Get.offNamed(AppRoutes.types);
+                          }
+                        },
+                      ),
+                    );
+                  }
+                  if (canView(PermissionModules.feedStock, PermissionSubModules.feedItems)) {
+                    masterItems.add(
+                      _SidebarSubNavItem(
+                        icon: PhosphorIconsRegular.grains,
+                        label: 'Feed Items',
+                        isSelected: currentRoute == AppRoutes.feedItems,
+                        onTap: () {
+                          if (currentRoute != AppRoutes.feedItems) {
+                            Get.offNamed(AppRoutes.feedItems);
+                          }
+                        },
+                      ),
+                    );
+                  }
+
+                  return ListView(
+                    padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 8),
+                    children: [
+                      // Section 1: Overview
+                      _SectionHeader(title: 'MAIN MENU', isCollapsed: collapsed),
+                      _SidebarNavItem(
+                        icon: PhosphorIconsRegular.squaresFour,
+                        label: 'Farm Overview',
+                        isSelected: currentRoute == AppRoutes.dashboard,
+                        isCollapsed: collapsed,
+                        onTap: () {
+                          if (currentRoute != AppRoutes.dashboard) {
+                            Get.offNamed(AppRoutes.dashboard);
+                          }
+                        },
+                      ),
+                      if (isModuleVisible(PermissionModules.cow) &&
+                          canView(PermissionModules.cow, PermissionSubModules.cowList)) ...[
+                        const SizedBox(height: 3),
+                        _SidebarNavItem(
+                          icon: PhosphorIconsRegular.cow,
+                          label: 'Herd & Cattle',
+                          isSelected: currentRoute == AppRoutes.cows || currentRoute == AppRoutes.addCow,
+                          isCollapsed: collapsed,
                           onTap: () {
-                            if (currentRoute != AppRoutes.roles) {
-                              Get.offNamed(AppRoutes.roles);
-                            }
-                          },
-                        ),
-                        _SidebarSubNavItem(
-                          icon: PhosphorIconsRegular.users,
-                          label: 'Users',
-                          isSelected: currentRoute == AppRoutes.users,
-                          onTap: () {
-                            if (currentRoute != AppRoutes.users) {
-                              Get.offNamed(AppRoutes.users);
-                            }
-                          },
-                        ),
-                        _SidebarSubNavItem(
-                          icon: PhosphorIconsRegular.barn,
-                          label: 'Gaushalas',
-                          isSelected: currentRoute == AppRoutes.gaushalas,
-                          onTap: () {
-                            if (currentRoute != AppRoutes.gaushalas) {
-                              Get.offNamed(AppRoutes.gaushalas);
-                            }
-                          },
-                        ),
-                        _SidebarSubNavItem(
-                          icon: PhosphorIconsRegular.warehouse,
-                          label: 'Sheds',
-                          isSelected: currentRoute == AppRoutes.sheds,
-                          onTap: () {
-                            if (currentRoute != AppRoutes.sheds) {
-                              Get.offNamed(AppRoutes.sheds);
-                            }
-                          },
-                        ),
-                        _SidebarSubNavItem(
-                          icon: PhosphorIconsRegular.dna,
-                          label: 'Breeds',
-                          isSelected: currentRoute == AppRoutes.breeds,
-                          onTap: () {
-                            if (currentRoute != AppRoutes.breeds) {
-                              Get.offNamed(AppRoutes.breeds);
-                            }
-                          },
-                        ),
-                        _SidebarSubNavItem(
-                          icon: PhosphorIconsRegular.tag,
-                          label: 'Types',
-                          isSelected: currentRoute == AppRoutes.types,
-                          onTap: () {
-                            if (currentRoute != AppRoutes.types) {
-                              Get.offNamed(AppRoutes.types);
+                            if (currentRoute != AppRoutes.cows) {
+                              Get.offNamed(AppRoutes.cows);
                             }
                           },
                         ),
                       ],
-                    ),
+                      if (isModuleVisible(PermissionModules.feedStock) &&
+                          canView(PermissionModules.feedStock, PermissionSubModules.stockTransaction)) ...[
+                        const SizedBox(height: 3),
+                        _SidebarNavItem(
+                          icon: PhosphorIconsRegular.arrowsLeftRight,
+                          label: 'Stock Transactions',
+                          isSelected: currentRoute == AppRoutes.feedTransactions,
+                          isCollapsed: collapsed,
+                          onTap: () {
+                            if (currentRoute != AppRoutes.feedTransactions) {
+                              Get.offNamed(AppRoutes.feedTransactions);
+                            }
+                          },
+                        ),
+                      ],
+                      if (isModuleVisible(PermissionModules.medicalStock) &&
+                          canView(PermissionModules.medicalStock, PermissionSubModules.medicalItems)) ...[
+                        const SizedBox(height: 3),
+                        _SidebarNavItem(
+                          icon: PhosphorIconsRegular.firstAidKit,
+                          label: 'Medical Stock',
+                          isSelected: currentRoute == AppRoutes.medicalStock,
+                          isCollapsed: collapsed,
+                          badge: 'FEFO',
+                          badgeColor: const Color(0xFF10B981),
+                          onTap: () {
+                            if (currentRoute != AppRoutes.medicalStock) {
+                              Get.offNamed(AppRoutes.medicalStock);
+                            }
+                          },
+                        ),
+                      ],
+                      if (isModuleVisible(PermissionModules.treatment) &&
+                          canView(PermissionModules.treatment, PermissionSubModules.treatmentList)) ...[
+                        const SizedBox(height: 3),
+                        _SidebarNavItem(
+                          icon: PhosphorIconsRegular.firstAid,
+                          label: 'Cow Treatments',
+                          isSelected: currentRoute == AppRoutes.treatments || currentRoute == AppRoutes.treatmentDetails,
+                          isCollapsed: collapsed,
+                          badge: 'DOSES',
+                          badgeColor: const Color(0xFFE98324),
+                          onTap: () {
+                            if (currentRoute != AppRoutes.treatments) {
+                              Get.offNamed(AppRoutes.treatments);
+                            }
+                          },
+                        ),
+                      ],
+                      if (isModuleVisible(PermissionModules.milkMgmt) &&
+                          (canView(PermissionModules.milkMgmt, PermissionSubModules.milkProduction) ||
+                              canView(PermissionModules.milkMgmt, PermissionSubModules.milkDistribution))) ...[
+                        const SizedBox(height: 3),
+                        _SidebarNavItem(
+                          icon: PhosphorIconsRegular.drop,
+                          label: 'Milk Production',
+                          isSelected: currentRoute == AppRoutes.milk,
+                          isCollapsed: collapsed,
+                          badge: 'LIVE',
+                          badgeColor: const Color(0xFF5A7542),
+                          onTap: () {
+                            if (currentRoute != AppRoutes.milk) {
+                              Get.offNamed(AppRoutes.milk);
+                            }
+                          },
+                        ),
+                      ],
+                      const SizedBox(height: 3),
+                      _SidebarNavItem(
+                        icon: PhosphorIconsRegular.heartbeat,
+                        label: 'Breeding & Health',
+                        isSelected: false,
+                        isCollapsed: collapsed,
+                        onTap: () {
+                          Get.snackbar(
+                            'Health Records',
+                            'Vaccination schedules and breeding cycles.',
+                            maxWidth: 400,
+                          );
+                        },
+                      ),
 
-                    // Section 3: Preferences
-                    const SizedBox(height: 10),
-                    _SectionHeader(title: 'PREFERENCES', isCollapsed: collapsed),
-                    _SidebarNavItem(
-                      icon: PhosphorIconsRegular.slidersHorizontal,
-                      label: 'Farm Settings',
-                      isSelected: false,
-                      isCollapsed: collapsed,
-                      onTap: () {
-                        Get.snackbar(
-                          'Settings',
-                          'Farm parameters and user permissions.',
-                          maxWidth: 400,
-                        );
-                      },
-                    ),
-                  ],
-                ),
+                      // Section 2: Masters (Expandable on hover)
+                      if (masterItems.isNotEmpty) ...[
+                        const SizedBox(height: 10),
+                        _SectionHeader(title: 'MASTERS', isCollapsed: collapsed),
+                        _SidebarExpandableGroup(
+                          icon: PhosphorIconsRegular.stack,
+                          label: 'Masters',
+                          isCollapsed: collapsed,
+                          isInitiallyExpanded: currentRoute == AppRoutes.roles ||
+                              currentRoute == AppRoutes.users ||
+                              currentRoute == AppRoutes.workers ||
+                              currentRoute == AppRoutes.departments ||
+                              currentRoute == AppRoutes.gaushalas ||
+                              currentRoute == AppRoutes.sheds ||
+                              currentRoute == AppRoutes.breeds ||
+                              currentRoute == AppRoutes.types ||
+                              currentRoute == AppRoutes.feedItems,
+                          children: masterItems,
+                        ),
+                      ],
+
+                      // Section 3: Preferences
+                      const SizedBox(height: 10),
+                      _SectionHeader(title: 'PREFERENCES', isCollapsed: collapsed),
+                      _SidebarNavItem(
+                        icon: PhosphorIconsRegular.slidersHorizontal,
+                        label: 'Farm Settings',
+                        isSelected: false,
+                        isCollapsed: collapsed,
+                        onTap: () {
+                          Get.snackbar(
+                            'Settings',
+                            'Farm parameters and user permissions.',
+                            maxWidth: 400,
+                          );
+                        },
+                      ),
+                    ],
+                  );
+                }
+
+                  if (perm == null) {
+                    return buildNavItems();
+                  }
+                  return Obx(() {
+                    final _ = perm.permissions.length;
+                    return buildNavItems();
+                  });
+                },
               ),
+            ),
 
               // -------------------------------------------------------------
               // User Info & Logout Button (Styled Card)
@@ -560,6 +704,8 @@ class _SidebarNavItem extends StatefulWidget {
   final bool isSelected;
   final bool isCollapsed;
   final VoidCallback onTap;
+  final String? badge;
+  final Color? badgeColor;
 
   const _SidebarNavItem({
     required this.icon,
@@ -567,6 +713,8 @@ class _SidebarNavItem extends StatefulWidget {
     required this.isSelected,
     required this.isCollapsed,
     required this.onTap,
+    this.badge,
+    this.badgeColor,
   });
 
   @override
@@ -586,6 +734,12 @@ class _SidebarNavItemState extends State<_SidebarNavItem> {
       onExit: (_) => setState(() => _isHovered = false),
       child: AnimatedContainer(
         duration: AppConstants.animationFast,
+        curve: Curves.easeOutCubic,
+        transform: Matrix4.translationValues(
+          _isHovered && !active ? 3.0 : 0.0,
+          0.0,
+          0.0,
+        ),
         margin: const EdgeInsets.symmetric(vertical: 2),
         decoration: BoxDecoration(
           gradient: active
@@ -624,12 +778,16 @@ class _SidebarNavItemState extends State<_SidebarNavItem> {
                   ? Center(
                       child: Tooltip(
                         message: widget.label,
-                        child: Icon(
-                          widget.icon,
-                          size: 20,
-                          color: active
-                              ? const Color(0xFF86EFAC)
-                              : (_isHovered ? Colors.white : const Color(0xFF8BA677)),
+                        child: AnimatedScale(
+                          scale: _isHovered || active ? 1.12 : 1.0,
+                          duration: AppConstants.animationFast,
+                          child: Icon(
+                            widget.icon,
+                            size: 20,
+                            color: active
+                                ? const Color(0xFF86EFAC)
+                                : (_isHovered ? Colors.white : const Color(0xFF8BA677)),
+                          ),
                         ),
                       ),
                     )
@@ -642,18 +800,29 @@ class _SidebarNavItemState extends State<_SidebarNavItem> {
                             decoration: BoxDecoration(
                               color: const Color(0xFF86EFAC),
                               borderRadius: BorderRadius.circular(2),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: const Color(0xFF86EFAC).withValues(alpha: 0.5),
+                                  blurRadius: 4,
+                                  offset: const Offset(0, 0),
+                                ),
+                              ],
                             ),
                           ),
                           const SizedBox(width: 8),
                         ] else ...[
                           const SizedBox(width: 3.5 + 8),
                         ],
-                        Icon(
-                          widget.icon,
-                          size: 19,
-                          color: active
-                              ? const Color(0xFF86EFAC)
-                              : (_isHovered ? Colors.white : const Color(0xFF8BA677)),
+                        AnimatedScale(
+                          scale: _isHovered || active ? 1.08 : 1.0,
+                          duration: AppConstants.animationFast,
+                          child: Icon(
+                            widget.icon,
+                            size: 19,
+                            color: active
+                                ? const Color(0xFF86EFAC)
+                                : (_isHovered ? Colors.white : const Color(0xFF8BA677)),
+                          ),
                         ),
                         const SizedBox(width: 12),
                         Expanded(
@@ -670,6 +839,23 @@ class _SidebarNavItemState extends State<_SidebarNavItem> {
                             ),
                           ),
                         ),
+                        if (widget.badge != null) ...[
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: (widget.badgeColor ?? const Color(0xFFF59E0B)).withValues(alpha: 0.2),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Text(
+                              widget.badge!,
+                              style: TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
+                                color: widget.badgeColor ?? const Color(0xFFF59E0B),
+                              ),
+                            ),
+                          ),
+                        ],
                       ],
                     ),
             ),

@@ -78,13 +78,16 @@ class _ExcelImportDialogState extends State<ExcelImportDialog> with SingleTicker
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
     final screenWidth = MediaQuery.of(context).size.width;
-    final dialogWidth = (screenWidth * 0.92).clamp(320.0, 520.0);
+    final dialogWidth = (screenWidth - 32).clamp(260.0, 520.0);
 
     return Dialog(
       backgroundColor: Colors.transparent,
+      elevation: 0,
+      shadowColor: Colors.transparent,
+      surfaceTintColor: Colors.transparent,
+      shape: const RoundedRectangleBorder(side: BorderSide.none),
       insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
-      child: Center(
-        child: Container(
+      child: Container(
           width: dialogWidth,
           decoration: BoxDecoration(
             color: isDark ? AppColors.cardDark : AppColors.cardLight,
@@ -111,8 +114,8 @@ class _ExcelImportDialogState extends State<ExcelImportDialog> with SingleTicker
             final totalBytes = widget.controller.totalUploadBytes.value;
             final importedCount = widget.controller.importedCount.value;
 
-            return Padding(
-              padding: const EdgeInsets.all(24.0),
+            return SingleChildScrollView(
+              padding: const EdgeInsets.all(20.0),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -132,7 +135,6 @@ class _ExcelImportDialogState extends State<ExcelImportDialog> with SingleTicker
             );
           }),
         ),
-      ),
     );
   }
 

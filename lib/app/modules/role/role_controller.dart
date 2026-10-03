@@ -214,9 +214,10 @@ class RoleController extends GetxController {
     Get.dialog(
       Dialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 440),
-          child: Padding(
+          child: SingleChildScrollView(
             padding: const EdgeInsets.all(24.0),
             child: Form(
               key: formKey,
@@ -254,10 +255,10 @@ class RoleController extends GetxController {
                       IconButton(
                         icon: const Icon(Icons.close_rounded, size: 20),
                         onPressed: () {
-                          if (context.mounted) {
-                            Navigator.of(context, rootNavigator: true).pop();
-                          } else {
+                          if (Get.isDialogOpen ?? false) {
                             Get.back();
+                          } else if (context.mounted) {
+                            Navigator.of(context, rootNavigator: true).pop();
                           }
                         },
                       ),
@@ -290,10 +291,10 @@ class RoleController extends GetxController {
                     children: [
                       TextButton(
                         onPressed: () {
-                          if (context.mounted) {
-                            Navigator.of(context, rootNavigator: true).pop();
-                          } else {
+                          if (Get.isDialogOpen ?? false) {
                             Get.back();
+                          } else if (context.mounted) {
+                            Navigator.of(context, rootNavigator: true).pop();
                           }
                         },
                         child: const Text('Cancel'),
@@ -311,10 +312,10 @@ class RoleController extends GetxController {
                               final roleName = nameController.text.trim();
                               final success = await createRole(roleName);
                               if (success) {
-                                if (context.mounted) {
-                                  Navigator.of(context, rootNavigator: true).pop();
-                                } else {
+                                if (Get.isDialogOpen ?? false) {
                                   Get.back();
+                                } else if (context.mounted) {
+                                  Navigator.of(context, rootNavigator: true).pop();
                                 }
                                 CustomSnackbar.showSuccess(
                                   title: 'Role Created',
@@ -345,9 +346,10 @@ class RoleController extends GetxController {
     Get.dialog(
       Dialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 440),
-          child: Padding(
+          child: SingleChildScrollView(
             padding: const EdgeInsets.all(24.0),
             child: Form(
               key: formKey,
@@ -385,10 +387,10 @@ class RoleController extends GetxController {
                       IconButton(
                         icon: const Icon(Icons.close_rounded, size: 20),
                         onPressed: () {
-                          if (context.mounted) {
-                            Navigator.of(context, rootNavigator: true).pop();
-                          } else {
+                          if (Get.isDialogOpen ?? false) {
                             Get.back();
+                          } else if (context.mounted) {
+                            Navigator.of(context, rootNavigator: true).pop();
                           }
                         },
                       ),
@@ -421,10 +423,10 @@ class RoleController extends GetxController {
                     children: [
                       TextButton(
                         onPressed: () {
-                          if (context.mounted) {
-                            Navigator.of(context, rootNavigator: true).pop();
-                          } else {
+                          if (Get.isDialogOpen ?? false) {
                             Get.back();
+                          } else if (context.mounted) {
+                            Navigator.of(context, rootNavigator: true).pop();
                           }
                         },
                         child: const Text('Cancel'),
@@ -442,10 +444,10 @@ class RoleController extends GetxController {
                               final newName = nameController.text.trim();
                               final success = await updateRole(role.id, newName);
                               if (success) {
-                                if (context.mounted) {
-                                  Navigator.of(context, rootNavigator: true).pop();
-                                } else {
+                                if (Get.isDialogOpen ?? false) {
                                   Get.back();
+                                } else if (context.mounted) {
+                                  Navigator.of(context, rootNavigator: true).pop();
                                 }
                                 CustomSnackbar.showSuccess(
                                   title: 'Role Updated',

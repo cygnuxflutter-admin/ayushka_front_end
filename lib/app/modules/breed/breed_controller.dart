@@ -175,10 +175,11 @@ class BreedController extends GetxController {
     Get.dialog(
       Dialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        insetPadding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 24.0),
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 440),
-          child: Padding(
-            padding: const EdgeInsets.all(24.0),
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(20.0),
             child: Form(
               key: formKey,
               child: Column(
@@ -215,10 +216,10 @@ class BreedController extends GetxController {
                       IconButton(
                         icon: const Icon(Icons.close_rounded, size: 20),
                         onPressed: () {
-                          if (context.mounted) {
-                            Navigator.of(context, rootNavigator: true).pop();
-                          } else {
+                          if (Get.isDialogOpen ?? false) {
                             Get.back();
+                          } else if (context.mounted) {
+                            Navigator.of(context, rootNavigator: true).pop();
                           }
                         },
                       ),
@@ -251,10 +252,10 @@ class BreedController extends GetxController {
                     children: [
                       TextButton(
                         onPressed: () {
-                          if (context.mounted) {
-                            Navigator.of(context, rootNavigator: true).pop();
-                          } else {
+                          if (Get.isDialogOpen ?? false) {
                             Get.back();
+                          } else if (context.mounted) {
+                            Navigator.of(context, rootNavigator: true).pop();
                           }
                         },
                         child: const Text('Cancel'),
@@ -271,10 +272,10 @@ class BreedController extends GetxController {
                             if (formKey.currentState?.validate() ?? false) {
                               final success = await createBreed(nameController.text);
                               if (success) {
-                                if (context.mounted) {
-                                  Navigator.of(context, rootNavigator: true).pop();
-                                } else {
+                                if (Get.isDialogOpen ?? false) {
                                   Get.back();
+                                } else if (context.mounted) {
+                                  Navigator.of(context, rootNavigator: true).pop();
                                 }
                               }
                             }

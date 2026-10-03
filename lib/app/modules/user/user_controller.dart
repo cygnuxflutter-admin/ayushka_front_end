@@ -1,9 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import 'package:dropdown_search/dropdown_search.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 import '../../core/values/app_colors.dart';
 import '../../core/widgets/custom_button.dart';
+import '../../core/widgets/custom_dropdown_search.dart';
 import '../../core/widgets/custom_snackbar.dart';
 import '../../core/widgets/custom_text_field.dart';
 import '../../data/models/gaushala_model.dart';
@@ -456,6 +456,7 @@ class UserController extends GetxController {
     Get.dialog(
       Dialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 540),
           child: SingleChildScrollView(
@@ -497,10 +498,10 @@ class UserController extends GetxController {
                       IconButton(
                         icon: const Icon(Icons.close_rounded, size: 20),
                         onPressed: () {
-                          if (context.mounted) {
-                            Navigator.of(context, rootNavigator: true).pop();
-                          } else {
+                          if (Get.isDialogOpen ?? false) {
                             Get.back();
+                          } else if (context.mounted) {
+                            Navigator.of(context, rootNavigator: true).pop();
                           }
                         },
                       ),
@@ -570,147 +571,43 @@ class UserController extends GetxController {
                     children: [
                       // Gaushala Dropdown
                       Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Gaushala *',
-                              style: TextStyle(
-                                fontSize: 13,
-                                fontWeight: FontWeight.w600,
-                                color: isDark ? AppColors.textSecondaryDark : AppColors.textSecondaryLight,
-                              ),
-                            ),
-                            const SizedBox(height: 6),
-                            Obx(() {
-                              final list = gaushalas.toList();
-                              return DropdownSearch<GaushalaModel>(
-                                items: (filter, infiniteScrollProps) {
-                                  if (filter.isEmpty) return list;
-                                  return list
-                                      .where((g) => g.gaushalaName.toLowerCase().contains(filter.toLowerCase()))
-                                      .toList();
-                                },
-                                itemAsString: (g) => g.gaushalaName,
-                                compareFn: (g1, g2) => g1.id == g2.id,
-                                selectedItem: selectedGaushala.value,
-                                onSelected: (sel) => selectedGaushala.value = sel,
-                                validator: (sel) => sel == null ? 'Gaushala is required' : null,
-                                suffixProps: DropdownSuffixProps(
-                                  dropdownButtonProps: DropdownButtonProps(
-                                    iconClosed: Icon(
-                                      Icons.keyboard_arrow_down_rounded,
-                                      size: 20,
-                                      color: isDark ? AppColors.textMutedDark : AppColors.textMutedLight,
-                                    ),
-                                  ),
-                                ),
-                                decoratorProps: DropDownDecoratorProps(
-                                  baseStyle: TextStyle(
-                                    fontSize: 14,
-                                    color: isDark ? AppColors.textPrimaryDark : AppColors.textPrimaryLight,
-                                  ),
-                                  decoration: InputDecoration(
-                                    hintText: isLoadingGaushalas.value ? 'Loading...' : 'Select Gaushala',
-                                    prefixIcon: const Icon(Icons.storefront_outlined, size: 18),
-                                    filled: true,
-                                    fillColor: isDark ? AppColors.cardDark : AppColors.surfaceLight,
-                                    contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                                    border: OutlineInputBorder(
-                                      borderRadius: BorderRadius.circular(12),
-                                      borderSide: BorderSide(
-                                        color: isDark ? AppColors.borderDark : AppColors.borderLight,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                                popupProps: const PopupProps.menu(
-                                  showSearchBox: true,
-                                  searchFieldProps: TextFieldProps(
-                                    decoration: InputDecoration(
-                                      hintText: 'Search gaushala...',
-                                      prefixIcon: Icon(Icons.search_rounded, size: 18),
-                                      isDense: true,
-                                    ),
-                                  ),
-                                ),
-                              );
-                            }),
-                          ],
-                        ),
+                        child: Obx(() {
+                          return CustomDropdownSearch<GaushalaModel>(
+                            label: 'Gaushala',
+                            isRequired: true,
+                            hint: isLoadingGaushalas.value ? 'Loading...' : 'Select Gaushala',
+                            prefixIcon: Icons.storefront_outlined,
+                            selectedItem: selectedGaushala.value,
+                            items: gaushalas.toList(),
+                            itemAsString: (g) => g.gaushalaName,
+                            compareFn: (g1, g2) => g1.id == g2.id,
+                            searchable: true,
+                            searchHint: 'Search gaushala...',
+                            onChanged: (sel) => selectedGaushala.value = sel,
+                            validator: (sel) => sel == null ? 'Gaushala is required' : null,
+                          );
+                        }),
                       ),
                       const SizedBox(width: 14),
 
                       // Role Dropdown
                       Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Role *',
-                              style: TextStyle(
-                                fontSize: 13,
-                                fontWeight: FontWeight.w600,
-                                color: isDark ? AppColors.textSecondaryDark : AppColors.textSecondaryLight,
-                              ),
-                            ),
-                            const SizedBox(height: 6),
-                            Obx(() {
-                              final list = roles.toList();
-                              return DropdownSearch<RoleModel>(
-                                items: (filter, infiniteScrollProps) {
-                                  if (filter.isEmpty) return list;
-                                  return list
-                                      .where((r) => r.roleName.toLowerCase().contains(filter.toLowerCase()))
-                                      .toList();
-                                },
-                                itemAsString: (r) => r.roleName,
-                                compareFn: (r1, r2) => r1.id == r2.id,
-                                selectedItem: selectedRole.value,
-                                onSelected: (sel) => selectedRole.value = sel,
-                                validator: (sel) => sel == null ? 'Role is required' : null,
-                                suffixProps: DropdownSuffixProps(
-                                  dropdownButtonProps: DropdownButtonProps(
-                                    iconClosed: Icon(
-                                      Icons.keyboard_arrow_down_rounded,
-                                      size: 20,
-                                      color: isDark ? AppColors.textMutedDark : AppColors.textMutedLight,
-                                    ),
-                                  ),
-                                ),
-                                decoratorProps: DropDownDecoratorProps(
-                                  baseStyle: TextStyle(
-                                    fontSize: 14,
-                                    color: isDark ? AppColors.textPrimaryDark : AppColors.textPrimaryLight,
-                                  ),
-                                  decoration: InputDecoration(
-                                    hintText: isLoadingRoles.value ? 'Loading...' : 'Select Role',
-                                    prefixIcon: const Icon(PhosphorIconsRegular.shieldCheck, size: 18),
-                                    filled: true,
-                                    fillColor: isDark ? AppColors.cardDark : AppColors.surfaceLight,
-                                    contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                                    border: OutlineInputBorder(
-                                      borderRadius: BorderRadius.circular(12),
-                                      borderSide: BorderSide(
-                                        color: isDark ? AppColors.borderDark : AppColors.borderLight,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                                popupProps: const PopupProps.menu(
-                                  showSearchBox: true,
-                                  searchFieldProps: TextFieldProps(
-                                    decoration: InputDecoration(
-                                      hintText: 'Search role...',
-                                      prefixIcon: Icon(Icons.search_rounded, size: 18),
-                                      isDense: true,
-                                    ),
-                                  ),
-                                ),
-                              );
-                            }),
-                          ],
-                        ),
+                        child: Obx(() {
+                          return CustomDropdownSearch<RoleModel>(
+                            label: 'Role',
+                            isRequired: true,
+                            hint: isLoadingRoles.value ? 'Loading...' : 'Select Role',
+                            prefixIcon: PhosphorIconsRegular.shieldCheck,
+                            selectedItem: selectedRole.value,
+                            items: roles.toList(),
+                            itemAsString: (r) => r.roleName,
+                            compareFn: (r1, r2) => r1.id == r2.id,
+                            searchable: true,
+                            searchHint: 'Search role...',
+                            onChanged: (sel) => selectedRole.value = sel,
+                            validator: (sel) => sel == null ? 'Role is required' : null,
+                          );
+                        }),
                       ),
                     ],
                   ),
@@ -776,10 +673,10 @@ class UserController extends GetxController {
                     children: [
                       TextButton(
                         onPressed: () {
-                          if (context.mounted) {
-                            Navigator.of(context, rootNavigator: true).pop();
-                          } else {
+                          if (Get.isDialogOpen ?? false) {
                             Get.back();
+                          } else if (context.mounted) {
+                            Navigator.of(context, rootNavigator: true).pop();
                           }
                         },
                         child: const Text('Cancel'),
@@ -820,10 +717,10 @@ class UserController extends GetxController {
                               );
 
                               if (success) {
-                                if (context.mounted) {
-                                  Navigator.of(context, rootNavigator: true).pop();
-                                } else {
+                                if (Get.isDialogOpen ?? false) {
                                   Get.back();
+                                } else if (context.mounted) {
+                                  Navigator.of(context, rootNavigator: true).pop();
                                 }
                                 CustomSnackbar.showSuccess(
                                   title: 'User Created',
@@ -865,11 +762,10 @@ class UserController extends GetxController {
     final Rxn<RoleModel> selectedRole = Rxn<RoleModel>(initialRole);
     final Rxn<GaushalaModel> selectedGaushala = Rxn<GaushalaModel>(initialGaushala);
 
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
     Get.dialog(
       Dialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 540),
           child: SingleChildScrollView(
@@ -911,10 +807,10 @@ class UserController extends GetxController {
                       IconButton(
                         icon: const Icon(Icons.close_rounded, size: 20),
                         onPressed: () {
-                          if (context.mounted) {
-                            Navigator.of(context, rootNavigator: true).pop();
-                          } else {
+                          if (Get.isDialogOpen ?? false) {
                             Get.back();
+                          } else if (context.mounted) {
+                            Navigator.of(context, rootNavigator: true).pop();
                           }
                         },
                       ),
@@ -984,147 +880,43 @@ class UserController extends GetxController {
                     children: [
                       // Gaushala Dropdown
                       Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Gaushala *',
-                              style: TextStyle(
-                                fontSize: 13,
-                                fontWeight: FontWeight.w600,
-                                color: isDark ? AppColors.textSecondaryDark : AppColors.textSecondaryLight,
-                              ),
-                            ),
-                            const SizedBox(height: 6),
-                            Obx(() {
-                              final list = gaushalas.toList();
-                              return DropdownSearch<GaushalaModel>(
-                                items: (filter, infiniteScrollProps) {
-                                  if (filter.isEmpty) return list;
-                                  return list
-                                      .where((g) => g.gaushalaName.toLowerCase().contains(filter.toLowerCase()))
-                                      .toList();
-                                },
-                                itemAsString: (g) => g.gaushalaName,
-                                compareFn: (g1, g2) => g1.id == g2.id,
-                                selectedItem: selectedGaushala.value,
-                                onSelected: (sel) => selectedGaushala.value = sel,
-                                validator: (sel) => sel == null ? 'Gaushala is required' : null,
-                                suffixProps: DropdownSuffixProps(
-                                  dropdownButtonProps: DropdownButtonProps(
-                                    iconClosed: Icon(
-                                      Icons.keyboard_arrow_down_rounded,
-                                      size: 20,
-                                      color: isDark ? AppColors.textMutedDark : AppColors.textMutedLight,
-                                    ),
-                                  ),
-                                ),
-                                decoratorProps: DropDownDecoratorProps(
-                                  baseStyle: TextStyle(
-                                    fontSize: 14,
-                                    color: isDark ? AppColors.textPrimaryDark : AppColors.textPrimaryLight,
-                                  ),
-                                  decoration: InputDecoration(
-                                    hintText: 'Select Gaushala',
-                                    prefixIcon: const Icon(Icons.storefront_outlined, size: 18),
-                                    filled: true,
-                                    fillColor: isDark ? AppColors.cardDark : AppColors.surfaceLight,
-                                    contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                                    border: OutlineInputBorder(
-                                      borderRadius: BorderRadius.circular(12),
-                                      borderSide: BorderSide(
-                                        color: isDark ? AppColors.borderDark : AppColors.borderLight,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                                popupProps: const PopupProps.menu(
-                                  showSearchBox: true,
-                                  searchFieldProps: TextFieldProps(
-                                    decoration: InputDecoration(
-                                      hintText: 'Search gaushala...',
-                                      prefixIcon: Icon(Icons.search_rounded, size: 18),
-                                      isDense: true,
-                                    ),
-                                  ),
-                                ),
-                              );
-                            }),
-                          ],
-                        ),
+                        child: Obx(() {
+                          return CustomDropdownSearch<GaushalaModel>(
+                            label: 'Gaushala',
+                            isRequired: true,
+                            hint: 'Select Gaushala',
+                            prefixIcon: Icons.storefront_outlined,
+                            selectedItem: selectedGaushala.value,
+                            items: gaushalas.toList(),
+                            itemAsString: (g) => g.gaushalaName,
+                            compareFn: (g1, g2) => g1.id == g2.id,
+                            searchable: true,
+                            searchHint: 'Search gaushala...',
+                            onChanged: (sel) => selectedGaushala.value = sel,
+                            validator: (sel) => sel == null ? 'Gaushala is required' : null,
+                          );
+                        }),
                       ),
                       const SizedBox(width: 14),
 
                       // Role Dropdown
                       Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Role *',
-                              style: TextStyle(
-                                fontSize: 13,
-                                fontWeight: FontWeight.w600,
-                                color: isDark ? AppColors.textSecondaryDark : AppColors.textSecondaryLight,
-                              ),
-                            ),
-                            const SizedBox(height: 6),
-                            Obx(() {
-                              final list = roles.toList();
-                              return DropdownSearch<RoleModel>(
-                                items: (filter, infiniteScrollProps) {
-                                  if (filter.isEmpty) return list;
-                                  return list
-                                      .where((r) => r.roleName.toLowerCase().contains(filter.toLowerCase()))
-                                      .toList();
-                                },
-                                itemAsString: (r) => r.roleName,
-                                compareFn: (r1, r2) => r1.id == r2.id,
-                                selectedItem: selectedRole.value,
-                                onSelected: (sel) => selectedRole.value = sel,
-                                validator: (sel) => sel == null ? 'Role is required' : null,
-                                suffixProps: DropdownSuffixProps(
-                                  dropdownButtonProps: DropdownButtonProps(
-                                    iconClosed: Icon(
-                                      Icons.keyboard_arrow_down_rounded,
-                                      size: 20,
-                                      color: isDark ? AppColors.textMutedDark : AppColors.textMutedLight,
-                                    ),
-                                  ),
-                                ),
-                                decoratorProps: DropDownDecoratorProps(
-                                  baseStyle: TextStyle(
-                                    fontSize: 14,
-                                    color: isDark ? AppColors.textPrimaryDark : AppColors.textPrimaryLight,
-                                  ),
-                                  decoration: InputDecoration(
-                                    hintText: 'Select Role',
-                                    prefixIcon: const Icon(PhosphorIconsRegular.shieldCheck, size: 18),
-                                    filled: true,
-                                    fillColor: isDark ? AppColors.cardDark : AppColors.surfaceLight,
-                                    contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                                    border: OutlineInputBorder(
-                                      borderRadius: BorderRadius.circular(12),
-                                      borderSide: BorderSide(
-                                        color: isDark ? AppColors.borderDark : AppColors.borderLight,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                                popupProps: const PopupProps.menu(
-                                  showSearchBox: true,
-                                  searchFieldProps: TextFieldProps(
-                                    decoration: InputDecoration(
-                                      hintText: 'Search role...',
-                                      prefixIcon: Icon(Icons.search_rounded, size: 18),
-                                      isDense: true,
-                                    ),
-                                  ),
-                                ),
-                              );
-                            }),
-                          ],
-                        ),
+                        child: Obx(() {
+                          return CustomDropdownSearch<RoleModel>(
+                            label: 'Role',
+                            isRequired: true,
+                            hint: 'Select Role',
+                            prefixIcon: PhosphorIconsRegular.shieldCheck,
+                            selectedItem: selectedRole.value,
+                            items: roles.toList(),
+                            itemAsString: (r) => r.roleName,
+                            compareFn: (r1, r2) => r1.id == r2.id,
+                            searchable: true,
+                            searchHint: 'Search role...',
+                            onChanged: (sel) => selectedRole.value = sel,
+                            validator: (sel) => sel == null ? 'Role is required' : null,
+                          );
+                        }),
                       ),
                     ],
                   ),
@@ -1152,10 +944,10 @@ class UserController extends GetxController {
                     children: [
                       TextButton(
                         onPressed: () {
-                          if (context.mounted) {
-                            Navigator.of(context, rootNavigator: true).pop();
-                          } else {
+                          if (Get.isDialogOpen ?? false) {
                             Get.back();
+                          } else if (context.mounted) {
+                            Navigator.of(context, rootNavigator: true).pop();
                           }
                         },
                         child: const Text('Cancel'),
@@ -1197,10 +989,10 @@ class UserController extends GetxController {
                               );
 
                               if (success) {
-                                if (context.mounted) {
-                                  Navigator.of(context, rootNavigator: true).pop();
-                                } else {
+                                if (Get.isDialogOpen ?? false) {
                                   Get.back();
+                                } else if (context.mounted) {
+                                  Navigator.of(context, rootNavigator: true).pop();
                                 }
                                 CustomSnackbar.showSuccess(
                                   title: 'User Updated',
@@ -1293,6 +1085,7 @@ class UserController extends GetxController {
     Get.dialog(
       Dialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 480),
           child: SingleChildScrollView(
@@ -1347,10 +1140,10 @@ class UserController extends GetxController {
                       IconButton(
                         icon: const Icon(Icons.close_rounded, size: 20),
                         onPressed: () {
-                          if (context.mounted) {
-                            Navigator.of(context, rootNavigator: true).pop();
-                          } else {
+                          if (Get.isDialogOpen ?? false) {
                             Get.back();
+                          } else if (context.mounted) {
+                            Navigator.of(context, rootNavigator: true).pop();
                           }
                         },
                       ),
@@ -1425,10 +1218,10 @@ class UserController extends GetxController {
                     children: [
                       TextButton(
                         onPressed: () {
-                          if (context.mounted) {
-                            Navigator.of(context, rootNavigator: true).pop();
-                          } else {
+                          if (Get.isDialogOpen ?? false) {
                             Get.back();
+                          } else if (context.mounted) {
+                            Navigator.of(context, rootNavigator: true).pop();
                           }
                         },
                         child: const Text('Cancel'),
@@ -1450,10 +1243,10 @@ class UserController extends GetxController {
                               );
 
                               if (success) {
-                                if (context.mounted) {
-                                  Navigator.of(context, rootNavigator: true).pop();
-                                } else {
+                                if (Get.isDialogOpen ?? false) {
                                   Get.back();
+                                } else if (context.mounted) {
+                                  Navigator.of(context, rootNavigator: true).pop();
                                 }
                                 CustomSnackbar.showSuccess(
                                   title: 'Password Changed',

@@ -12,6 +12,7 @@ import 'package:ayushka/app/data/models/user_model.dart';
 import 'package:ayushka/app/core/widgets/custom_text_field.dart';
 import 'package:ayushka/app/core/widgets/logout_confirmation_dialog.dart';
 import 'package:ayushka/app/modules/auth/widgets/cow_photo_slider.dart';
+import 'package:ayushka/app/modules/dashboard/widgets/mobile_drawer.dart';
 import 'package:ayushka/app/modules/dashboard/widgets/web_sidebar.dart';
 import 'dart:math';
 import 'dart:ui';
@@ -789,6 +790,40 @@ void main() {
       await tester.tap(find.widgetWithText(CustomButton, 'Sign Out'));
       await tester.pumpAndSettle();
       expect(logoutCalled, isTrue);
+    });
+
+    testWidgets('MobileDrawer renders user profile and master navigation', (WidgetTester tester) async {
+      final user = UserModel(
+        id: 'USR-200',
+        name: 'Aayush Farm Head',
+        email: 'aayush@ayushka.com',
+        role: 'Farm Admin',
+        token: 'token_abc',
+      );
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            drawer: MobileDrawer(
+              currentUser: user,
+              onLogout: () {},
+            ),
+            body: const Center(child: Text('Home')),
+          ),
+        ),
+      );
+
+      final scaffoldState = tester.state<ScaffoldState>(find.byType(Scaffold));
+      scaffoldState.openDrawer();
+      await tester.pumpAndSettle();
+
+      expect(find.byType(MobileDrawer), findsOneWidget);
+      expect(find.text('Aayush Farm Head'), findsOneWidget);
+      expect(find.text('aayush@ayushka.com'), findsOneWidget);
+      expect(find.text('Farm Overview'), findsOneWidget);
+      expect(find.text('Herd & Cattle'), findsOneWidget);
+      expect(find.text('MASTER CATALOGS'), findsOneWidget);
+      expect(find.text('Sign Out'), findsOneWidget);
     });
   });
 }

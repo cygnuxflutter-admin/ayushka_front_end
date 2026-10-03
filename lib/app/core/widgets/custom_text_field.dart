@@ -38,6 +38,11 @@ class CustomTextField extends StatefulWidget {
   final bool isUpperCase;
   final TextCapitalization? textCapitalization;
   final List<TextInputFormatter>? inputFormatters;
+  final bool? isDense;
+  final EdgeInsetsGeometry? contentPadding;
+  final BoxConstraints? prefixIconConstraints;
+  final bool? enabled;
+  final bool floatingLabel;
 
   const CustomTextField({
     super.key,
@@ -58,6 +63,11 @@ class CustomTextField extends StatefulWidget {
     this.isUpperCase = false,
     this.textCapitalization,
     this.inputFormatters,
+    this.isDense,
+    this.contentPadding,
+    this.prefixIconConstraints,
+    this.enabled,
+    this.floatingLabel = false,
   });
 
   @override
@@ -104,10 +114,12 @@ class _CustomTextFieldState extends State<CustomTextField> {
       if (widget.isUpperCase) const UpperCaseTextFormatter(),
     ];
 
+    final showExternalLabel = widget.label != null && !widget.floatingLabel;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        if (widget.label != null) ...[
+        if (showExternalLabel) ...[
           Text(
             widget.label!,
             style: TextStyle(
@@ -121,6 +133,7 @@ class _CustomTextFieldState extends State<CustomTextField> {
         TextFormField(
           controller: widget.controller,
           focusNode: widget.focusNode,
+          enabled: widget.enabled,
           validator: widget.validator,
           obscureText: _obscureText,
           keyboardType: widget.keyboardType,
@@ -136,8 +149,27 @@ class _CustomTextFieldState extends State<CustomTextField> {
             color: isDark ? AppColors.textPrimaryDark : AppColors.textPrimaryLight,
           ),
           decoration: InputDecoration(
+            isDense: widget.isDense ?? true,
+            labelText: widget.floatingLabel ? widget.label : null,
+            floatingLabelBehavior: widget.floatingLabel ? FloatingLabelBehavior.auto : FloatingLabelBehavior.never,
+            labelStyle: TextStyle(
+              fontSize: 14,
+              fontWeight: FontWeight.w500,
+              color: isDark ? AppColors.textSecondaryDark : AppColors.textSecondaryLight,
+            ),
+            floatingLabelStyle: const TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+              color: AppColors.primary,
+            ),
             hintText: widget.hint,
+            hintStyle: TextStyle(
+              fontSize: 14,
+              color: isDark ? AppColors.textMutedDark : AppColors.textMutedLight,
+            ),
             prefixIcon: widget.prefixIcon,
+            prefixIconConstraints: widget.prefixIconConstraints ??
+                (widget.prefixIcon != null ? const BoxConstraints(minWidth: 40, minHeight: 40) : null),
             suffixIcon: widget.isPassword
                 ? MouseRegion(
                     cursor: SystemMouseCursors.click,
@@ -151,9 +183,12 @@ class _CustomTextFieldState extends State<CustomTextField> {
                     ),
                   )
                 : widget.suffixIcon,
+            suffixIconConstraints: (widget.suffixIcon != null || widget.isPassword)
+                ? const BoxConstraints(minWidth: 40, minHeight: 40)
+                : null,
             filled: true,
             fillColor: isDark ? AppColors.cardDark : AppColors.surfaceLight,
-            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            contentPadding: widget.contentPadding ?? const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
             border: OutlineInputBorder(
               borderRadius: BorderRadius.circular(AppConstants.defaultBorderRadius),
               borderSide: BorderSide(
@@ -171,6 +206,26 @@ class _CustomTextFieldState extends State<CustomTextField> {
               borderSide: const BorderSide(
                 color: AppColors.primary,
                 width: 1.8,
+              ),
+            ),
+            errorBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(AppConstants.defaultBorderRadius),
+              borderSide: const BorderSide(
+                color: AppColors.error,
+                width: 1.2,
+              ),
+            ),
+            focusedErrorBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(AppConstants.defaultBorderRadius),
+              borderSide: const BorderSide(
+                color: AppColors.error,
+                width: 1.8,
+              ),
+            ),
+            disabledBorder: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(AppConstants.defaultBorderRadius),
+              borderSide: BorderSide(
+                color: (isDark ? AppColors.borderDark : AppColors.borderLight).withValues(alpha: 0.5),
               ),
             ),
           ),

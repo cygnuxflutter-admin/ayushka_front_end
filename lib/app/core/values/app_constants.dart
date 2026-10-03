@@ -23,6 +23,8 @@ abstract class AppConstants {
   static const String keyRememberMe = 'remember_me';
   static const String keySavedEmail = 'saved_email';
   static const String keySelectedGaushalaId = 'selected_gaushala_id';
+  static const String keyUserPermissions = 'user_permissions';
+  static const String keyIsAdminPermission = 'is_admin_permission';
 
   // Responsive Breakpoints (px)
   static const double mobileBreakpoint = 650.0;

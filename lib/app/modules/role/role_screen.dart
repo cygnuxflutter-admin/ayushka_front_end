@@ -10,6 +10,8 @@ import '../../core/widgets/custom_pagination.dart';
 import '../../core/widgets/custom_shimmer.dart';
 import '../../core/widgets/custom_snackbar.dart';
 import '../../core/widgets/global_gaushala_selector.dart';
+import '../../core/widgets/header_user_profile_badge.dart';
+import '../notification/widgets/notification_bell_widget.dart';
 import '../../data/models/role_model.dart';
 import '../../routes/app_routes.dart';
 import '../dashboard/widgets/mobile_drawer.dart';
@@ -24,9 +26,9 @@ class RoleScreen extends GetView<RoleController> {
   @override
   Widget build(BuildContext context) {
     return ResponsiveLayout(
-      mobile: _buildMobileScaffold(context),
-      tablet: _buildTabletScaffold(context),
-      desktop: _buildDesktopScaffold(context),
+      mobileBuilder: (context) => _buildMobileScaffold(context),
+      tabletBuilder: (context) => _buildTabletScaffold(context),
+      desktopBuilder: (context) => _buildDesktopScaffold(context),
     );
   }
 
@@ -83,6 +85,7 @@ class RoleScreen extends GetView<RoleController> {
       appBar: AppBar(
         title: const Text('Roles Master'),
         actions: [
+          const NotificationBellWidget(),
           Obx(() {
             final isBusy = controller.isRefreshing.value || controller.isLoading.value;
             return IconButton(
@@ -126,6 +129,7 @@ class RoleScreen extends GetView<RoleController> {
       appBar: AppBar(
         title: const Text('Roles Master'),
         actions: [
+          const NotificationBellWidget(),
           Obx(() {
             final isBusy = controller.isRefreshing.value || controller.isLoading.value;
             return IconButton(
@@ -231,7 +235,9 @@ class RoleScreen extends GetView<RoleController> {
           Row(
             children: [
               const GlobalGaushalaSelector(),
-              const SizedBox(width: 12),
+              const SizedBox(width: 8),
+              const NotificationBellWidget(),
+              const SizedBox(width: 8),
               Obx(() {
                 final isBusy = controller.isRefreshing.value || controller.isLoading.value;
                 return IconButton(
@@ -243,42 +249,7 @@ class RoleScreen extends GetView<RoleController> {
                 );
               }),
               const SizedBox(width: 8),
-              Obx(() {
-                final user = controller.currentUser.value;
-                return Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: isDark ? AppColors.cardDark : AppColors.backgroundLight,
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(
-                      color: isDark ? AppColors.borderDark : AppColors.borderLight,
-                    ),
-                  ),
-                  child: Row(
-                    children: [
-                      CircleAvatar(
-                        radius: 13,
-                        backgroundColor: AppColors.primary,
-                        child: Text(
-                          user?.name.isNotEmpty == true
-                              ? user!.name.substring(0, 1).toUpperCase()
-                              : 'A',
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 11,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Text(
-                        user?.name ?? 'Admin',
-                        style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
-                      ),
-                    ],
-                  ),
-                );
-              }),
+              Obx(() => HeaderUserProfileBadge(user: controller.currentUser.value)),
             ],
           ),
         ],
@@ -652,8 +623,51 @@ class RoleScreen extends GetView<RoleController> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       const SizedBox(height: 4),
-                      Text('ID: ${role.id}', style: const TextStyle(fontSize: 11, fontFamily: 'monospace')),
-                      Text('Created: ${formatDate(role.createdAt)}', style: const TextStyle(fontSize: 11)),
+                      Text(
+                        'ID: ${role.id}',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(fontSize: 11, fontFamily: 'monospace'),
+                      ),
+                      Text(
+                        'Created: ${formatDate(role.createdAt)}',
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: const TextStyle(fontSize: 11),
+                      ),
+                    ],
+                  ),
+                  trailing: PopupMenuButton<String>(
+                    icon: const Icon(Icons.more_vert_rounded, size: 20),
+                    padding: EdgeInsets.zero,
+                    onSelected: (val) {
+                      if (val == 'edit') {
+                        controller.openEditRoleDialog(context, role);
+                      } else if (val == 'delete') {
+                        controller.confirmDeleteRole(context, role);
+                      }
+                    },
+                    itemBuilder: (ctx) => [
+                      const PopupMenuItem(
+                        value: 'edit',
+                        child: Row(
+                          children: [
+                            Icon(Icons.edit_outlined, size: 18, color: AppColors.info),
+                            SizedBox(width: 8),
+                            Text('Edit Role'),
+                          ],
+                        ),
+                      ),
+                      const PopupMenuItem(
+                        value: 'delete',
+                        child: Row(
+                          children: [
+                            Icon(Icons.delete_outline_rounded, size: 18, color: AppColors.error),
+                            SizedBox(width: 8),
+                            Text('Delete Role'),
+                          ],
+                        ),
+                      ),
                     ],
                   ),
                 ),

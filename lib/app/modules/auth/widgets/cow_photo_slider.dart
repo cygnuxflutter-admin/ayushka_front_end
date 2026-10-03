@@ -34,7 +34,7 @@ class _CowPhotoSliderState extends State<CowPhotoSlider> {
   final List<CowSlideItem> _slides = const [
     CowSlideItem(
       imagePath: 'assets/images/gir_cattle_herd.jpg',
-      title: 'Indigenous Gir Cattle Herd (ગીર ગાયોનું જૂંડ)',
+      title: 'Indigenous Gir Cattle Herd',
       subtitle: 'Pure A2 Vedic Milk • Open Saurashtra Gujarat Pasture',
       tag: 'GIR HERD',
     ),

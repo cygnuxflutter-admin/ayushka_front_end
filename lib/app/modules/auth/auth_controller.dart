@@ -4,6 +4,7 @@ import '../../core/values/app_constants.dart';
 import '../../core/widgets/custom_snackbar.dart';
 import '../../data/services/api_service.dart';
 import '../../data/services/gaushala_session_service.dart';
+import '../../data/services/permission_service.dart';
 import '../../data/services/storage_service.dart';
 import '../cow/cow_controller.dart';
 import '../../routes/app_routes.dart';
@@ -102,6 +103,14 @@ class AuthController extends GetxController {
         } else {
           final service = Get.put(GaushalaSessionService());
           await service.initSession(user: user, isLogin: true);
+        }
+
+        // Fetch role & submodule permissions for RBAC
+        if (Get.isRegistered<PermissionService>()) {
+          await Get.find<PermissionService>().initPermissions();
+        } else {
+          final pService = Get.put(PermissionService(), permanent: true);
+          await pService.initPermissions();
         }
 
         // Clear in-memory cache so fresh data loads for this user session

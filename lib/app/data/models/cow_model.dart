@@ -61,6 +61,44 @@ class AddCowRequestModel {
   }
 }
 
+/// Model representing the Shed Transfer API request body for POST /api/v1/cows/shed-transfer.
+class ShedTransferRequestModel {
+  final String gaushalaId;
+  final List<String> cowIds;
+  final String toShedId;
+  final String reason;
+  final String transferDate;
+
+  const ShedTransferRequestModel({
+    required this.gaushalaId,
+    required this.cowIds,
+    required this.toShedId,
+    required this.reason,
+    required this.transferDate,
+  });
+
+  Map<String, dynamic> toJson() {
+    return {
+      'gaushalaId': gaushalaId,
+      'cow_ids': cowIds,
+      'to_shed_id': toShedId,
+      'reason': reason,
+      'transferDate': transferDate,
+    };
+  }
+
+  factory ShedTransferRequestModel.fromJson(Map<String, dynamic> json) {
+    return ShedTransferRequestModel(
+      gaushalaId: json['gaushalaId'] as String? ?? '',
+      cowIds: (json['cow_ids'] as List<dynamic>?)?.map((e) => e.toString()).toList() ?? [],
+      toShedId: json['to_shed_id'] as String? ?? '',
+      reason: json['reason'] as String? ?? '',
+      transferDate: json['transferDate'] as String? ?? '',
+    );
+  }
+}
+
+
 /// Model representing a Cow returned from the backend API responses.
 class CowModel {
   final String id;
@@ -82,6 +120,7 @@ class CowModel {
   bool get isDelete => isDeleted;
   bool get isDead => isDied || (sendDiedDate != null && sendDiedDate!.trim().isNotEmpty);
   bool get canEdit => !isDelete && !isDeleted && !isDead && !isDied;
+  bool get canTransferShed => isActive && canEdit;
 
   /// Status hierarchy:
   /// 1. Delete -> "Deleted"
@@ -338,6 +377,8 @@ class CowShedRef {
       shedNumber: json['shedNumber'] as String? ?? '',
     );
   }
+
+  String get display => shedNumber.isNotEmpty ? '$shedName ($shedNumber)' : shedName;
 }
 
 /// Nested user reference in cow response.

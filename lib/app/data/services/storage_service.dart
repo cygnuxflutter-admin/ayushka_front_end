@@ -3,6 +3,8 @@ import 'package:get/get.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../../core/values/app_constants.dart';
 import '../models/user_model.dart';
+import '../../../models/permission_model.dart';
+import 'permission_service.dart';
 
 /// Persistent local storage service using SharedPreferences.
 /// Works seamlessly across Web (localStorage) and Mobile (NSUserDefaults / SharedPreferences).
@@ -44,6 +46,10 @@ class StorageService extends GetxService {
 
   Future<bool> removeToken() async {
     await removeRefreshToken();
+    await removeUserPermissions();
+    if (Get.isRegistered<PermissionService>()) {
+      Get.find<PermissionService>().clearPermissions();
+    }
     return await _prefs.remove(AppConstants.keyAuthToken);
   }
 
@@ -68,6 +74,40 @@ class StorageService extends GetxService {
 
   Future<bool> removeUser() async {
     return await _prefs.remove(AppConstants.keyUserData);
+  }
+
+  // -------------------------------------------------------------
+  // USER PERMISSIONS (RBAC)
+  // -------------------------------------------------------------
+  Future<bool> saveUserPermissions(List<PermissionItemModel> permissions, bool isAdmin) async {
+    final listJson = jsonEncode(permissions.map((p) => p.toJson()).toList());
+    final s1 = await _prefs.setString(AppConstants.keyUserPermissions, listJson);
+    final s2 = await _prefs.setBool(AppConstants.keyIsAdminPermission, isAdmin);
+    return s1 && s2;
+  }
+
+  List<PermissionItemModel>? getUserPermissions() {
+    final String? permsJson = _prefs.getString(AppConstants.keyUserPermissions);
+    if (permsJson == null || permsJson.isEmpty) return null;
+    try {
+      final List<dynamic> list = jsonDecode(permsJson) as List<dynamic>;
+      return list
+          .whereType<Map<String, dynamic>>()
+          .map((m) => PermissionItemModel.fromJson(m))
+          .toList();
+    } catch (_) {
+      return null;
+    }
+  }
+
+  bool? getIsAdminPermission() {
+    return _prefs.getBool(AppConstants.keyIsAdminPermission);
+  }
+
+  Future<bool> removeUserPermissions() async {
+    final r1 = await _prefs.remove(AppConstants.keyUserPermissions);
+    final r2 = await _prefs.remove(AppConstants.keyIsAdminPermission);
+    return r1 && r2;
   }
 
   // -------------------------------------------------------------

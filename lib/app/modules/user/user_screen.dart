@@ -11,10 +11,16 @@ import '../../core/widgets/custom_loader.dart';
 import '../../core/widgets/custom_pagination.dart';
 import '../../core/widgets/custom_shimmer.dart';
 import '../../core/widgets/global_gaushala_selector.dart';
+import '../../core/widgets/header_user_profile_badge.dart';
+import '../notification/widgets/notification_bell_widget.dart';
 import '../../data/models/user_model.dart';
 import '../../routes/app_routes.dart';
 import '../dashboard/widgets/mobile_drawer.dart';
 import '../dashboard/widgets/web_sidebar.dart';
+import '../../../screens/user_permissions_screen.dart';
+import '../../../models/permission_model.dart';
+import '../../core/values/permission_constants.dart';
+import '../../../widgets/permission_guard.dart';
 import 'user_controller.dart';
 
 /// Screen for Managing System Users (Master > Users).
@@ -25,9 +31,9 @@ class UserScreen extends GetView<UserController> {
   @override
   Widget build(BuildContext context) {
     return ResponsiveLayout(
-      mobile: _buildMobileScaffold(context),
-      tablet: _buildTabletScaffold(context),
-      desktop: _buildDesktopScaffold(context),
+      mobileBuilder: (context) => _buildMobileScaffold(context),
+      tabletBuilder: (context) => _buildTabletScaffold(context),
+      desktopBuilder: (context) => _buildDesktopScaffold(context),
     );
   }
 
@@ -84,6 +90,7 @@ class UserScreen extends GetView<UserController> {
       appBar: AppBar(
         title: const Text('Users Master'),
         actions: [
+          const NotificationBellWidget(),
           Obx(() {
             final isBusy = controller.isRefreshing.value || controller.isLoading.value;
             return IconButton(
@@ -128,6 +135,7 @@ class UserScreen extends GetView<UserController> {
       appBar: AppBar(
         title: const Text('Users Master'),
         actions: [
+          const NotificationBellWidget(),
           Obx(() {
             final isBusy = controller.isRefreshing.value || controller.isLoading.value;
             return IconButton(
@@ -236,7 +244,9 @@ class UserScreen extends GetView<UserController> {
           Row(
             children: [
               const GlobalGaushalaSelector(),
-              const SizedBox(width: 12),
+              const SizedBox(width: 8),
+              const NotificationBellWidget(),
+              const SizedBox(width: 8),
               Obx(() {
                 final isBusy = controller.isRefreshing.value || controller.isLoading.value;
                 return IconButton(
@@ -248,42 +258,7 @@ class UserScreen extends GetView<UserController> {
                 );
               }),
               const SizedBox(width: 8),
-              Obx(() {
-                final user = controller.currentUser.value;
-                return Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: isDark ? AppColors.cardDark : AppColors.backgroundLight,
-                    borderRadius: BorderRadius.circular(20),
-                    border: Border.all(
-                      color: isDark ? AppColors.borderDark : AppColors.borderLight,
-                    ),
-                  ),
-                  child: Row(
-                    children: [
-                      CircleAvatar(
-                        radius: 13,
-                        backgroundColor: AppColors.primary,
-                        child: Text(
-                          user?.name.isNotEmpty == true
-                              ? user!.name.substring(0, 1).toUpperCase()
-                              : 'A',
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 11,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Text(
-                        user?.name ?? 'Admin',
-                        style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
-                      ),
-                    ],
-                  ),
-                );
-              }),
+              Obx(() => HeaderUserProfileBadge(user: controller.currentUser.value)),
             ],
           ),
         ],
@@ -350,12 +325,17 @@ class UserScreen extends GetView<UserController> {
         ),
         Row(
           children: [
-            CustomButton(
-              text: 'Add User',
-              icon: Icons.person_add_alt_1_rounded,
-              width: 140,
-              height: 42,
-              onPressed: () => controller.openAddUserDialog(context),
+            PermissionGuard(
+              moduleCode: PermissionModules.user,
+              subModuleCode: PermissionSubModules.userList,
+              action: PermissionAction.add,
+              child: CustomButton(
+                text: 'Add User',
+                icon: Icons.person_add_alt_1_rounded,
+                width: 140,
+                height: 42,
+                onPressed: () => controller.openAddUserDialog(context),
+              ),
             ),
           ],
         ),
@@ -531,11 +511,19 @@ class UserScreen extends GetView<UserController> {
             final pageUsers = controller.paginatedUsers;
 
             return Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 // Table Header Row
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
-                  color: isDark ? AppColors.surfaceDark : const Color(0xFFFBFDFB),
+                  decoration: BoxDecoration(
+                    color: isDark
+                        ? AppColors.surfaceDark.withValues(alpha: 0.6)
+                        : const Color(0xFFF9FAFB),
+                    border: const Border(
+                      left: BorderSide(color: Colors.transparent, width: 3.5),
+                    ),
+                  ),
                   child: Row(
                     children: const [
                       SizedBox(width: 44, child: Text('#', style: _headerStyle)),
@@ -551,180 +539,22 @@ class UserScreen extends GetView<UserController> {
                 ),
                 const Divider(height: 1),
 
-                // Table Data Rows
-                ListView.separated(
-                  shrinkWrap: true,
-                  physics: const NeverScrollableScrollPhysics(),
-                  itemCount: pageUsers.length,
-                  separatorBuilder: (context, index) => const Divider(height: 1),
-                  itemBuilder: (context, index) {
-                    final user = pageUsers[index];
-                    final serial = ((controller.currentPage.value - 1) * controller.rowsPerPage.value) + index + 1;
-
-                    return Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-                      color: index.isEven
-                          ? Colors.transparent
-                          : (isDark ? Colors.white.withValues(alpha: 0.02) : const Color(0xFFFAFCF9)),
-                      child: Row(
-                        children: [
-                          // Serial #
-                          SizedBox(
-                            width: 44,
-                            child: Text(
-                              '$serial',
-                              style: TextStyle(
-                                fontSize: 13,
-                                color: isDark ? AppColors.textMutedDark : AppColors.textMutedLight,
-                              ),
-                            ),
-                          ),
-
-                          // User Avatar + Name + Username
-                          Expanded(
-                            flex: 4,
-                            child: Row(
-                              children: [
-                                _buildUserAvatar(user),
-                                const SizedBox(width: 12),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      Text(
-                                        user.name,
-                                        style: const TextStyle(
-                                          fontSize: 14,
-                                          fontWeight: FontWeight.w600,
-                                        ),
-                                        overflow: TextOverflow.ellipsis,
-                                      ),
-                                      if (user.username != null && user.username!.isNotEmpty) ...[
-                                        const SizedBox(height: 2),
-                                        Text(
-                                          '@${user.username}',
-                                          style: TextStyle(
-                                            fontSize: 11,
-                                            color: isDark ? AppColors.textMutedDark : AppColors.textMutedLight,
-                                          ),
-                                          overflow: TextOverflow.ellipsis,
-                                        ),
-                                      ],
-                                    ],
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-
-                          // Email
-                          Expanded(
-                            flex: 4,
-                            child: Row(
-                              children: [
-                                const Icon(Icons.mail_outline_rounded, size: 14, color: AppColors.textMutedLight),
-                                const SizedBox(width: 6),
-                                Expanded(
-                                  child: Text(
-                                    user.email,
-                                    style: TextStyle(
-                                      fontSize: 13,
-                                      color: isDark ? AppColors.textSecondaryDark : AppColors.textSecondaryLight,
-                                    ),
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-
-                          // Role Badge
-                          Expanded(
-                            flex: 3,
-                            child: Align(
-                              alignment: Alignment.centerLeft,
-                              child: _buildRoleBadge(user.role),
-                            ),
-                          ),
-
-                          // Gaushala Badge
-                          Expanded(
-                            flex: 3,
-                            child: Align(
-                              alignment: Alignment.centerLeft,
-                              child: _buildGaushalaBadge(user.gaushalaName),
-                            ),
-                          ),
-
-                          // Status Switch
-                          Expanded(
-                            flex: 2,
-                            child: Align(
-                              alignment: Alignment.centerLeft,
-                              child: Transform.scale(
-                                scale: 0.8,
-                                alignment: Alignment.centerLeft,
-                                child: Switch.adaptive(
-                                  value: user.isActive,
-                                  activeThumbColor: AppColors.primary,
-                                  onChanged: (val) => controller.toggleUserStatus(user, val),
-                                ),
-                              ),
-                            ),
-                          ),
-
-                          // Created Date
-                          Expanded(
-                            flex: 2,
-                            child: Text(
-                              user.createdAt != null
-                                  ? DateFormat('dd MMM yyyy').format(user.createdAt!)
-                                  : '—',
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: isDark ? AppColors.textMutedDark : AppColors.textMutedLight,
-                              ),
-                            ),
-                          ),
-
-                          // Actions (Change Password, Edit & Delete)
-                          SizedBox(
-                            width: 135,
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.end,
-                              children: [
-                                IconButton(
-                                  icon: const Icon(Icons.lock_reset_rounded, size: 18),
-                                  tooltip: 'Change Password',
-                                  color: AppColors.warning,
-                                  visualDensity: VisualDensity.compact,
-                                  onPressed: () => controller.openChangePasswordDialog(context, user),
-                                ),
-                                if (!user.isDeleted)
-                                  IconButton(
-                                    icon: const Icon(Icons.edit_outlined, size: 18),
-                                    tooltip: 'Edit User',
-                                    color: AppColors.info,
-                                    visualDensity: VisualDensity.compact,
-                                    onPressed: () => controller.openEditUserDialog(context, user),
-                                  ),
-                                if (!user.isDeleted)
-                                  IconButton(
-                                    icon: const Icon(Icons.delete_outline_rounded, size: 18),
-                                    tooltip: 'Delete User',
-                                    color: AppColors.error,
-                                    visualDensity: VisualDensity.compact,
-                                    onPressed: () => controller.confirmDeleteUser(context, user),
-                                  ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                    );
-                  },
-                ),
+                // Table Data Rows with Herd & Cattle Animation Style
+                ...pageUsers.asMap().entries.map((entry) {
+                  final serial = ((controller.currentPage.value - 1) * controller.rowsPerPage.value) + entry.key + 1;
+                  final user = entry.value;
+                  return _HoverableUserTableRow(
+                    key: ValueKey('${user.id}_${user.isActive}_${user.isDeleted}'),
+                    index: entry.key,
+                    serial: serial,
+                    user: user,
+                    isDark: isDark,
+                    onToggleStatus: (val) => controller.toggleUserStatus(user, val),
+                    onChangePassword: () => controller.openChangePasswordDialog(context, user),
+                    onEdit: () => controller.openEditUserDialog(context, user),
+                    onDelete: () => controller.confirmDeleteUser(context, user),
+                  );
+                }),
                 const Divider(height: 1),
 
                 // Pagination Bar
@@ -1438,136 +1268,147 @@ class UserScreen extends GetView<UserController> {
             itemBuilder: (context, index) {
               final user = pageUsers[index];
 
-          return Container(
-            padding: const EdgeInsets.all(16),
-            decoration: BoxDecoration(
-              color: isDark ? AppColors.cardDark : AppColors.cardLight,
-              borderRadius: BorderRadius.circular(14),
-              border: Border.all(
-                color: isDark ? AppColors.borderDark : AppColors.borderLight,
-              ),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.03),
-                  blurRadius: 8,
-                  offset: const Offset(0, 2),
-                ),
-              ],
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // Top Row: Avatar + Name + Status switch
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    _buildUserAvatar(user),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            user.name,
-                            style: const TextStyle(
-                              fontSize: 15,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                          if (user.username != null && user.username!.isNotEmpty) ...[
-                            const SizedBox(height: 2),
+          return _HoverableListCard(
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Top Row: Avatar + Name + Status switch
+                  Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      _buildUserAvatar(user),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
                             Text(
-                              '@${user.username}',
-                              style: TextStyle(
-                                fontSize: 12,
-                                color: isDark ? AppColors.textMutedDark : AppColors.textMutedLight,
+                              user.name,
+                              style: const TextStyle(
+                                fontSize: 15,
+                                fontWeight: FontWeight.bold,
                               ),
                             ),
+                            if (user.username != null && user.username!.isNotEmpty) ...[
+                              const SizedBox(height: 2),
+                              Text(
+                                '@${user.username}',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: isDark ? AppColors.textMutedDark : AppColors.textMutedLight,
+                                ),
+                              ),
+                            ],
                           ],
+                        ),
+                      ),
+                      Switch.adaptive(
+                        value: user.isActive,
+                        activeThumbColor: AppColors.primary,
+                        onChanged: (val) => controller.toggleUserStatus(user, val),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+
+                  // Email
+                  Row(
+                    children: [
+                      const Icon(Icons.mail_outline_rounded, size: 15, color: AppColors.textMutedLight),
+                      const SizedBox(width: 6),
+                      Expanded(
+                        child: Text(
+                          user.email,
+                          style: TextStyle(
+                            fontSize: 13,
+                            color: isDark ? AppColors.textSecondaryDark : AppColors.textSecondaryLight,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 10),
+
+                  // Badges Row
+                  Wrap(
+                    spacing: 8,
+                    runSpacing: 6,
+                    children: [
+                      _buildRoleBadge(user.role),
+                      _buildGaushalaBadge(user.gaushalaName),
+                    ],
+                  ),
+                  const Divider(height: 20),
+
+                  // Bottom Row: Created date + actions
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Text(
+                        user.createdAt != null
+                            ? 'Created ${DateFormat('dd MMM yyyy').format(user.createdAt!)}'
+                            : '',
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: isDark ? AppColors.textMutedDark : AppColors.textMutedLight,
+                        ),
+                      ),
+                      Row(
+                        children: [
+                          IconButton(
+                            icon: const Icon(PhosphorIconsRegular.shieldCheck, size: 18),
+                            tooltip: 'Manage Permissions',
+                            color: AppColors.primary,
+                            visualDensity: VisualDensity.compact,
+                            onPressed: () => UserPermissionsScreen.show(
+                              context,
+                              userId: user.id,
+                              userName: user.name,
+                              userRole: user.role,
+                              isUserAdmin: user.isAdmin,
+                            ),
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.lock_reset_rounded, size: 18),
+                            tooltip: 'Change Password',
+                            color: AppColors.warning,
+                            visualDensity: VisualDensity.compact,
+                            onPressed: () => controller.openChangePasswordDialog(context, user),
+                          ),
+                          if (!user.isDeleted)
+                            PermissionGuard(
+                              moduleCode: PermissionModules.user,
+                              subModuleCode: PermissionSubModules.userList,
+                              action: PermissionAction.edit,
+                              child: IconButton(
+                                icon: const Icon(Icons.edit_outlined, size: 18),
+                                tooltip: 'Edit User',
+                                color: AppColors.info,
+                                visualDensity: VisualDensity.compact,
+                                onPressed: () => controller.openEditUserDialog(context, user),
+                              ),
+                            ),
+                          if (!user.isDeleted)
+                            PermissionGuard(
+                              moduleCode: PermissionModules.user,
+                              subModuleCode: PermissionSubModules.userList,
+                              action: PermissionAction.delete,
+                              child: IconButton(
+                                icon: const Icon(Icons.delete_outline_rounded, size: 18),
+                                tooltip: 'Delete User',
+                                color: AppColors.error,
+                                visualDensity: VisualDensity.compact,
+                                onPressed: () => controller.confirmDeleteUser(context, user),
+                              ),
+                            ),
                         ],
                       ),
-                    ),
-                    Switch.adaptive(
-                      value: user.isActive,
-                      activeThumbColor: AppColors.primary,
-                      onChanged: (val) => controller.toggleUserStatus(user, val),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 12),
-
-                // Email
-                Row(
-                  children: [
-                    const Icon(Icons.mail_outline_rounded, size: 15, color: AppColors.textMutedLight),
-                    const SizedBox(width: 6),
-                    Expanded(
-                      child: Text(
-                        user.email,
-                        style: TextStyle(
-                          fontSize: 13,
-                          color: isDark ? AppColors.textSecondaryDark : AppColors.textSecondaryLight,
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: 10),
-
-                // Badges Row
-                Wrap(
-                  spacing: 8,
-                  runSpacing: 6,
-                  children: [
-                    _buildRoleBadge(user.role),
-                    _buildGaushalaBadge(user.gaushalaName),
-                  ],
-                ),
-                const Divider(height: 20),
-
-                // Bottom Row: Created date + actions
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Text(
-                      user.createdAt != null
-                          ? 'Created ${DateFormat('dd MMM yyyy').format(user.createdAt!)}'
-                          : '',
-                      style: TextStyle(
-                        fontSize: 11,
-                        color: isDark ? AppColors.textMutedDark : AppColors.textMutedLight,
-                      ),
-                    ),
-                    Row(
-                      children: [
-                        IconButton(
-                          icon: const Icon(Icons.lock_reset_rounded, size: 18),
-                          tooltip: 'Change Password',
-                          color: AppColors.warning,
-                          visualDensity: VisualDensity.compact,
-                          onPressed: () => controller.openChangePasswordDialog(context, user),
-                        ),
-                        if (!user.isDeleted)
-                          IconButton(
-                            icon: const Icon(Icons.edit_outlined, size: 18),
-                            tooltip: 'Edit User',
-                            color: AppColors.info,
-                            visualDensity: VisualDensity.compact,
-                            onPressed: () => controller.openEditUserDialog(context, user),
-                          ),
-                        if (!user.isDeleted)
-                          IconButton(
-                            icon: const Icon(Icons.delete_outline_rounded, size: 18),
-                            tooltip: 'Delete User',
-                            color: AppColors.error,
-                            visualDensity: VisualDensity.compact,
-                            onPressed: () => controller.confirmDeleteUser(context, user),
-                          ),
-                      ],
-                    ),
-                  ],
-                ),
-              ],
+                    ],
+                  ),
+                ],
+              ),
             ),
           );
         },
@@ -1601,7 +1442,7 @@ class UserScreen extends GetView<UserController> {
   // HELPER WIDGETS
   // -------------------------------------------------------------
 
-  Widget _buildUserAvatar(UserModel user) {
+  static Widget _buildUserAvatar(UserModel user) {
     final initial = user.name.isNotEmpty ? user.name.substring(0, 1).toUpperCase() : 'U';
     final role = user.role.toLowerCase();
 
@@ -1630,7 +1471,7 @@ class UserScreen extends GetView<UserController> {
     );
   }
 
-  Widget _buildRoleBadge(String roleName) {
+  static Widget _buildRoleBadge(String roleName) {
     final role = roleName.toLowerCase();
     Color color = AppColors.primary;
     Color bg = AppColors.primary.withValues(alpha: 0.12);
@@ -1673,7 +1514,7 @@ class UserScreen extends GetView<UserController> {
     );
   }
 
-  Widget _buildGaushalaBadge(String? gaushalaName) {
+  static Widget _buildGaushalaBadge(String? gaushalaName) {
     final name = (gaushalaName != null && gaushalaName.isNotEmpty) ? gaushalaName : 'Global / All';
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
@@ -1706,4 +1547,314 @@ class UserScreen extends GetView<UserController> {
     letterSpacing: 0.6,
     color: AppColors.textSecondaryLight,
   );
+}
+
+// -------------------------------------------------------------
+// HOVERABLE USER TABLE ROW (DESKTOP)
+// -------------------------------------------------------------
+class _HoverableUserTableRow extends StatefulWidget {
+  final int index;
+  final int serial;
+  final UserModel user;
+  final bool isDark;
+  final ValueChanged<bool> onToggleStatus;
+  final VoidCallback onChangePassword;
+  final VoidCallback onEdit;
+  final VoidCallback onDelete;
+
+  const _HoverableUserTableRow({
+    super.key,
+    required this.index,
+    required this.serial,
+    required this.user,
+    required this.isDark,
+    required this.onToggleStatus,
+    required this.onChangePassword,
+    required this.onEdit,
+    required this.onDelete,
+  });
+
+  @override
+  State<_HoverableUserTableRow> createState() => _HoverableUserTableRowState();
+}
+
+class _HoverableUserTableRowState extends State<_HoverableUserTableRow> {
+  bool _isHovered = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final user = widget.user;
+    final isDark = widget.isDark;
+
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      onEnter: (_) => setState(() => _isHovered = true),
+      onExit: (_) => setState(() => _isHovered = false),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 160),
+        curve: Curves.easeInOut,
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+        decoration: BoxDecoration(
+          color: _isHovered
+              ? (isDark
+                  ? AppColors.surfaceDark.withValues(alpha: 0.85)
+                  : AppColors.primary.withValues(alpha: 0.045))
+              : (widget.index.isEven
+                  ? Colors.transparent
+                  : (isDark ? Colors.white.withValues(alpha: 0.015) : const Color(0xFFFAFCF9))),
+          border: Border(
+            top: BorderSide(
+              color: isDark ? AppColors.borderDark : AppColors.borderLight,
+              width: 0.6,
+            ),
+            left: BorderSide(
+              color: _isHovered
+                  ? (isDark ? AppColors.primaryLight : AppColors.primary)
+                  : Colors.transparent,
+              width: 3.5,
+            ),
+          ),
+        ),
+        child: Row(
+          children: [
+            // Serial #
+            SizedBox(
+              width: 44,
+              child: AnimatedDefaultTextStyle(
+                duration: const Duration(milliseconds: 160),
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: _isHovered ? FontWeight.bold : FontWeight.w500,
+                  color: _isHovered
+                      ? (isDark ? AppColors.primaryLight : AppColors.primary)
+                      : (isDark ? AppColors.textMutedDark : AppColors.textMutedLight),
+                ),
+                child: Text('${widget.serial}'),
+              ),
+            ),
+
+            // User Avatar + Name + Username
+            Expanded(
+              flex: 4,
+              child: Row(
+                children: [
+                  UserScreen._buildUserAvatar(user),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          user.name,
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: _isHovered ? FontWeight.bold : FontWeight.w600,
+                            color: _isHovered
+                                ? (isDark ? Colors.white : Colors.black87)
+                                : (isDark ? AppColors.textPrimaryDark : AppColors.textPrimaryLight),
+                          ),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                        if (user.username != null && user.username!.isNotEmpty) ...[
+                          const SizedBox(height: 2),
+                          Text(
+                            '@${user.username}',
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: isDark ? AppColors.textMutedDark : AppColors.textMutedLight,
+                            ),
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            // Email
+            Expanded(
+              flex: 4,
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.mail_outline_rounded,
+                    size: 14,
+                    color: _isHovered
+                        ? (isDark ? AppColors.primaryLight : AppColors.primary)
+                        : AppColors.textMutedLight,
+                  ),
+                  const SizedBox(width: 6),
+                  Expanded(
+                    child: Text(
+                      user.email,
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: _isHovered
+                            ? (isDark ? AppColors.textPrimaryDark : AppColors.textPrimaryLight)
+                            : (isDark ? AppColors.textSecondaryDark : AppColors.textSecondaryLight),
+                      ),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            // Role Badge
+            Expanded(
+              flex: 3,
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: UserScreen._buildRoleBadge(user.role),
+              ),
+            ),
+
+            // Gaushala Badge
+            Expanded(
+              flex: 3,
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: UserScreen._buildGaushalaBadge(user.gaushalaName),
+              ),
+            ),
+
+            // Status Switch
+            Expanded(
+              flex: 2,
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: Transform.scale(
+                  scale: 0.8,
+                  alignment: Alignment.centerLeft,
+                  child: Switch.adaptive(
+                    value: user.isActive,
+                    activeThumbColor: AppColors.primary,
+                    onChanged: widget.onToggleStatus,
+                  ),
+                ),
+              ),
+            ),
+
+            // Created Date
+            Expanded(
+              flex: 2,
+              child: Text(
+                user.createdAt != null
+                    ? DateFormat('dd MMM yyyy').format(user.createdAt!)
+                    : '—',
+                style: TextStyle(
+                  fontSize: 12,
+                  color: isDark ? AppColors.textMutedDark : AppColors.textMutedLight,
+                ),
+              ),
+            ),
+
+            // Actions (Permissions, Change Password, Edit & Delete)
+            SizedBox(
+              width: 175,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.end,
+                children: [
+                  Tooltip(
+                    message: 'Manage Permissions',
+                    child: IconButton(
+                      icon: const Icon(PhosphorIconsRegular.shieldCheck, size: 18),
+                      color: _isHovered ? AppColors.primary : AppColors.primary.withValues(alpha: 0.8),
+                      visualDensity: VisualDensity.compact,
+                      onPressed: () => UserPermissionsScreen.show(
+                        context,
+                        userId: user.id,
+                        userName: user.name,
+                        userRole: user.role,
+                        isUserAdmin: user.isAdmin,
+                      ),
+                    ),
+                  ),
+                  Tooltip(
+                    message: 'Change Password',
+                    child: IconButton(
+                      icon: const Icon(Icons.lock_reset_rounded, size: 18),
+                      color: _isHovered ? AppColors.warning : AppColors.warning.withValues(alpha: 0.8),
+                      visualDensity: VisualDensity.compact,
+                      onPressed: widget.onChangePassword,
+                    ),
+                  ),
+                  if (!user.isDeleted)
+                    Tooltip(
+                      message: 'Edit User',
+                      child: IconButton(
+                        icon: const Icon(Icons.edit_outlined, size: 18),
+                        color: _isHovered ? AppColors.info : AppColors.info.withValues(alpha: 0.8),
+                        visualDensity: VisualDensity.compact,
+                        onPressed: widget.onEdit,
+                      ),
+                    ),
+                  if (!user.isDeleted)
+                    Tooltip(
+                      message: 'Delete User',
+                      child: IconButton(
+                        icon: const Icon(Icons.delete_outline_rounded, size: 18),
+                        color: _isHovered ? AppColors.error : AppColors.error.withValues(alpha: 0.8),
+                        visualDensity: VisualDensity.compact,
+                        onPressed: widget.onDelete,
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// -------------------------------------------------------------
+// HOVERABLE CARD (MOBILE / TABLET)
+// -------------------------------------------------------------
+class _HoverableListCard extends StatefulWidget {
+  final Widget child;
+  const _HoverableListCard({required this.child});
+
+  @override
+  State<_HoverableListCard> createState() => _HoverableListCardState();
+}
+
+class _HoverableListCardState extends State<_HoverableListCard> {
+  bool _isHovered = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      onEnter: (_) => setState(() => _isHovered = true),
+      onExit: (_) => setState(() => _isHovered = false),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 160),
+        curve: Curves.easeInOut,
+        decoration: BoxDecoration(
+          color: Theme.of(context).cardColor,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(
+            color: _isHovered
+                ? (isDark ? AppColors.primaryLight : AppColors.primary.withValues(alpha: 0.45))
+                : (isDark ? AppColors.borderDark : AppColors.borderLight),
+            width: _isHovered ? 1.2 : 1.0,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: _isHovered ? 0.08 : 0.03),
+              blurRadius: _isHovered ? 8 : 3,
+              offset: Offset(0, _isHovered ? 3 : 1),
+            ),
+          ],
+        ),
+        child: widget.child,
+      ),
+    );
+  }
 }

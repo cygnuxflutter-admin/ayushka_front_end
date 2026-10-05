@@ -1436,10 +1436,14 @@ class CowScreen extends GetView<CowController> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                Wrap(
+                  alignment: WrapAlignment.spaceBetween,
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  spacing: 8,
+                  runSpacing: 6,
                   children: [
                     Row(
+                      mainAxisSize: MainAxisSize.min,
                       children: [
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
@@ -1459,9 +1463,12 @@ class CowScreen extends GetView<CowController> {
                         ),
                         if (cow.calfName?.isNotEmpty == true) ...[
                           const SizedBox(width: 8),
-                          Text(
-                            cow.calfName!,
-                            style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+                          Flexible(
+                            child: Text(
+                              cow.calfName!,
+                              style: const TextStyle(fontSize: 13, fontWeight: FontWeight.w600),
+                              overflow: TextOverflow.ellipsis,
+                            ),
                           ),
                         ],
                       ],
@@ -1541,9 +1548,12 @@ class CowScreen extends GetView<CowController> {
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    Text(
-                      cow.gaushala?.gaushalaName ?? '',
-                      style: const TextStyle(fontSize: 11, color: AppColors.textSecondaryLight),
+                    Expanded(
+                      child: Text(
+                        cow.gaushala?.gaushalaName ?? '',
+                        style: const TextStyle(fontSize: 11, color: AppColors.textSecondaryLight),
+                        overflow: TextOverflow.ellipsis,
+                      ),
                     ),
                     Row(
                       children: [

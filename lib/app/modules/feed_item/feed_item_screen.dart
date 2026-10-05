@@ -876,10 +876,14 @@ class FeedItemScreen extends GetView<FeedItemController> {
                       const SizedBox(height: 8),
 
                       // Stock Row
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      Wrap(
+                        alignment: WrapAlignment.spaceBetween,
+                        crossAxisAlignment: WrapCrossAlignment.center,
+                        spacing: 8,
+                        runSpacing: 4,
                         children: [
                           Row(
+                            mainAxisSize: MainAxisSize.min,
                             children: [
                               Text(
                                 'Stock: ',

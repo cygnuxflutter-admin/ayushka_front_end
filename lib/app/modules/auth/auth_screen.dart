@@ -138,6 +138,9 @@ class _AuthScreenState extends State<AuthScreen> {
   Widget _buildMobileView(BuildContext context) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
+    final screenHeight = MediaQuery.of(context).size.height;
+    final screenWidth = MediaQuery.of(context).size.width;
+    final double bannerHeight = screenHeight < 680 ? 150 : (screenWidth < 360 ? 170 : 210);
 
     return Container(
       color: isDark ? const Color(0xFF131D13) : const Color(0xFFF7F8F4),
@@ -149,7 +152,7 @@ class _AuthScreenState extends State<AuthScreen> {
               Stack(
                 children: [
                   Container(
-                    height: 220,
+                    height: bannerHeight,
                     width: double.infinity,
                     decoration: const BoxDecoration(
                       borderRadius: BorderRadius.vertical(bottom: Radius.circular(28)),
@@ -161,7 +164,7 @@ class _AuthScreenState extends State<AuthScreen> {
                     ),
                   ),
                   Container(
-                    height: 220,
+                    height: bannerHeight,
                     decoration: BoxDecoration(
                       borderRadius: const BorderRadius.vertical(bottom: Radius.circular(28)),
                       gradient: LinearGradient(
@@ -191,7 +194,7 @@ class _AuthScreenState extends State<AuthScreen> {
                         ),
                         child: Image.asset(
                           AppConstants.logoPath,
-                          height: 52,
+                          height: screenWidth < 360 ? 42 : 52,
                           fit: BoxFit.contain,
                           filterQuality: FilterQuality.high,
                         ),
@@ -201,11 +204,14 @@ class _AuthScreenState extends State<AuthScreen> {
                 ],
               ),
 
-              const SizedBox(height: 20),
+              const SizedBox(height: 16),
 
               // Form Card
               Padding(
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
+                padding: EdgeInsets.symmetric(
+                  horizontal: screenWidth < 360 ? 12 : 20,
+                  vertical: 10,
+                ),
                 child: ConstrainedBox(
                   constraints: const BoxConstraints(maxWidth: 440),
                   child: Column(
@@ -238,6 +244,10 @@ class _AuthScreenState extends State<AuthScreen> {
   Widget _buildFormCard(BuildContext context) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isMobile = screenWidth < 650;
+    final horizontalPad = isMobile ? (screenWidth < 360 ? 18.0 : 24.0) : 36.0;
+    final verticalPad = isMobile ? 24.0 : 34.0;
 
     return CallbackShortcuts(
       bindings: <ShortcutActivator, VoidCallback>{
@@ -245,7 +255,7 @@ class _AuthScreenState extends State<AuthScreen> {
         const SingleActivator(LogicalKeyboardKey.numpadEnter): controller.login,
       },
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 36, vertical: 34),
+        padding: EdgeInsets.symmetric(horizontal: horizontalPad, vertical: verticalPad),
         decoration: BoxDecoration(
           color: isDark ? AppColors.surfaceDark : Colors.white,
           borderRadius: BorderRadius.circular(24),

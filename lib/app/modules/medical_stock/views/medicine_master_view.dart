@@ -98,7 +98,8 @@ class MedicineMasterView extends StatelessWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           mainAxisSize: MainAxisSize.min,
           children: [
-            Row(
+            Wrap(
+              crossAxisAlignment: WrapCrossAlignment.center,
               children: [
                 MouseRegion(
                   cursor: SystemMouseCursors.click,
@@ -808,9 +809,12 @@ class MedicineMasterView extends StatelessWidget {
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Text(
-                        item.manufacturer.isNotEmpty ? item.manufacturer : 'Generic formulation',
-                        style: const TextStyle(fontSize: 11, color: AppColors.textSecondaryLight),
+                      Expanded(
+                        child: Text(
+                          item.manufacturer.isNotEmpty ? item.manufacturer : 'Generic formulation',
+                          style: const TextStyle(fontSize: 11, color: AppColors.textSecondaryLight),
+                          overflow: TextOverflow.ellipsis,
+                        ),
                       ),
                       Row(
                         children: [

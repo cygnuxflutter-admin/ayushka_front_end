@@ -38,12 +38,21 @@ class UserPermissionsScreen extends StatefulWidget {
     return showDialog(
       context: context,
       barrierDismissible: true,
-      builder: (context) => Dialog(
-        backgroundColor: Colors.transparent,
-        insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
-        child: Container(
-          width: 1050,
-          constraints: const BoxConstraints(maxHeight: 820),
+      builder: (context) {
+        final screenWidth = MediaQuery.of(context).size.width;
+        final isMobile = screenWidth < 650;
+        return Dialog(
+          backgroundColor: Colors.transparent,
+          insetPadding: EdgeInsets.symmetric(
+            horizontal: isMobile ? 12 : 24,
+            vertical: isMobile ? 16 : 24,
+          ),
+          child: Container(
+            width: isMobile ? double.infinity : 1050,
+            constraints: BoxConstraints(
+              maxWidth: 1050,
+              maxHeight: MediaQuery.of(context).size.height * 0.9,
+            ),
           decoration: BoxDecoration(
             color: Colors.white,
             borderRadius: BorderRadius.circular(16),
@@ -64,9 +73,10 @@ class UserPermissionsScreen extends StatefulWidget {
             isDialog: true,
           ),
         ),
-      ),
-    );
-  }
+      );
+    },
+  );
+}
 
   @override
   State<UserPermissionsScreen> createState() => _UserPermissionsScreenState();
@@ -490,13 +500,18 @@ class _UserPermissionsScreenState extends State<UserPermissionsScreen> {
   // HEADER
   // -------------------------------------------------------------
   Widget _buildHeader(BuildContext context) {
+    final isMobile = MediaQuery.of(context).size.width < 650;
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 18),
+      padding: EdgeInsets.symmetric(
+        horizontal: isMobile ? 16 : 24,
+        vertical: isMobile ? 14 : 18,
+      ),
       decoration: const BoxDecoration(
         color: Colors.white,
         border: Border(bottom: BorderSide(color: Color(0xFFEAECF0))),
       ),
       child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Container(
             padding: const EdgeInsets.all(10),
@@ -510,22 +525,24 @@ class _UserPermissionsScreenState extends State<UserPermissionsScreen> {
               color: AppColors.primary,
             ),
           ),
-          const SizedBox(width: 16),
+          const SizedBox(width: 14),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Row(
+                Wrap(
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  spacing: 8,
+                  runSpacing: 4,
                   children: [
                     Text(
                       'Manage Permissions - $_displayName',
-                      style: const TextStyle(
-                        fontSize: 18,
+                      style: TextStyle(
+                        fontSize: isMobile ? 15 : 18,
                         fontWeight: FontWeight.w700,
-                        color: Color(0xFF1D2939),
+                        color: const Color(0xFF1D2939),
                       ),
                     ),
-                    const SizedBox(width: 8),
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                       decoration: BoxDecoration(
@@ -630,54 +647,70 @@ class _UserPermissionsScreenState extends State<UserPermissionsScreen> {
       moduleGroups.putIfAbsent(mod, () => []).add(i);
     }
 
-    return Column(
-      children: [
-        // Table Header
-        _buildTableHeader(),
-        const Divider(height: 1, color: Color(0xFFEAECF0)),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final bool isNarrow = constraints.maxWidth < 650;
+        final Widget tableBody = Column(
+          children: [
+            // Table Header
+            _buildTableHeader(),
+            const Divider(height: 1, color: Color(0xFFEAECF0)),
 
-        // Table Rows
-        Expanded(
-          child: ListView.separated(
-            padding: const EdgeInsets.symmetric(vertical: 8),
-            itemCount: moduleGroups.keys.length,
-            separatorBuilder: (context, _) => const Divider(height: 1, color: Color(0xFFF2F4F7)),
-            itemBuilder: (context, groupIndex) {
-              final moduleName = moduleGroups.keys.elementAt(groupIndex);
-              final indices = moduleGroups[moduleName]!;
+            // Table Rows
+            Expanded(
+              child: ListView.separated(
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                itemCount: moduleGroups.keys.length,
+                separatorBuilder: (context, _) => const Divider(height: 1, color: Color(0xFFF2F4F7)),
+                itemBuilder: (context, groupIndex) {
+                  final moduleName = moduleGroups.keys.elementAt(groupIndex);
+                  final indices = moduleGroups[moduleName]!;
 
-              return Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Group Header (Module Name)
-                  Container(
-                    color: const Color(0xFFF9FAFB),
-                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
-                    child: Row(
-                      children: [
-                        const Icon(PhosphorIconsRegular.folderSimple, size: 16, color: Color(0xFF475467)),
-                        const SizedBox(width: 8),
-                        Text(
-                          moduleName,
-                          style: const TextStyle(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w700,
-                            color: Color(0xFF344054),
-                            letterSpacing: 0.2,
-                          ),
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      // Group Header (Module Name)
+                      Container(
+                        color: const Color(0xFFF9FAFB),
+                        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 8),
+                        child: Row(
+                          children: [
+                            const Icon(PhosphorIconsRegular.folderSimple, size: 16, color: Color(0xFF475467)),
+                            const SizedBox(width: 8),
+                            Text(
+                              moduleName,
+                              style: const TextStyle(
+                                fontSize: 13,
+                                fontWeight: FontWeight.w700,
+                                color: Color(0xFF344054),
+                                letterSpacing: 0.2,
+                              ),
+                            ),
+                          ],
                         ),
-                      ],
-                    ),
-                  ),
+                      ),
 
-                  // Submodule rows
-                  ...indices.map((idx) => _buildSubModuleRow(idx)),
-                ],
-              );
-            },
-          ),
-        ),
-      ],
+                      // Submodule rows
+                      ...indices.map((idx) => _buildSubModuleRow(idx)),
+                    ],
+                  );
+                },
+              ),
+            ),
+          ],
+        );
+
+        if (isNarrow) {
+          return SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: SizedBox(
+              width: 650,
+              child: tableBody,
+            ),
+          );
+        }
+        return tableBody;
+      },
     );
   }
 
@@ -901,6 +934,45 @@ class _UserPermissionsScreenState extends State<UserPermissionsScreen> {
   // FOOTER (SAVE / CANCEL ACTIONS)
   // -------------------------------------------------------------
   Widget _buildFooter(BuildContext context) {
+    final bool isNarrow = MediaQuery.of(context).size.width < 600;
+    if (isNarrow) {
+      return Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          border: Border(top: BorderSide(color: Color(0xFFEAECF0))),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Row(
+              children: [
+                Expanded(
+                  child: Text(
+                    '${_matrix.length} Sub-modules mapped',
+                    style: const TextStyle(fontSize: 12, color: Color(0xFF667085)),
+                  ),
+                ),
+                if (widget.isDialog)
+                  TextButton(
+                    onPressed: () => Navigator.of(context).pop(),
+                    child: const Text('Cancel'),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            CustomButton(
+              text: 'Save Permissions',
+              isLoading: _isSaving,
+              icon: PhosphorIconsRegular.floppyDisk,
+              onPressed: _isAdminUser ? null : _savePermissions,
+            ),
+          ],
+        ),
+      );
+    }
+
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
       decoration: const BoxDecoration(

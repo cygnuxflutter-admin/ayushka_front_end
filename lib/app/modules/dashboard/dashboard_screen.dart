@@ -12,6 +12,7 @@ import 'dashboard_controller.dart';
 import 'widgets/dashboard_farm_telemetry_card.dart';
 import 'widgets/dashboard_hero_banner.dart';
 import 'widgets/dashboard_kpi_strip.dart';
+import 'widgets/mobile_dashboard_view.dart';
 import 'widgets/mobile_drawer.dart';
 import 'widgets/smart_alerts_center.dart';
 import 'widgets/web_sidebar.dart';
@@ -136,8 +137,8 @@ class DashboardScreen extends GetView<DashboardController> {
         ),
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16.0),
-        child: _buildDashboardContent(context),
+        padding: const EdgeInsets.symmetric(horizontal: 14.0, vertical: 12.0),
+        child: MobileDashboardView(controller: controller),
       ),
     );
   }

@@ -165,33 +165,42 @@ class DoseTimelineWidget extends StatelessWidget {
             ),
             child: Column(
               children: [
-                Row(
+                Wrap(
+                  alignment: WrapAlignment.spaceBetween,
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  spacing: 8,
+                  runSpacing: 6,
                   children: [
-                    Text(
-                      'Protocol Progress:',
-                      style: TextStyle(
-                        fontSize: 12,
-                        fontWeight: FontWeight.w600,
-                        color: isDark ? Colors.white70 : Colors.black87,
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
-                      decoration: BoxDecoration(
-                        color: AppColors.primary.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(6),
-                      ),
-                      child: Text(
-                        '$completed of $total doses administered ($percentInt%)',
-                        style: const TextStyle(
-                          fontSize: 11.5,
-                          fontWeight: FontWeight.bold,
-                          color: AppColors.primary,
+                    Wrap(
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      spacing: 8,
+                      runSpacing: 4,
+                      children: [
+                        Text(
+                          'Protocol Progress:',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                            color: isDark ? Colors.white70 : Colors.black87,
+                          ),
                         ),
-                      ),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: AppColors.primary.withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: Text(
+                            '$completed of $total doses administered ($percentInt%)',
+                            style: const TextStyle(
+                              fontSize: 11.5,
+                              fontWeight: FontWeight.bold,
+                              color: AppColors.primary,
+                            ),
+                          ),
+                        ),
+                      ],
                     ),
-                    const Spacer(),
                     if (treatment.hasDosesPending && treatment.nextDoseDate != null)
                       Row(
                         mainAxisSize: MainAxisSize.min,
@@ -202,16 +211,20 @@ class DoseTimelineWidget extends StatelessWidget {
                             color: treatment.isDoseDueToday ? const Color(0xFFF59E0B) : Colors.grey.shade600,
                           ),
                           const SizedBox(width: 4),
-                          Text(
-                            treatment.isDoseDueToday
-                                ? 'Next Dose Due Today!'
-                                : 'Next: ${DateFormat('dd MMM yyyy').format(treatment.nextDoseDate!)}',
-                            style: TextStyle(
-                              fontSize: 12,
-                              fontWeight: FontWeight.bold,
-                              color: treatment.isDoseDueToday
-                                  ? const Color(0xFFF59E0B)
-                                  : (isDark ? Colors.white70 : Colors.black87),
+                          Flexible(
+                            child: Text(
+                              treatment.isDoseDueToday
+                                  ? 'Next Dose Due Today!'
+                                  : 'Next: ${DateFormat('dd MMM yyyy').format(treatment.nextDoseDate!)}',
+                              style: TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold,
+                                color: treatment.isDoseDueToday
+                                    ? const Color(0xFFF59E0B)
+                                    : (isDark ? Colors.white70 : Colors.black87),
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
                             ),
                           ),
                         ],
@@ -259,13 +272,13 @@ class DoseTimelineWidget extends StatelessWidget {
         children: [
           // Left Vertical Stepper Column
           SizedBox(
-            width: 40,
+            width: isMobile ? 32 : 40,
             child: Column(
               children: [
                 // Node Avatar Circle
                 Container(
-                  width: 36,
-                  height: 36,
+                  width: isMobile ? 30 : 36,
+                  height: isMobile ? 30 : 36,
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
                     color: isGiven
@@ -298,7 +311,7 @@ class DoseTimelineWidget extends StatelessWidget {
                           ? Icons.check_rounded
                           : (isDueToday ? PhosphorIconsRegular.clock : PhosphorIconsRegular.hourglass),
                       color: isGiven || isDueToday ? Colors.white : Colors.grey.shade500,
-                      size: 17,
+                      size: isMobile ? 15 : 17,
                     ),
                   ),
                 ),
@@ -318,7 +331,7 @@ class DoseTimelineWidget extends StatelessWidget {
               ],
             ),
           ),
-          const SizedBox(width: 14),
+          SizedBox(width: isMobile ? 8 : 14),
 
           // Right Dose Card
           Expanded(
@@ -378,7 +391,7 @@ class DoseTimelineWidget extends StatelessWidget {
         children: [
           // 1. Header Band
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            padding: EdgeInsets.symmetric(horizontal: isMobile ? 12 : 16, vertical: 10),
             decoration: BoxDecoration(
               color: isGiven
                   ? AppColors.success.withValues(alpha: 0.04)
@@ -399,14 +412,15 @@ class DoseTimelineWidget extends StatelessWidget {
               crossAxisAlignment: WrapCrossAlignment.center,
               children: [
                 // Dose Name & Status Badges
-                Row(
-                  mainAxisSize: MainAxisSize.min,
+                Wrap(
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  spacing: 8,
+                  runSpacing: 6,
                   children: [
                     Text(
                       'Dose ${dose.doseNumber}',
                       style: const TextStyle(fontSize: 15.5, fontWeight: FontWeight.bold),
                     ),
-                    const SizedBox(width: 8),
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
                       decoration: BoxDecoration(
@@ -418,7 +432,6 @@ class DoseTimelineWidget extends StatelessWidget {
                         style: TextStyle(fontSize: 11, color: isDark ? Colors.white70 : Colors.black54),
                       ),
                     ),
-                    const SizedBox(width: 8),
                     Container(
                       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2.5),
                       decoration: BoxDecoration(
@@ -448,8 +461,7 @@ class DoseTimelineWidget extends StatelessWidget {
                         ],
                       ),
                     ),
-                    if (isDueToday) ...[
-                      const SizedBox(width: 8),
+                    if (isDueToday)
                       Container(
                         padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2.5),
                         decoration: BoxDecoration(
@@ -468,12 +480,14 @@ class DoseTimelineWidget extends StatelessWidget {
                           ],
                         ),
                       ),
-                    ],
                   ],
                 ),
 
                 // Date & Time Chip
                 Container(
+                  constraints: BoxConstraints(
+                    maxWidth: isMobile ? 180 : 320,
+                  ),
                   padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 3.5),
                   decoration: BoxDecoration(
                     color: isDark ? AppColors.surfaceDark : Colors.white,
@@ -489,14 +503,18 @@ class DoseTimelineWidget extends StatelessWidget {
                         color: isGiven ? AppColors.success : Colors.grey.shade600,
                       ),
                       const SizedBox(width: 5),
-                      Text(
-                        isGiven && dose.administeredDate != null
-                            ? 'Administered: ${DateFormat('dd MMM yyyy, hh:mm a').format(dose.administeredDate!)}'
-                            : 'Scheduled: ${dose.scheduledDate != null ? DateFormat('dd MMM yyyy').format(dose.scheduledDate!) : "Immediate"}',
-                        style: TextStyle(
-                          fontSize: 11.5,
-                          fontWeight: isGiven ? FontWeight.w600 : FontWeight.w500,
-                          color: isGiven ? AppColors.success : null,
+                      Flexible(
+                        child: Text(
+                          isGiven && dose.administeredDate != null
+                              ? 'Administered: ${DateFormat('dd MMM yyyy, hh:mm a').format(dose.administeredDate!)}'
+                              : 'Scheduled: ${dose.scheduledDate != null ? DateFormat('dd MMM yyyy').format(dose.scheduledDate!) : "Immediate"}',
+                          style: TextStyle(
+                            fontSize: 11.5,
+                            fontWeight: isGiven ? FontWeight.w600 : FontWeight.w500,
+                            color: isGiven ? AppColors.success : null,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                         ),
                       ),
                     ],
@@ -508,28 +526,35 @@ class DoseTimelineWidget extends StatelessWidget {
 
           // 2. Card Content Details
           Padding(
-            padding: const EdgeInsets.all(16),
+            padding: EdgeInsets.all(isMobile ? 12 : 16),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 // Staff info row
-                Row(
+                Wrap(
+                  crossAxisAlignment: WrapCrossAlignment.center,
+                  spacing: 6,
+                  runSpacing: 4,
                   children: [
                     Icon(
                       PhosphorIconsRegular.userCircle,
                       size: 15,
                       color: isDark ? AppColors.textMutedDark : AppColors.textSecondaryLight,
                     ),
-                    const SizedBox(width: 6),
                     Text(
-                      'Staff In-Charge: ',
+                      'Staff In-Charge:',
                       style: TextStyle(fontSize: 12, color: isDark ? AppColors.textMutedDark : AppColors.textMutedLight),
                     ),
-                    Text(
-                      dose.administeredBy != null && dose.administeredBy!.isNotEmpty
-                          ? dose.administeredBy!
-                          : (treatment.doctorName.isNotEmpty ? treatment.doctorName : 'Attending Vet'),
-                      style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                    ConstrainedBox(
+                      constraints: BoxConstraints(maxWidth: isMobile ? 160 : 350),
+                      child: Text(
+                        dose.administeredBy != null && dose.administeredBy!.isNotEmpty
+                            ? dose.administeredBy!
+                            : (treatment.doctorName.isNotEmpty ? treatment.doctorName : 'Attending Vet'),
+                        style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                      ),
                     ),
                   ],
                 ),
@@ -541,9 +566,12 @@ class DoseTimelineWidget extends StatelessWidget {
                     children: [
                       const Icon(PhosphorIconsRegular.pill, size: 14, color: AppColors.primary),
                       const SizedBox(width: 6),
-                      Text(
-                        'Administered Medicines (${dose.medicines.length}):',
-                        style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+                      Flexible(
+                        child: Text(
+                          'Administered Medicines (${dose.medicines.length}):',
+                          style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+                          overflow: TextOverflow.ellipsis,
+                        ),
                       ),
                     ],
                   ),
@@ -565,24 +593,35 @@ class DoseTimelineWidget extends StatelessWidget {
                                 : const Color(0xFFFCD34D),
                           ),
                         ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
+                        child: Wrap(
+                          crossAxisAlignment: WrapCrossAlignment.center,
+                          spacing: 6,
+                          runSpacing: 4,
                           children: [
-                            Icon(
-                              m.isStockItem ? PhosphorIconsRegular.package : PhosphorIconsRegular.pill,
-                              size: 13,
-                              color: m.isStockItem ? AppColors.primary : const Color(0xFFB45309),
+                            Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(
+                                  m.isStockItem ? PhosphorIconsRegular.package : PhosphorIconsRegular.pill,
+                                  size: 13,
+                                  color: m.isStockItem ? AppColors.primary : const Color(0xFFB45309),
+                                ),
+                                const SizedBox(width: 6),
+                                ConstrainedBox(
+                                  constraints: BoxConstraints(maxWidth: isMobile ? 120 : 250),
+                                  child: Text(
+                                    m.medicineName,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.bold,
+                                      color: m.isStockItem ? AppColors.primary : const Color(0xFF92400E),
+                                    ),
+                                  ),
+                                ),
+                              ],
                             ),
-                            const SizedBox(width: 6),
-                            Text(
-                              m.medicineName,
-                              style: TextStyle(
-                                fontSize: 12,
-                                fontWeight: FontWeight.bold,
-                                color: m.isStockItem ? AppColors.primary : const Color(0xFF92400E),
-                              ),
-                            ),
-                            const SizedBox(width: 8),
                             Container(
                               padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 1.5),
                               decoration: BoxDecoration(
@@ -598,7 +637,6 @@ class DoseTimelineWidget extends StatelessWidget {
                                 ),
                               ),
                             ),
-                            const SizedBox(width: 6),
                             Text(
                               m.isStockItem ? 'Pharmacy Stock' : 'Outside',
                               style: TextStyle(
@@ -693,46 +731,99 @@ class DoseTimelineWidget extends StatelessWidget {
                 // Action Callout for Next Pending Dose
                 if (!isGiven && isNext) ...[
                   const Divider(height: 24),
-                  Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.all(6),
-                        decoration: BoxDecoration(
-                          color: isDueToday ? const Color(0xFFFFFBEB) : AppColors.primary.withValues(alpha: 0.08),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Icon(
-                          PhosphorIconsRegular.info,
-                          size: 16,
-                          color: isDueToday ? const Color(0xFFF59E0B) : AppColors.primary,
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          isDueToday
-                              ? 'This dose is scheduled for today. Administer and record medicine stock usage.'
-                              : 'Next dose in clinical sequence. Ready for administration.',
-                          style: TextStyle(
-                            fontSize: 12,
-                            color: isDark ? AppColors.textMutedDark : AppColors.textMutedLight,
+                  Builder(
+                    builder: (context) {
+                      final isCompact = isMobile || MediaQuery.of(context).size.width < 650;
+                      if (isCompact) {
+                        return Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            Row(
+                              children: [
+                                Container(
+                                  padding: const EdgeInsets.all(6),
+                                  decoration: BoxDecoration(
+                                    color: isDueToday ? const Color(0xFFFFFBEB) : AppColors.primary.withValues(alpha: 0.08),
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: Icon(
+                                    PhosphorIconsRegular.info,
+                                    size: 16,
+                                    color: isDueToday ? const Color(0xFFF59E0B) : AppColors.primary,
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Text(
+                                    isDueToday
+                                        ? 'This dose is scheduled for today. Administer and record medicine stock usage.'
+                                        : 'Next dose in clinical sequence. Ready for administration.',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      color: isDark ? AppColors.textMutedDark : AppColors.textMutedLight,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 12),
+                            ElevatedButton.icon(
+                              onPressed: () => onAdministerDose(dose.doseNumber),
+                              icon: const Icon(PhosphorIconsRegular.syringe, size: 16),
+                              label: Text('Administer Dose ${dose.doseNumber}'),
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: isDueToday ? const Color(0xFFF59E0B) : AppColors.primary,
+                                foregroundColor: Colors.white,
+                                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 11),
+                                elevation: 0,
+                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                              ),
+                            ),
+                          ],
+                        );
+                      }
+                      return Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(6),
+                            decoration: BoxDecoration(
+                              color: isDueToday ? const Color(0xFFFFFBEB) : AppColors.primary.withValues(alpha: 0.08),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Icon(
+                              PhosphorIconsRegular.info,
+                              size: 16,
+                              color: isDueToday ? const Color(0xFFF59E0B) : AppColors.primary,
+                            ),
                           ),
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      ElevatedButton.icon(
-                        onPressed: () => onAdministerDose(dose.doseNumber),
-                        icon: const Icon(PhosphorIconsRegular.syringe, size: 16),
-                        label: Text('Administer Dose ${dose.doseNumber}'),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: isDueToday ? const Color(0xFFF59E0B) : AppColors.primary,
-                          foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 11),
-                          elevation: 0,
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                        ),
-                      ),
-                    ],
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Text(
+                              isDueToday
+                                  ? 'This dose is scheduled for today. Administer and record medicine stock usage.'
+                                  : 'Next dose in clinical sequence. Ready for administration.',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: isDark ? AppColors.textMutedDark : AppColors.textMutedLight,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          ElevatedButton.icon(
+                            onPressed: () => onAdministerDose(dose.doseNumber),
+                            icon: const Icon(PhosphorIconsRegular.syringe, size: 16),
+                            label: Text('Administer Dose ${dose.doseNumber}'),
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: isDueToday ? const Color(0xFFF59E0B) : AppColors.primary,
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 11),
+                              elevation: 0,
+                              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                            ),
+                          ),
+                        ],
+                      );
+                    },
                   ),
                 ],
               ],

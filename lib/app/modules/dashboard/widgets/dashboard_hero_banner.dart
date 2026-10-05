@@ -220,7 +220,7 @@ class DashboardHeroBanner extends StatelessWidget {
                                 ],
                               ),
                               child: Row(
-                                mainAxisSize: MainAxisSize.min,
+                                mainAxisSize: isMobile ? MainAxisSize.max : MainAxisSize.min,
                                 children: [
                                   Container(
                                     width: 7,
@@ -231,23 +231,27 @@ class DashboardHeroBanner extends StatelessWidget {
                                     ),
                                   ),
                                   const SizedBox(width: 8),
-                                  RichText(
-                                    text: TextSpan(
-                                      style: const TextStyle(color: Colors.white, fontSize: 12),
-                                      children: [
-                                        const TextSpan(
-                                          text: 'ATTENTION REQUIRED: ',
-                                          style: TextStyle(fontWeight: FontWeight.w900, color: Color(0xFFFDE68A)),
-                                        ),
-                                        TextSpan(
-                                          text: '$totalAlerts active alerts require review',
-                                        ),
-                                        if (critical > 0)
-                                          TextSpan(
-                                            text: ' ($critical critical triage)',
-                                            style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFFFCA5A5)),
+                                  Flexible(
+                                    child: RichText(
+                                      maxLines: 2,
+                                      overflow: TextOverflow.ellipsis,
+                                      text: TextSpan(
+                                        style: const TextStyle(color: Colors.white, fontSize: 12),
+                                        children: [
+                                          const TextSpan(
+                                            text: 'ATTENTION REQUIRED: ',
+                                            style: TextStyle(fontWeight: FontWeight.w900, color: Color(0xFFFDE68A)),
                                           ),
-                                      ],
+                                          TextSpan(
+                                            text: '$totalAlerts active alerts require review',
+                                          ),
+                                          if (critical > 0)
+                                            TextSpan(
+                                              text: ' ($critical critical triage)',
+                                              style: const TextStyle(fontWeight: FontWeight.bold, color: Color(0xFFFCA5A5)),
+                                            ),
+                                        ],
+                                      ),
                                     ),
                                   ),
                                 ],
@@ -383,12 +387,12 @@ class _StatPillItemState extends State<_StatPillItem> {
         transform: _isHovered
             ? Matrix4.translationValues(0.0, -2.5, 0.0)
             : Matrix4.identity(),
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
         decoration: BoxDecoration(
           color: _isHovered
               ? Colors.white.withValues(alpha: 0.16)
               : Colors.white.withValues(alpha: 0.08),
-          borderRadius: BorderRadius.circular(14),
+          borderRadius: BorderRadius.circular(12),
           border: Border.all(
             color: _isHovered
                 ? widget.accentColor.withValues(alpha: 0.6)
@@ -417,14 +421,17 @@ class _StatPillItemState extends State<_StatPillItem> {
                   widget.label,
                   style: TextStyle(
                     fontSize: 10,
+                    height: 1.15,
                     fontWeight: FontWeight.w500,
                     color: Colors.white.withValues(alpha: 0.65),
                   ),
                 ),
+                const SizedBox(height: 1),
                 Text(
                   widget.value,
                   style: const TextStyle(
-                    fontSize: 12.5,
+                    fontSize: 12,
+                    height: 1.15,
                     fontWeight: FontWeight.bold,
                     color: Colors.white,
                   ),

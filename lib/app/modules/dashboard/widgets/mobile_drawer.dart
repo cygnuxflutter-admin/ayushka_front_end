@@ -409,130 +409,6 @@ class MobileDrawer extends StatelessWidget {
                     bool canView(String m, String s) => perm?.canView(m, s) ?? true;
                     bool isModuleVisible(String m) => perm?.isModuleVisible(m) ?? true;
 
-                final List<Widget> masterItems = [];
-                if (canView(PermissionModules.role, PermissionSubModules.roleList)) {
-                  masterItems.add(
-                    _DrawerItem(
-                      icon: PhosphorIconsRegular.shieldCheck,
-                      label: 'Roles Master',
-                      isSelected: currentRoute == AppRoutes.roles,
-                      onTap: () {
-                        Get.back();
-                        if (currentRoute != AppRoutes.roles) {
-                          Get.offNamed(AppRoutes.roles);
-                        }
-                      },
-                    ),
-                  );
-                }
-                if (canView(PermissionModules.user, PermissionSubModules.userList)) {
-                  masterItems.add(
-                    _DrawerItem(
-                      icon: PhosphorIconsRegular.users,
-                      label: 'Users Master',
-                      isSelected: currentRoute == AppRoutes.users,
-                      onTap: () {
-                        Get.back();
-                        if (currentRoute != AppRoutes.users) {
-                          Get.offNamed(AppRoutes.users);
-                        }
-                      },
-                    ),
-                  );
-                }
-                if (canView(PermissionModules.workerMgmt, PermissionSubModules.workerList) ||
-                    canView(PermissionModules.workerMgmt, PermissionSubModules.departmentList)) {
-                  masterItems.add(
-                    _DrawerItem(
-                      icon: PhosphorIconsRegular.identificationCard,
-                      label: 'Workers & Departments',
-                      isSelected: currentRoute == AppRoutes.workers || currentRoute == AppRoutes.departments,
-                      onTap: () {
-                        Get.back();
-                        if (currentRoute != AppRoutes.workers) {
-                          Get.offNamed(AppRoutes.workers);
-                        }
-                      },
-                    ),
-                  );
-                }
-                if (canView(PermissionModules.gaushala, PermissionSubModules.gaushalaList)) {
-                  masterItems.add(
-                    _DrawerItem(
-                      icon: PhosphorIconsRegular.barn,
-                      label: 'Gaushalas Master',
-                      isSelected: currentRoute == AppRoutes.gaushalas,
-                      onTap: () {
-                        Get.back();
-                        if (currentRoute != AppRoutes.gaushalas) {
-                          Get.offNamed(AppRoutes.gaushalas);
-                        }
-                      },
-                    ),
-                  );
-                }
-                if (canView(PermissionModules.shed, PermissionSubModules.shedList) ||
-                    canView(PermissionModules.shed, PermissionSubModules.shedTransfer)) {
-                  masterItems.add(
-                    _DrawerItem(
-                      icon: PhosphorIconsRegular.warehouse,
-                      label: 'Sheds Master',
-                      isSelected: currentRoute == AppRoutes.sheds,
-                      onTap: () {
-                        Get.back();
-                        if (currentRoute != AppRoutes.sheds) {
-                          Get.offNamed(AppRoutes.sheds);
-                        }
-                      },
-                    ),
-                  );
-                }
-                if (canView(PermissionModules.breedType, PermissionSubModules.breedTypeList)) {
-                  masterItems.add(
-                    _DrawerItem(
-                      icon: PhosphorIconsRegular.dna,
-                      label: 'Breeds Master',
-                      isSelected: currentRoute == AppRoutes.breeds,
-                      onTap: () {
-                        Get.back();
-                        if (currentRoute != AppRoutes.breeds) {
-                          Get.offNamed(AppRoutes.breeds);
-                        }
-                      },
-                    ),
-                  );
-                }
-                if (canView(PermissionModules.type, PermissionSubModules.typeList)) {
-                  masterItems.add(
-                    _DrawerItem(
-                      icon: PhosphorIconsRegular.tag,
-                      label: 'Types Master',
-                      isSelected: currentRoute == AppRoutes.types,
-                      onTap: () {
-                        Get.back();
-                        if (currentRoute != AppRoutes.types) {
-                          Get.offNamed(AppRoutes.types);
-                        }
-                      },
-                    ),
-                  );
-                }
-                if (canView(PermissionModules.feedStock, PermissionSubModules.feedItems)) {
-                  masterItems.add(
-                    _DrawerItem(
-                      icon: PhosphorIconsRegular.grains,
-                      label: 'Feed Items Master',
-                      isSelected: currentRoute == AppRoutes.feedItems,
-                      onTap: () {
-                        Get.back();
-                        if (currentRoute != AppRoutes.feedItems) {
-                          Get.offNamed(AppRoutes.feedItems);
-                        }
-                      },
-                    ),
-                  );
-                }
-
                 return ListView(
                   padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
                   children: [
@@ -560,29 +436,17 @@ class MobileDrawer extends StatelessWidget {
                           }
                         },
                       ),
-                    if (isModuleVisible(PermissionModules.feedStock) &&
-                        canView(PermissionModules.feedStock, PermissionSubModules.stockTransaction))
+                    if (isModuleVisible(PermissionModules.milkMgmt) &&
+                        (canView(PermissionModules.milkMgmt, PermissionSubModules.milkProduction) ||
+                            canView(PermissionModules.milkMgmt, PermissionSubModules.milkDistribution)))
                       _DrawerItem(
-                        icon: PhosphorIconsRegular.arrowsLeftRight,
-                        label: 'Stock Transactions',
-                        isSelected: currentRoute == AppRoutes.feedTransactions,
+                        icon: PhosphorIconsRegular.drop,
+                        label: 'Milk Production',
+                        isSelected: currentRoute == AppRoutes.milk,
                         onTap: () {
                           Get.back();
-                          if (currentRoute != AppRoutes.feedTransactions) {
-                            Get.offNamed(AppRoutes.feedTransactions);
-                          }
-                        },
-                      ),
-                    if (isModuleVisible(PermissionModules.medicalStock) &&
-                        canView(PermissionModules.medicalStock, PermissionSubModules.medicalItems))
-                      _DrawerItem(
-                        icon: PhosphorIconsRegular.firstAidKit,
-                        label: 'Medical Stock',
-                        isSelected: currentRoute == AppRoutes.medicalStock,
-                        onTap: () {
-                          Get.back();
-                          if (currentRoute != AppRoutes.medicalStock) {
-                            Get.offNamed(AppRoutes.medicalStock);
+                          if (currentRoute != AppRoutes.milk) {
+                            Get.offNamed(AppRoutes.milk);
                           }
                         },
                       ),
@@ -599,17 +463,43 @@ class MobileDrawer extends StatelessWidget {
                           }
                         },
                       ),
-                    if (isModuleVisible(PermissionModules.milkMgmt) &&
-                        (canView(PermissionModules.milkMgmt, PermissionSubModules.milkProduction) ||
-                            canView(PermissionModules.milkMgmt, PermissionSubModules.milkDistribution)))
+                    if (isModuleVisible(PermissionModules.medicalStock) &&
+                        canView(PermissionModules.medicalStock, PermissionSubModules.medicalItems))
                       _DrawerItem(
-                        icon: PhosphorIconsRegular.drop,
-                        label: 'Milk Production',
-                        isSelected: currentRoute == AppRoutes.milk,
+                        icon: PhosphorIconsRegular.firstAidKit,
+                        label: 'Medical Stock',
+                        isSelected: currentRoute == AppRoutes.medicalStock,
                         onTap: () {
                           Get.back();
-                          if (currentRoute != AppRoutes.milk) {
-                            Get.offNamed(AppRoutes.milk);
+                          if (currentRoute != AppRoutes.medicalStock) {
+                            Get.offNamed(AppRoutes.medicalStock);
+                          }
+                        },
+                      ),
+                    if (isModuleVisible(PermissionModules.feedStock) &&
+                        canView(PermissionModules.feedStock, PermissionSubModules.stockTransaction))
+                      _DrawerItem(
+                        icon: PhosphorIconsRegular.arrowsLeftRight,
+                        label: 'Stock Transactions',
+                        isSelected: currentRoute == AppRoutes.feedTransactions,
+                        onTap: () {
+                          Get.back();
+                          if (currentRoute != AppRoutes.feedTransactions) {
+                            Get.offNamed(AppRoutes.feedTransactions);
+                          }
+                        },
+                      ),
+                    if (isModuleVisible(PermissionModules.shed) &&
+                        (canView(PermissionModules.shed, PermissionSubModules.shedList) ||
+                            canView(PermissionModules.shed, PermissionSubModules.shedTransfer)))
+                      _DrawerItem(
+                        icon: PhosphorIconsRegular.warehouse,
+                        label: 'Barn Sheds & Transfers',
+                        isSelected: currentRoute == AppRoutes.sheds,
+                        onTap: () {
+                          Get.back();
+                          if (currentRoute != AppRoutes.sheds) {
+                            Get.offNamed(AppRoutes.sheds);
                           }
                         },
                       ),
@@ -622,26 +512,125 @@ class MobileDrawer extends StatelessWidget {
                         Get.snackbar('Health Records', 'Vaccination and medical records station.', maxWidth: 400);
                       },
                     ),
-
-                    if (masterItems.isNotEmpty) ...[
-                      const Padding(
-                        padding: EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                        child: Divider(height: 1),
-                      ),
-                      Padding(
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-                        child: Text(
-                          'MASTER CATALOGS',
-                          style: TextStyle(
-                            fontSize: 10.5,
-                            fontWeight: FontWeight.w700,
-                            letterSpacing: 0.8,
-                            color: isDark ? AppColors.textMutedDark : AppColors.textMutedLight,
-                          ),
+                    // Section 2: Master Catalogs
+                    Padding(
+                      padding: const EdgeInsets.only(left: 12, top: 16, bottom: 6),
+                      child: Text(
+                        'MASTER CATALOGS',
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 1.0,
+                          color: isDark ? AppColors.textMutedDark : AppColors.textMutedLight,
                         ),
                       ),
-                      ...masterItems,
-                    ],
+                    ),
+                    if (isModuleVisible(PermissionModules.role) &&
+                        canView(PermissionModules.role, PermissionSubModules.roleList))
+                      _DrawerItem(
+                        icon: PhosphorIconsRegular.shieldCheck,
+                        label: 'Roles',
+                        isSelected: currentRoute == AppRoutes.roles,
+                        onTap: () {
+                          Get.back();
+                          if (currentRoute != AppRoutes.roles) {
+                            Get.offNamed(AppRoutes.roles);
+                          }
+                        },
+                      ),
+                    if (isModuleVisible(PermissionModules.user) &&
+                        canView(PermissionModules.user, PermissionSubModules.userList))
+                      _DrawerItem(
+                        icon: PhosphorIconsRegular.users,
+                        label: 'Users',
+                        isSelected: currentRoute == AppRoutes.users,
+                        onTap: () {
+                          Get.back();
+                          if (currentRoute != AppRoutes.users) {
+                            Get.offNamed(AppRoutes.users);
+                          }
+                        },
+                      ),
+                    if (isModuleVisible(PermissionModules.workerMgmt) &&
+                        (canView(PermissionModules.workerMgmt, PermissionSubModules.workerList) ||
+                            canView(PermissionModules.workerMgmt, PermissionSubModules.departmentList)))
+                      _DrawerItem(
+                        icon: PhosphorIconsRegular.identificationCard,
+                        label: 'Workers & Staff',
+                        isSelected: currentRoute == AppRoutes.workers || currentRoute == AppRoutes.departments,
+                        onTap: () {
+                          Get.back();
+                          if (currentRoute != AppRoutes.workers) {
+                            Get.offNamed(AppRoutes.workers);
+                          }
+                        },
+                      ),
+                    if (isModuleVisible(PermissionModules.gaushala) &&
+                        canView(PermissionModules.gaushala, PermissionSubModules.gaushalaList))
+                      _DrawerItem(
+                        icon: PhosphorIconsRegular.barn,
+                        label: 'Gaushalas',
+                        isSelected: currentRoute == AppRoutes.gaushalas,
+                        onTap: () {
+                          Get.back();
+                          if (currentRoute != AppRoutes.gaushalas) {
+                            Get.offNamed(AppRoutes.gaushalas);
+                          }
+                        },
+                      ),
+                    if (isModuleVisible(PermissionModules.shed) &&
+                        (canView(PermissionModules.shed, PermissionSubModules.shedList) ||
+                            canView(PermissionModules.shed, PermissionSubModules.shedTransfer)))
+                      _DrawerItem(
+                        icon: PhosphorIconsRegular.warehouse,
+                        label: 'Barn Sheds',
+                        isSelected: currentRoute == AppRoutes.sheds,
+                        onTap: () {
+                          Get.back();
+                          if (currentRoute != AppRoutes.sheds) {
+                            Get.offNamed(AppRoutes.sheds);
+                          }
+                        },
+                      ),
+                    if (isModuleVisible(PermissionModules.breedType) &&
+                        canView(PermissionModules.breedType, PermissionSubModules.breedTypeList))
+                      _DrawerItem(
+                        icon: PhosphorIconsRegular.dna,
+                        label: 'Breeds',
+                        isSelected: currentRoute == AppRoutes.breeds,
+                        onTap: () {
+                          Get.back();
+                          if (currentRoute != AppRoutes.breeds) {
+                            Get.offNamed(AppRoutes.breeds);
+                          }
+                        },
+                      ),
+                    if (isModuleVisible(PermissionModules.type) &&
+                        canView(PermissionModules.type, PermissionSubModules.typeList))
+                      _DrawerItem(
+                        icon: PhosphorIconsRegular.tag,
+                        label: 'Cattle Types',
+                        isSelected: currentRoute == AppRoutes.types,
+                        onTap: () {
+                          Get.back();
+                          if (currentRoute != AppRoutes.types) {
+                            Get.offNamed(AppRoutes.types);
+                          }
+                        },
+                      ),
+                    if (isModuleVisible(PermissionModules.feedStock) &&
+                        canView(PermissionModules.feedStock, PermissionSubModules.feedItems))
+                      _DrawerItem(
+                        icon: PhosphorIconsRegular.grains,
+                        label: 'Feed Items',
+                        isSelected: currentRoute == AppRoutes.feedItems,
+                        onTap: () {
+                          Get.back();
+                          if (currentRoute != AppRoutes.feedItems) {
+                            Get.offNamed(AppRoutes.feedItems);
+                          }
+                        },
+                      ),
                   ],
                 );
               }

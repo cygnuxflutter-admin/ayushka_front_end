@@ -373,19 +373,16 @@ class TreatmentDetailsScreen extends GetView<TreatmentDetailsController> {
             ],
           ),
           const Divider(height: 18),
-          Row(
+          Wrap(
+            spacing: 18,
+            runSpacing: 10,
             children: [
               _buildInfoPill('Tag ID', t.displayCowTag, isBold: true),
-              const SizedBox(width: 20),
               _buildInfoPill('Calf Name', t.displayCowName),
-              const SizedBox(width: 20),
               _buildInfoPill('Shed', t.cowShedName ?? 'Unassigned'),
-              const SizedBox(width: 20),
               _buildInfoPill('Breed', t.cowBreedName ?? 'Not specified'),
-              if (t.cowWeight != null && t.cowWeight! > 0) ...[
-                const SizedBox(width: 20),
+              if (t.cowWeight != null && t.cowWeight! > 0)
                 _buildInfoPill('Weight', '${t.cowWeight} kg'),
-              ],
             ],
           ),
         ],
@@ -422,12 +419,12 @@ class TreatmentDetailsScreen extends GetView<TreatmentDetailsController> {
             ],
           ),
           const Divider(height: 18),
-          Row(
+          Wrap(
+            spacing: 18,
+            runSpacing: 10,
             children: [
               _buildInfoPill('Doctor Name', t.doctorName.isNotEmpty ? t.doctorName : 'In-House Vet', isBold: true),
-              const SizedBox(width: 20),
               _buildInfoPill('Contact', t.doctorContact.isNotEmpty ? t.doctorContact : 'N/A'),
-              const SizedBox(width: 20),
               _buildInfoPill('Doses Progress', '${t.completedDoses} / ${t.totalDoses} doses given'),
             ],
           ),
@@ -538,23 +535,26 @@ class TreatmentDetailsScreen extends GetView<TreatmentDetailsController> {
           color: isDark ? AppColors.cardDark : const Color(0xFFF0F4EC),
           borderRadius: BorderRadius.circular(12),
         ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            _buildTabButton(
-              index: 0,
-              label: 'Visual Dose Timeline & Administration',
-              icon: PhosphorIconsRegular.calendarDots,
-              isSelected: tab == 0,
-            ),
-            const SizedBox(width: 4),
-            _buildTabButton(
-              index: 1,
-              label: 'Prescription & Medicine History',
-              icon: PhosphorIconsRegular.pill,
-              isSelected: tab == 1,
-            ),
-          ],
+        child: SingleChildScrollView(
+          scrollDirection: Axis.horizontal,
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _buildTabButton(
+                index: 0,
+                label: 'Visual Dose Timeline & Administration',
+                icon: PhosphorIconsRegular.calendarDots,
+                isSelected: tab == 0,
+              ),
+              const SizedBox(width: 4),
+              _buildTabButton(
+                index: 1,
+                label: 'Prescription & Medicine History',
+                icon: PhosphorIconsRegular.pill,
+                isSelected: tab == 1,
+              ),
+            ],
+          ),
         ),
       );
     });

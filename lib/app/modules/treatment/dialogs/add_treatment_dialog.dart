@@ -374,18 +374,26 @@ class _AddTreatmentDialogState extends State<AddTreatmentDialog> {
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
+    final screenWidth = MediaQuery.of(context).size.width;
+    final isMobile = screenWidth < 650;
 
     return Dialog(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
       backgroundColor: isDark ? AppColors.surfaceDark : Colors.white,
-      insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+      insetPadding: EdgeInsets.symmetric(
+        horizontal: isMobile ? 12 : 24,
+        vertical: isMobile ? 16 : 24,
+      ),
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: 840, maxHeight: 760),
         child: Column(
           children: [
             // Dialog Header
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 18),
+              padding: EdgeInsets.symmetric(
+                horizontal: isMobile ? 16 : 24,
+                vertical: isMobile ? 14 : 18,
+              ),
               decoration: BoxDecoration(
                 border: Border(
                   bottom: BorderSide(
@@ -405,23 +413,28 @@ class _AddTreatmentDialogState extends State<AddTreatmentDialog> {
                     child: const Icon(PhosphorIconsRegular.plusCircle, color: AppColors.primary, size: 22),
                   ),
                   const SizedBox(width: 12),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        'Create Cow Treatment Case',
-                        style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                      ),
-                      Text(
-                        'Register medical case, configure multi-dose schedule & prescribe medicines',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: isDark ? AppColors.textMutedDark : AppColors.textMutedLight,
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Create Cow Treatment Case',
+                          style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                         ),
-                      ),
-                    ],
+                        Text(
+                          'Register medical case, configure multi-dose schedule & prescribe medicines',
+                          style: TextStyle(
+                            fontSize: 11.5,
+                            color: isDark ? AppColors.textMutedDark : AppColors.textMutedLight,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ],
+                    ),
                   ),
-                  const Spacer(),
                   IconButton(
                     icon: const Icon(Icons.close_rounded),
                     onPressed: () => Navigator.of(context).pop(false),
@@ -432,7 +445,10 @@ class _AddTreatmentDialogState extends State<AddTreatmentDialog> {
 
             // Step Indicator Tabs
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+              padding: EdgeInsets.symmetric(
+                horizontal: isMobile ? 12 : 24,
+                vertical: 10,
+              ),
               decoration: BoxDecoration(
                 color: isDark ? AppColors.cardDark : const Color(0xFFFBFDF9),
                 border: Border(
@@ -442,30 +458,33 @@ class _AddTreatmentDialogState extends State<AddTreatmentDialog> {
                   ),
                 ),
               ),
-              child: Row(
-                children: [
-                  _buildStepTab(
-                    index: 0,
-                    label: '1. Cow & Case Info',
-                    icon: PhosphorIconsRegular.cow,
-                  ),
-                  const SizedBox(width: 12),
-                  const Icon(Icons.chevron_right_rounded, size: 18, color: Colors.grey),
-                  const SizedBox(width: 12),
-                  _buildStepTab(
-                    index: 1,
-                    label: '2. Multi-Dose Schedule',
-                    icon: PhosphorIconsRegular.calendarCheck,
-                  ),
-                  const SizedBox(width: 12),
-                  const Icon(Icons.chevron_right_rounded, size: 18, color: Colors.grey),
-                  const SizedBox(width: 12),
-                  _buildStepTab(
-                    index: 2,
-                    label: '3. Prescribed Medicines',
-                    icon: PhosphorIconsRegular.pill,
-                  ),
-                ],
+              child: SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: Row(
+                  children: [
+                    _buildStepTab(
+                      index: 0,
+                      label: '1. Cow & Case Info',
+                      icon: PhosphorIconsRegular.cow,
+                    ),
+                    const SizedBox(width: 8),
+                    const Icon(Icons.chevron_right_rounded, size: 16, color: Colors.grey),
+                    const SizedBox(width: 8),
+                    _buildStepTab(
+                      index: 1,
+                      label: '2. Multi-Dose Schedule',
+                      icon: PhosphorIconsRegular.calendarCheck,
+                    ),
+                    const SizedBox(width: 8),
+                    const Icon(Icons.chevron_right_rounded, size: 16, color: Colors.grey),
+                    const SizedBox(width: 8),
+                    _buildStepTab(
+                      index: 2,
+                      label: '3. Prescribed Medicines',
+                      icon: PhosphorIconsRegular.pill,
+                    ),
+                  ],
+                ),
               ),
             ),
 
@@ -474,14 +493,17 @@ class _AddTreatmentDialogState extends State<AddTreatmentDialog> {
               child: _isLoadingDropdowns
                   ? const Center(child: CustomBrandedSpinner(message: 'Loading farm herd & stock items...'))
                   : SingleChildScrollView(
-                      padding: const EdgeInsets.all(24.0),
+                      padding: EdgeInsets.all(isMobile ? 16.0 : 24.0),
                       child: _buildCurrentStepContent(context),
                     ),
             ),
 
             // Dialog Footer / Actions
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+              padding: EdgeInsets.symmetric(
+                horizontal: isMobile ? 14 : 24,
+                vertical: isMobile ? 12 : 16,
+              ),
               decoration: BoxDecoration(
                 border: Border(
                   top: BorderSide(
@@ -498,7 +520,7 @@ class _AddTreatmentDialogState extends State<AddTreatmentDialog> {
                       icon: const Icon(Icons.arrow_back_rounded, size: 16),
                       label: const Text('Back'),
                       style: OutlinedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                       ),
                     ),
                   const Spacer(),
@@ -506,11 +528,11 @@ class _AddTreatmentDialogState extends State<AddTreatmentDialog> {
                     onPressed: _isSubmitting ? null : () => Navigator.of(context).pop(false),
                     child: const Text('Cancel'),
                   ),
-                  const SizedBox(width: 12),
+                  const SizedBox(width: 8),
                   if (_currentStep < 2)
                     CustomButton(
                       text: 'Next Step →',
-                      width: 130,
+                      width: isMobile ? 110 : 130,
                       height: 42,
                       onPressed: () {
                         if (_currentStep == 0 && _validateStep1()) {
@@ -522,9 +544,9 @@ class _AddTreatmentDialogState extends State<AddTreatmentDialog> {
                     )
                   else
                     CustomButton(
-                      text: 'Create Treatment Case',
+                      text: isMobile ? 'Create Case' : 'Create Treatment Case',
                       icon: PhosphorIconsRegular.check,
-                      width: 200,
+                      width: isMobile ? 140 : 200,
                       height: 42,
                       isLoading: _isSubmitting,
                       onPressed: _submitTreatment,
@@ -777,15 +799,23 @@ class _AddTreatmentDialogState extends State<AddTreatmentDialog> {
               borderRadius: BorderRadius.circular(8),
               border: Border.all(color: AppColors.primary.withValues(alpha: 0.2)),
             ),
-            child: Row(
+            child: Wrap(
+              alignment: WrapAlignment.spaceBetween,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              spacing: 8,
+              runSpacing: 4,
               children: [
-                const Icon(PhosphorIconsRegular.cow, size: 20, color: AppColors.primary),
-                const SizedBox(width: 8),
-                Text(
-                  'Selected: ${_selectedCow!.tagId} (${_selectedCow!.calfName ?? 'Cattle'})',
-                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Icon(PhosphorIconsRegular.cow, size: 20, color: AppColors.primary),
+                    const SizedBox(width: 8),
+                    Text(
+                      'Selected: ${_selectedCow!.tagId} (${_selectedCow!.calfName ?? 'Cattle'})',
+                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                    ),
+                  ],
                 ),
-                const Spacer(),
                 Text(
                   'Gender: ${_selectedCow!.isFemale ? 'Female' : 'Male'} • Shed: ${_selectedCow!.shed?.shedName ?? 'None'}',
                   style: const TextStyle(fontSize: 12, color: Colors.grey),
@@ -867,118 +897,204 @@ class _AddTreatmentDialogState extends State<AddTreatmentDialog> {
         const SizedBox(height: 20),
 
         // Severity & Date Row
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Severity Dropdown
-            Expanded(
-              child: CustomDropdownSearch<TreatmentSeverity>(
-                label: 'Severity Level',
-                isRequired: true,
-                prefixIcon: PhosphorIconsRegular.warning,
-                hint: 'Select severity level',
-                items: TreatmentSeverity.values,
-                selectedItem: _selectedSeverity,
-                itemAsString: (s) => s.label,
-                onChanged: (val) {
-                  if (val != null) setState(() => _selectedSeverity = val);
-                },
-                customItemBuilder: (ctx, sev, isDisabled, isSelected) {
-                  return Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                    color: isSelected
-                        ? AppColors.primary.withValues(alpha: 0.12)
-                        : Colors.transparent,
-                    child: Row(
-                      children: [
-                        Icon(sev.icon, size: 16, color: sev.color),
-                        const SizedBox(width: 10),
-                        Expanded(
-                          child: Text(
-                            sev.label,
-                            style: TextStyle(
-                              fontSize: 13,
-                              fontWeight: isSelected ? FontWeight.bold : FontWeight.w600,
-                              color: sev.color,
+        if (MediaQuery.of(context).size.width < 650) ...[
+          CustomDropdownSearch<TreatmentSeverity>(
+            label: 'Severity Level',
+            isRequired: true,
+            prefixIcon: PhosphorIconsRegular.warning,
+            hint: 'Select severity level',
+            items: TreatmentSeverity.values,
+            selectedItem: _selectedSeverity,
+            itemAsString: (s) => s.label,
+            onChanged: (val) {
+              if (val != null) setState(() => _selectedSeverity = val);
+            },
+            customItemBuilder: (ctx, sev, isDisabled, isSelected) {
+              return Container(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                color: isSelected
+                    ? AppColors.primary.withValues(alpha: 0.12)
+                    : Colors.transparent,
+                child: Row(
+                  children: [
+                    Icon(sev.icon, size: 16, color: sev.color),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        sev.label,
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: isSelected ? FontWeight.bold : FontWeight.w600,
+                          color: sev.color,
+                        ),
+                      ),
+                    ),
+                    if (isSelected)
+                      const Icon(Icons.check_rounded, size: 16, color: AppColors.primary),
+                  ],
+                ),
+              );
+            },
+          ),
+          const SizedBox(height: 14),
+          _buildDateField(
+            context: context,
+            label: 'Treatment Start Date',
+            isRequired: true,
+            displayValue: DateFormat('dd MMM yyyy').format(_treatmentStartDate),
+            hint: 'Select Start Date',
+            icon: PhosphorIconsRegular.calendarBlank,
+            onTap: () async {
+              final picked = await showDatePicker(
+                context: context,
+                initialDate: _treatmentStartDate,
+                firstDate: DateTime.now().subtract(const Duration(days: 30)),
+                lastDate: DateTime.now().add(const Duration(days: 30)),
+              );
+              if (picked != null) setState(() => _treatmentStartDate = picked);
+            },
+          ),
+        ] else
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // Severity Dropdown
+              Expanded(
+                child: CustomDropdownSearch<TreatmentSeverity>(
+                  label: 'Severity Level',
+                  isRequired: true,
+                  prefixIcon: PhosphorIconsRegular.warning,
+                  hint: 'Select severity level',
+                  items: TreatmentSeverity.values,
+                  selectedItem: _selectedSeverity,
+                  itemAsString: (s) => s.label,
+                  onChanged: (val) {
+                    if (val != null) setState(() => _selectedSeverity = val);
+                  },
+                  customItemBuilder: (ctx, sev, isDisabled, isSelected) {
+                    return Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                      color: isSelected
+                          ? AppColors.primary.withValues(alpha: 0.12)
+                          : Colors.transparent,
+                      child: Row(
+                        children: [
+                          Icon(sev.icon, size: 16, color: sev.color),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Text(
+                              sev.label,
+                              style: TextStyle(
+                                fontSize: 13,
+                                fontWeight: isSelected ? FontWeight.bold : FontWeight.w600,
+                                color: sev.color,
+                              ),
                             ),
                           ),
-                        ),
-                        if (isSelected)
-                          const Icon(Icons.check_rounded, size: 16, color: AppColors.primary),
-                      ],
-                    ),
-                  );
-                },
+                          if (isSelected)
+                            const Icon(Icons.check_rounded, size: 16, color: AppColors.primary),
+                        ],
+                      ),
+                    );
+                  },
+                ),
               ),
-            ),
-            const SizedBox(width: 16),
+              const SizedBox(width: 16),
 
-            // Start Date Picker
-            Expanded(
-              child: _buildDateField(
-                context: context,
-                label: 'Treatment Start Date',
-                isRequired: true,
-                displayValue: DateFormat('dd MMM yyyy').format(_treatmentStartDate),
-                hint: 'Select Start Date',
-                icon: PhosphorIconsRegular.calendarBlank,
-                onTap: () async {
-                  final picked = await showDatePicker(
-                    context: context,
-                    initialDate: _treatmentStartDate,
-                    firstDate: DateTime.now().subtract(const Duration(days: 30)),
-                    lastDate: DateTime.now().add(const Duration(days: 30)),
-                  );
-                  if (picked != null) setState(() => _treatmentStartDate = picked);
-                },
+              // Start Date Picker
+              Expanded(
+                child: _buildDateField(
+                  context: context,
+                  label: 'Treatment Start Date',
+                  isRequired: true,
+                  displayValue: DateFormat('dd MMM yyyy').format(_treatmentStartDate),
+                  hint: 'Select Start Date',
+                  icon: PhosphorIconsRegular.calendarBlank,
+                  onTap: () async {
+                    final picked = await showDatePicker(
+                      context: context,
+                      initialDate: _treatmentStartDate,
+                      firstDate: DateTime.now().subtract(const Duration(days: 30)),
+                      lastDate: DateTime.now().add(const Duration(days: 30)),
+                    );
+                    if (picked != null) setState(() => _treatmentStartDate = picked);
+                  },
+                ),
               ),
-            ),
-          ],
-        ),
+            ],
+          ),
 
         const SizedBox(height: 20),
 
         // Doctor Name & Contact & Type
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Expanded(
-              flex: 3,
-              child: CustomTextField(
-                label: 'Doctor / Treating Vet Name *',
-                hint: 'e.g. Dr. Rajesh Sharma',
-                controller: _doctorNameController,
-                prefixIcon: const Icon(PhosphorIconsRegular.stethoscope, size: 18),
+        if (MediaQuery.of(context).size.width < 650) ...[
+          CustomTextField(
+            label: 'Doctor / Treating Vet Name *',
+            hint: 'e.g. Dr. Rajesh Sharma',
+            controller: _doctorNameController,
+            prefixIcon: const Icon(PhosphorIconsRegular.stethoscope, size: 18),
+          ),
+          const SizedBox(height: 14),
+          CustomTextField(
+            label: 'Vet Contact #',
+            hint: 'e.g. 9876543210',
+            controller: _doctorContactController,
+            keyboardType: TextInputType.phone,
+            prefixIcon: const Icon(PhosphorIconsRegular.phone, size: 18),
+          ),
+          const SizedBox(height: 14),
+          CustomDropdownSearch<DoctorType>(
+            label: 'Doctor Type',
+            prefixIcon: PhosphorIconsRegular.userGear,
+            hint: 'Doctor Type',
+            items: DoctorType.values,
+            selectedItem: _selectedDoctorType,
+            itemAsString: (d) => d.label,
+            onChanged: (val) {
+              if (val != null) setState(() => _selectedDoctorType = val);
+            },
+          ),
+        ] else
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                flex: 3,
+                child: CustomTextField(
+                  label: 'Doctor / Treating Vet Name *',
+                  hint: 'e.g. Dr. Rajesh Sharma',
+                  controller: _doctorNameController,
+                  prefixIcon: const Icon(PhosphorIconsRegular.stethoscope, size: 18),
+                ),
               ),
-            ),
-            const SizedBox(width: 14),
-            Expanded(
-              flex: 2,
-              child: CustomTextField(
-                label: 'Vet Contact #',
-                hint: 'e.g. 9876543210',
-                controller: _doctorContactController,
-                keyboardType: TextInputType.phone,
-                prefixIcon: const Icon(PhosphorIconsRegular.phone, size: 18),
+              const SizedBox(width: 14),
+              Expanded(
+                flex: 2,
+                child: CustomTextField(
+                  label: 'Vet Contact #',
+                  hint: 'e.g. 9876543210',
+                  controller: _doctorContactController,
+                  keyboardType: TextInputType.phone,
+                  prefixIcon: const Icon(PhosphorIconsRegular.phone, size: 18),
+                ),
               ),
-            ),
-            const SizedBox(width: 14),
-            Expanded(
-              flex: 2,
-              child: CustomDropdownSearch<DoctorType>(
-                label: 'Doctor Type',
-                prefixIcon: PhosphorIconsRegular.userGear,
-                hint: 'Doctor Type',
-                items: DoctorType.values,
-                selectedItem: _selectedDoctorType,
-                itemAsString: (d) => d.label,
-                onChanged: (val) {
-                  if (val != null) setState(() => _selectedDoctorType = val);
-                },
+              const SizedBox(width: 14),
+              Expanded(
+                flex: 2,
+                child: CustomDropdownSearch<DoctorType>(
+                  label: 'Doctor Type',
+                  prefixIcon: PhosphorIconsRegular.userGear,
+                  hint: 'Doctor Type',
+                  items: DoctorType.values,
+                  selectedItem: _selectedDoctorType,
+                  itemAsString: (d) => d.label,
+                  onChanged: (val) {
+                    if (val != null) setState(() => _selectedDoctorType = val);
+                  },
+                ),
               ),
-            ),
-          ],
-        ),
+            ],
+          ),
 
         const SizedBox(height: 20),
 
@@ -1039,54 +1155,95 @@ class _AddTreatmentDialogState extends State<AddTreatmentDialog> {
         ),
         const SizedBox(height: 20),
 
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Expanded(
-              child: CustomTextField(
-                label: 'Total Doses Required * (Max 15)',
-                hint: '1 - 15 doses',
-                controller: _totalDosesController,
-                keyboardType: TextInputType.number,
-                prefixIcon: const Icon(PhosphorIconsRegular.hash, size: 18),
-                inputFormatters: [
-                  FilteringTextInputFormatter.digitsOnly,
-                  TextInputFormatter.withFunction((oldValue, newValue) {
-                    if (newValue.text.isEmpty) return newValue;
-                    final val = int.tryParse(newValue.text);
-                    if (val == null || val < 1 || val > 15) {
-                      return oldValue;
-                    }
-                    return newValue;
-                  }),
-                ],
-                onChanged: (_) => setState(() {}),
+        if (MediaQuery.of(context).size.width < 650) ...[
+          CustomTextField(
+            label: 'Total Doses Required * (Max 15)',
+            hint: '1 - 15 doses',
+            controller: _totalDosesController,
+            keyboardType: TextInputType.number,
+            prefixIcon: const Icon(PhosphorIconsRegular.hash, size: 18),
+            inputFormatters: [
+              FilteringTextInputFormatter.digitsOnly,
+              TextInputFormatter.withFunction((oldValue, newValue) {
+                if (newValue.text.isEmpty) return newValue;
+                final val = int.tryParse(newValue.text);
+                if (val == null || val < 1 || val > 15) {
+                  return oldValue;
+                }
+                return newValue;
+              }),
+            ],
+            onChanged: (_) => setState(() {}),
+          ),
+          const SizedBox(height: 14),
+          CustomTextField(
+            label: 'Dose Interval (Days) *',
+            hint: 'e.g. 1 (Daily) or 2 (Alternate)',
+            controller: _doseIntervalController,
+            keyboardType: TextInputType.number,
+            prefixIcon: const Icon(PhosphorIconsRegular.hourglass, size: 18),
+            inputFormatters: [
+              FilteringTextInputFormatter.digitsOnly,
+              TextInputFormatter.withFunction((oldValue, newValue) {
+                if (newValue.text.isEmpty) return newValue;
+                final val = int.tryParse(newValue.text);
+                if (val == null || val < 1 || val > 90) {
+                  return oldValue;
+                }
+                return newValue;
+              }),
+            ],
+            onChanged: (_) => setState(() {}),
+          ),
+        ] else
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Expanded(
+                child: CustomTextField(
+                  label: 'Total Doses Required * (Max 15)',
+                  hint: '1 - 15 doses',
+                  controller: _totalDosesController,
+                  keyboardType: TextInputType.number,
+                  prefixIcon: const Icon(PhosphorIconsRegular.hash, size: 18),
+                  inputFormatters: [
+                    FilteringTextInputFormatter.digitsOnly,
+                    TextInputFormatter.withFunction((oldValue, newValue) {
+                      if (newValue.text.isEmpty) return newValue;
+                      final val = int.tryParse(newValue.text);
+                      if (val == null || val < 1 || val > 15) {
+                        return oldValue;
+                      }
+                      return newValue;
+                    }),
+                  ],
+                  onChanged: (_) => setState(() {}),
+                ),
               ),
-            ),
-            const SizedBox(width: 16),
-            Expanded(
-              child: CustomTextField(
-                label: 'Dose Interval (Days) *',
-                hint: 'e.g. 1 (Daily) or 2 (Alternate)',
-                controller: _doseIntervalController,
-                keyboardType: TextInputType.number,
-                prefixIcon: const Icon(PhosphorIconsRegular.hourglass, size: 18),
-                inputFormatters: [
-                  FilteringTextInputFormatter.digitsOnly,
-                  TextInputFormatter.withFunction((oldValue, newValue) {
-                    if (newValue.text.isEmpty) return newValue;
-                    final val = int.tryParse(newValue.text);
-                    if (val == null || val < 1 || val > 90) {
-                      return oldValue;
-                    }
-                    return newValue;
-                  }),
-                ],
-                onChanged: (_) => setState(() {}),
+              const SizedBox(width: 16),
+              Expanded(
+                child: CustomTextField(
+                  label: 'Dose Interval (Days) *',
+                  hint: 'e.g. 1 (Daily) or 2 (Alternate)',
+                  controller: _doseIntervalController,
+                  keyboardType: TextInputType.number,
+                  prefixIcon: const Icon(PhosphorIconsRegular.hourglass, size: 18),
+                  inputFormatters: [
+                    FilteringTextInputFormatter.digitsOnly,
+                    TextInputFormatter.withFunction((oldValue, newValue) {
+                      if (newValue.text.isEmpty) return newValue;
+                      final val = int.tryParse(newValue.text);
+                      if (val == null || val < 1 || val > 90) {
+                        return oldValue;
+                      }
+                      return newValue;
+                    }),
+                  ],
+                  onChanged: (_) => setState(() {}),
+                ),
               ),
-            ),
-          ],
-        ),
+            ],
+          ),
         const SizedBox(height: 10),
 
         // Quick Dose Selection Chips
@@ -1293,8 +1450,11 @@ class _AddTreatmentDialogState extends State<AddTreatmentDialog> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        Wrap(
+          alignment: WrapAlignment.spaceBetween,
+          crossAxisAlignment: WrapCrossAlignment.center,
+          spacing: 12,
+          runSpacing: 10,
           children: [
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -1310,6 +1470,7 @@ class _AddTreatmentDialogState extends State<AddTreatmentDialog> {
               ],
             ),
             Row(
+              mainAxisSize: MainAxisSize.min,
               children: [
                 ElevatedButton.icon(
                   onPressed: () => _addMedicineDraft(fromStock: true),
@@ -1358,33 +1519,41 @@ class _AddTreatmentDialogState extends State<AddTreatmentDialog> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Row(
+                  Wrap(
+                    alignment: WrapAlignment.spaceBetween,
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    spacing: 8,
+                    runSpacing: 6,
                     children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                        decoration: BoxDecoration(
-                          color: draft.isStockItem
-                              ? AppColors.primary.withValues(alpha: 0.1)
-                              : AppColors.warningBg,
-                          borderRadius: BorderRadius.circular(6),
-                        ),
-                        child: Text(
-                          draft.isStockItem ? 'INVENTORY STOCK' : "DOCTOR'S OUTSIDE DRUG",
-                          style: TextStyle(
-                            fontSize: 10.5,
-                            fontWeight: FontWeight.bold,
-                            color: draft.isStockItem ? AppColors.primary : AppColors.warning,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(width: 10),
-                      Text(
-                        'Medicine #${index + 1}',
-                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
-                      ),
-                      const Spacer(),
-                      // Toggle Stock vs Outside
                       Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                            decoration: BoxDecoration(
+                              color: draft.isStockItem
+                                  ? AppColors.primary.withValues(alpha: 0.1)
+                                  : AppColors.warningBg,
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Text(
+                              draft.isStockItem ? 'INVENTORY STOCK' : "DOCTOR'S OUTSIDE DRUG",
+                              style: TextStyle(
+                                fontSize: 10.5,
+                                fontWeight: FontWeight.bold,
+                                color: draft.isStockItem ? AppColors.primary : AppColors.warning,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 10),
+                          Text(
+                            'Medicine #${index + 1}',
+                            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                          ),
+                        ],
+                      ),
+                      Row(
+                        mainAxisSize: MainAxisSize.min,
                         children: [
                           const Text('Stock Item', style: TextStyle(fontSize: 12)),
                           Switch(
@@ -1394,92 +1563,165 @@ class _AddTreatmentDialogState extends State<AddTreatmentDialog> {
                               setState(() => draft.isStockItem = val);
                             },
                           ),
+                          IconButton(
+                            icon: const Icon(PhosphorIconsRegular.trash, size: 18, color: Colors.red),
+                            tooltip: 'Remove',
+                            onPressed: () => _removeMedicineDraft(index),
+                          ),
                         ],
-                      ),
-                      IconButton(
-                        icon: const Icon(PhosphorIconsRegular.trash, size: 18, color: Colors.red),
-                        tooltip: 'Remove',
-                        onPressed: () => _removeMedicineDraft(index),
                       ),
                     ],
                   ),
                   const Divider(height: 16),
 
                   // Medicine Selector or Text Field
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Expanded(
-                        flex: 4,
-                        child: draft.isStockItem
-                            ? CustomDropdownSearch<MedicalItemModel>(
-                                label: 'Select Medical Inventory Item *',
-                                hint: 'Choose medicine from stock',
-                                prefixIcon: PhosphorIconsRegular.pill,
-                                searchable: true,
-                                searchHint: 'Search medicine name...',
-                                items: _stockItems,
-                                selectedItem: draft.selectedStockItem,
-                                itemAsString: (item) => '${item.itemName} (${item.category} • Stock: ${item.totalStock.toStringAsFixed(0)} ${item.unit})',
-                                compareFn: (a, b) => a.id == b.id,
-                                onChanged: (val) {
-                                  setState(() {
-                                    draft.selectedStockItem = val;
-                                    if (val != null) {
-                                      draft.unit = val.unit;
-                                    }
-                                  });
-                                },
-                              )
-                            : CustomTextField(
-                                label: 'Medicine Name *',
-                                hint: 'e.g. Melonex Plus Bolus, Intacef 3g',
-                                controller: draft.medicineNameController,
-                                prefixIcon: const Icon(PhosphorIconsRegular.pill, size: 18),
-                              ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        flex: 2,
-                        child: CustomTextField(
-                          label: 'Dosage *',
-                          hint: 'e.g. 15 ml, 2 Bolus',
-                          controller: draft.dosageController,
-                          prefixIcon: const Icon(PhosphorIconsRegular.scales, size: 18),
+                  if (MediaQuery.of(context).size.width < 650) ...[
+                    draft.isStockItem
+                        ? CustomDropdownSearch<MedicalItemModel>(
+                            label: 'Select Medical Inventory Item *',
+                            hint: 'Choose medicine from stock',
+                            prefixIcon: PhosphorIconsRegular.pill,
+                            searchable: true,
+                            searchHint: 'Search medicine name...',
+                            items: _stockItems,
+                            selectedItem: draft.selectedStockItem,
+                            itemAsString: (item) => '${item.itemName} (${item.category} • Stock: ${item.totalStock.toStringAsFixed(0)} ${item.unit})',
+                            compareFn: (a, b) => a.id == b.id,
+                            onChanged: (val) {
+                              setState(() {
+                                draft.selectedStockItem = val;
+                                if (val != null) {
+                                  draft.unit = val.unit;
+                                }
+                              });
+                            },
+                          )
+                        : CustomTextField(
+                            label: 'Medicine Name *',
+                            hint: 'e.g. Melonex Plus Bolus, Intacef 3g',
+                            controller: draft.medicineNameController,
+                            prefixIcon: const Icon(PhosphorIconsRegular.pill, size: 18),
+                          ),
+                    const SizedBox(height: 12),
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(
+                          flex: 3,
+                          child: CustomTextField(
+                            label: 'Dosage *',
+                            hint: 'e.g. 15 ml',
+                            controller: draft.dosageController,
+                            prefixIcon: const Icon(PhosphorIconsRegular.scales, size: 18),
+                          ),
                         ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        flex: 2,
-                        child: CustomDropdownSearch<String>(
-                          label: 'Unit',
-                          hint: 'Unit',
-                          prefixIcon: PhosphorIconsRegular.ruler,
-                          items: _medicineUnits,
-                          selectedItem: draft.unit,
-                          itemAsString: (u) => u,
-                          onChanged: (val) {
-                            if (val != null) setState(() => draft.unit = val);
-                          },
+                        const SizedBox(width: 8),
+                        Expanded(
+                          flex: 2,
+                          child: CustomDropdownSearch<String>(
+                            label: 'Unit',
+                            hint: 'Unit',
+                            prefixIcon: PhosphorIconsRegular.ruler,
+                            items: _medicineUnits,
+                            selectedItem: draft.unit,
+                            itemAsString: (u) => u,
+                            onChanged: (val) {
+                              if (val != null) setState(() => draft.unit = val);
+                            },
+                          ),
                         ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        flex: 2,
-                        child: CustomDropdownSearch<String>(
-                          label: 'Route',
-                          hint: 'Route',
-                          prefixIcon: PhosphorIconsRegular.arrowsSplit,
-                          items: _medicineRoutes,
-                          selectedItem: draft.route,
-                          itemAsString: (r) => r,
-                          onChanged: (val) {
-                            if (val != null) setState(() => draft.route = val);
-                          },
+                        const SizedBox(width: 8),
+                        Expanded(
+                          flex: 2,
+                          child: CustomDropdownSearch<String>(
+                            label: 'Route',
+                            hint: 'Route',
+                            prefixIcon: PhosphorIconsRegular.arrowsSplit,
+                            items: _medicineRoutes,
+                            selectedItem: draft.route,
+                            itemAsString: (r) => r,
+                            onChanged: (val) {
+                              if (val != null) setState(() => draft.route = val);
+                            },
+                          ),
                         ),
-                      ),
-                    ],
-                  ),
+                      ],
+                    ),
+                  ] else
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(
+                          flex: 4,
+                          child: draft.isStockItem
+                              ? CustomDropdownSearch<MedicalItemModel>(
+                                  label: 'Select Medical Inventory Item *',
+                                  hint: 'Choose medicine from stock',
+                                  prefixIcon: PhosphorIconsRegular.pill,
+                                  searchable: true,
+                                  searchHint: 'Search medicine name...',
+                                  items: _stockItems,
+                                  selectedItem: draft.selectedStockItem,
+                                  itemAsString: (item) => '${item.itemName} (${item.category} • Stock: ${item.totalStock.toStringAsFixed(0)} ${item.unit})',
+                                  compareFn: (a, b) => a.id == b.id,
+                                  onChanged: (val) {
+                                    setState(() {
+                                      draft.selectedStockItem = val;
+                                      if (val != null) {
+                                        draft.unit = val.unit;
+                                      }
+                                    });
+                                  },
+                                )
+                              : CustomTextField(
+                                  label: 'Medicine Name *',
+                                  hint: 'e.g. Melonex Plus Bolus, Intacef 3g',
+                                  controller: draft.medicineNameController,
+                                  prefixIcon: const Icon(PhosphorIconsRegular.pill, size: 18),
+                                ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          flex: 2,
+                          child: CustomTextField(
+                            label: 'Dosage *',
+                            hint: 'e.g. 15 ml, 2 Bolus',
+                            controller: draft.dosageController,
+                            prefixIcon: const Icon(PhosphorIconsRegular.scales, size: 18),
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          flex: 2,
+                          child: CustomDropdownSearch<String>(
+                            label: 'Unit',
+                            hint: 'Unit',
+                            prefixIcon: PhosphorIconsRegular.ruler,
+                            items: _medicineUnits,
+                            selectedItem: draft.unit,
+                            itemAsString: (u) => u,
+                            onChanged: (val) {
+                              if (val != null) setState(() => draft.unit = val);
+                            },
+                          ),
+                        ),
+                        const SizedBox(width: 12),
+                        Expanded(
+                          flex: 2,
+                          child: CustomDropdownSearch<String>(
+                            label: 'Route',
+                            hint: 'Route',
+                            prefixIcon: PhosphorIconsRegular.arrowsSplit,
+                            items: _medicineRoutes,
+                            selectedItem: draft.route,
+                            itemAsString: (r) => r,
+                            onChanged: (val) {
+                              if (val != null) setState(() => draft.route = val);
+                            },
+                          ),
+                        ),
+                      ],
+                    ),
                   const SizedBox(height: 14),
                   CustomTextField(
                     label: 'Administration Notes / Instructions',

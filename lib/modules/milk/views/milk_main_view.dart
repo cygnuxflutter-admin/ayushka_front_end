@@ -112,6 +112,7 @@ class MilkMainView extends GetView<MilkController> {
   }
 
   // ===========================================================================
+  // ===========================================================================
   // TABLET SCAFFOLD
   // ===========================================================================
   Widget _buildTabletScaffold(BuildContext context) {
@@ -120,10 +121,87 @@ class MilkMainView extends GetView<MilkController> {
         title: const Text('Milk Management'),
         actions: [
           const NotificationBellWidget(),
-          IconButton(
-            icon: const Icon(Icons.refresh_rounded),
-            tooltip: 'Refresh',
-            onPressed: controller.refreshAll,
+          Obx(() {
+            final isBusy = controller.isLoadingSummary.value ||
+                controller.isLoadingProduction.value ||
+                controller.isLoadingDistribution.value;
+            return IconButton(
+              icon: isBusy
+                  ? const CustomInlineLoader(size: 18, strokeWidth: 2)
+                  : const Icon(Icons.refresh_rounded),
+              tooltip: isBusy ? 'Refreshing...' : 'Refresh',
+              onPressed: isBusy ? null : controller.refreshAll,
+            );
+          }),
+          PopupMenuButton<String>(
+            tooltip: 'Quick Actions',
+            icon: const Icon(PhosphorIconsRegular.dotsThreeVertical),
+            onSelected: (val) {
+              if (val == 'single_prod') {
+                AddProductionDialog.show(context, mode: ProductionEntryMode.single);
+              } else if (val == 'bulk_prod') {
+                AddProductionDialog.show(context, mode: ProductionEntryMode.bulk);
+              } else if (val == 'distribute') {
+                AddDistributionDialog.show(context, milkDate: controller.selectedDate.value);
+              } else if (val == 'dispose') {
+                DisposeMilkDialog.show(context, milkDate: controller.selectedDateFormatted);
+              } else if (val == 'analysis') {
+                controller.runMonthlyAnalysis();
+              }
+            },
+            itemBuilder: (ctx) => [
+              PopupMenuItem(
+                value: 'single_prod',
+                child: Row(
+                  children: [
+                    const Icon(PhosphorIconsRegular.drop, size: 18, color: AppColors.primary),
+                    const SizedBox(width: 10),
+                    const Text('Single Cow Yield'),
+                  ],
+                ),
+              ),
+              PopupMenuItem(
+                value: 'bulk_prod',
+                child: Row(
+                  children: [
+                    const Icon(Icons.groups_rounded, size: 18, color: AppColors.primary),
+                    const SizedBox(width: 10),
+                    const Text('Bulk Shift Entry'),
+                  ],
+                ),
+              ),
+              PopupMenuItem(
+                value: 'distribute',
+                child: Row(
+                  children: [
+                    const Icon(PhosphorIconsRegular.truck, size: 18, color: Color(0xFFE98324)),
+                    const SizedBox(width: 10),
+                    const Text('Distribute Milk'),
+                  ],
+                ),
+              ),
+              PopupMenuItem(
+                value: 'dispose',
+                child: Row(
+                  children: [
+                    const Icon(Icons.delete_sweep_rounded, size: 18, color: AppColors.error),
+                    const SizedBox(width: 10),
+                    const Text('Dispose Spoilage'),
+                  ],
+                ),
+              ),
+              const PopupMenuDivider(),
+              PopupMenuItem(
+                value: 'analysis',
+                child: Row(
+                  children: [
+                    const Icon(Icons.insights_rounded, size: 18, color: Color(0xFF2563EB)),
+                    const SizedBox(width: 10),
+                    const Text('Run Variance Analysis'),
+                  ],
+                ),
+              ),
+            ],
           ),
         ],
       ),
@@ -131,32 +209,36 @@ class MilkMainView extends GetView<MilkController> {
         currentUser: controller.currentUser,
         onLogout: controller.logout,
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            _buildTopActionBar(context),
-            const SizedBox(height: 16),
-            _buildModuleTabs(context),
-            const SizedBox(height: 16),
-            Obx(() {
-              switch (controller.selectedTab.value) {
-                case 0:
-                  return _buildOverviewTab(context);
-                case 1:
-                  return _buildProductionTab(context);
-                case 2:
-                  return _buildDistributionTab(context);
-                case 3:
-                  return _buildFridgeStockTab(context);
-                case 4:
-                  return _buildMonthlyAlertsTab(context);
-                default:
-                  return _buildOverviewTab(context);
-              }
-            }),
-          ],
+      body: RefreshIndicator(
+        onRefresh: controller.refreshAll,
+        child: SingleChildScrollView(
+          physics: const AlwaysScrollableScrollPhysics(),
+          padding: const EdgeInsets.all(18.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              _buildTopActionBar(context),
+              const SizedBox(height: 16),
+              _buildModuleTabs(context),
+              const SizedBox(height: 16),
+              Obx(() {
+                switch (controller.selectedTab.value) {
+                  case 0:
+                    return _buildOverviewTab(context);
+                  case 1:
+                    return _buildProductionTab(context);
+                  case 2:
+                    return _buildDistributionTab(context);
+                  case 3:
+                    return _buildFridgeStockTab(context);
+                  case 4:
+                    return _buildMonthlyAlertsTab(context);
+                  default:
+                    return _buildOverviewTab(context);
+                }
+              }),
+            ],
+          ),
         ),
       ),
     );
@@ -166,47 +248,176 @@ class MilkMainView extends GetView<MilkController> {
   // MOBILE SCAFFOLD
   // ===========================================================================
   Widget _buildMobileScaffold(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('Milk Module'),
-        actions: [
-          const NotificationBellWidget(),
-          IconButton(
-            icon: const Icon(Icons.refresh_rounded),
-            onPressed: controller.refreshAll,
-          ),
-        ],
-      ),
-      drawer: MobileDrawer(
-        currentUser: controller.currentUser,
-        onLogout: controller.logout,
-      ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(12.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            _buildTopActionBar(context, isCompact: true),
-            const SizedBox(height: 12),
-            _buildModuleTabs(context, isCompact: true),
-            const SizedBox(height: 14),
+    return GestureDetector(
+      onTap: () => FocusScope.of(context).unfocus(),
+      child: Scaffold(
+        appBar: AppBar(
+          title: const Text('Milk Management'),
+          actions: [
+            const NotificationBellWidget(),
             Obx(() {
-              switch (controller.selectedTab.value) {
-                case 0:
-                  return _buildOverviewTab(context);
-                case 1:
-                  return _buildProductionTab(context);
-                case 2:
-                  return _buildDistributionTab(context);
-                case 3:
-                  return _buildFridgeStockTab(context);
-                case 4:
-                  return _buildMonthlyAlertsTab(context);
-                default:
-                  return _buildOverviewTab(context);
-              }
+              final isBusy = controller.isLoadingSummary.value ||
+                  controller.isLoadingProduction.value ||
+                  controller.isLoadingDistribution.value;
+              return IconButton(
+                icon: isBusy
+                    ? const CustomInlineLoader(size: 18, strokeWidth: 2)
+                    : const Icon(Icons.refresh_rounded),
+                tooltip: isBusy ? 'Refreshing...' : 'Refresh',
+                onPressed: isBusy ? null : controller.refreshAll,
+              );
             }),
+            PopupMenuButton<String>(
+              tooltip: 'Quick Actions',
+              icon: const Icon(PhosphorIconsRegular.dotsThreeVertical),
+              onSelected: (val) {
+                if (val == 'single_prod') {
+                  AddProductionDialog.show(context, mode: ProductionEntryMode.single);
+                } else if (val == 'bulk_prod') {
+                  AddProductionDialog.show(context, mode: ProductionEntryMode.bulk);
+                } else if (val == 'distribute') {
+                  AddDistributionDialog.show(context, milkDate: controller.selectedDate.value);
+                } else if (val == 'dispose') {
+                  DisposeMilkDialog.show(context, milkDate: controller.selectedDateFormatted);
+                } else if (val == 'analysis') {
+                  controller.runMonthlyAnalysis();
+                }
+              },
+              itemBuilder: (ctx) => [
+                PopupMenuItem(
+                  value: 'single_prod',
+                  child: Row(
+                    children: [
+                      const Icon(PhosphorIconsRegular.drop, size: 18, color: AppColors.primary),
+                      const SizedBox(width: 10),
+                      const Text('Single Cow Yield'),
+                    ],
+                  ),
+                ),
+                PopupMenuItem(
+                  value: 'bulk_prod',
+                  child: Row(
+                    children: [
+                      const Icon(Icons.groups_rounded, size: 18, color: AppColors.primary),
+                      const SizedBox(width: 10),
+                      const Text('Bulk Shift Entry'),
+                    ],
+                  ),
+                ),
+                PopupMenuItem(
+                  value: 'distribute',
+                  child: Row(
+                    children: [
+                      const Icon(PhosphorIconsRegular.truck, size: 18, color: Color(0xFFE98324)),
+                      const SizedBox(width: 10),
+                      const Text('Distribute Milk'),
+                    ],
+                  ),
+                ),
+                PopupMenuItem(
+                  value: 'dispose',
+                  child: Row(
+                    children: [
+                      const Icon(Icons.delete_sweep_rounded, size: 18, color: AppColors.error),
+                      const SizedBox(width: 10),
+                      const Text('Dispose Spoilage'),
+                    ],
+                  ),
+                ),
+                const PopupMenuDivider(),
+                PopupMenuItem(
+                  value: 'analysis',
+                  child: Row(
+                    children: [
+                      const Icon(Icons.insights_rounded, size: 18, color: Color(0xFF2563EB)),
+                      const SizedBox(width: 10),
+                      const Text('Run Variance Analysis'),
+                    ],
+                  ),
+                ),
+              ],
+            ),
           ],
+        ),
+        drawer: MobileDrawer(
+          currentUser: controller.currentUser,
+          onLogout: controller.logout,
+        ),
+        floatingActionButton: Obx(() {
+          final tab = controller.selectedTab.value;
+          switch (tab) {
+            case 1:
+              return FloatingActionButton.extended(
+                backgroundColor: AppColors.primary,
+                icon: const Icon(Icons.add_rounded, color: Colors.white),
+                label: const Text('Add Yield', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                onPressed: () => AddProductionDialog.show(
+                  context,
+                  mode: ProductionEntryMode.single,
+                  shift: controller.productionShift.value,
+                ),
+              );
+            case 2:
+              return FloatingActionButton.extended(
+                backgroundColor: const Color(0xFFE98324),
+                icon: const Icon(PhosphorIconsRegular.truck, color: Colors.white),
+                label: const Text('Distribute', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                onPressed: () => AddDistributionDialog.show(
+                  context,
+                  milkDate: controller.selectedDate.value,
+                ),
+              );
+            case 3:
+              return FloatingActionButton.extended(
+                backgroundColor: AppColors.error,
+                icon: const Icon(Icons.delete_sweep_rounded, color: Colors.white),
+                label: const Text('Dispose', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                onPressed: () => DisposeMilkDialog.show(
+                  context,
+                  milkDate: controller.selectedDateFormatted,
+                ),
+              );
+            default:
+              return FloatingActionButton.extended(
+                backgroundColor: AppColors.primary,
+                icon: const Icon(Icons.add_rounded, color: Colors.white),
+                label: const Text('Record Milk', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                onPressed: () => _showQuickActionModal(context),
+              );
+          }
+        }),
+        body: RefreshIndicator(
+          onRefresh: controller.refreshAll,
+          child: SingleChildScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: const EdgeInsets.symmetric(horizontal: 12.0, vertical: 14.0),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                _buildTopActionBar(context, isCompact: true),
+                const SizedBox(height: 12),
+                _buildModuleTabs(context, isCompact: true),
+                const SizedBox(height: 14),
+                Obx(() {
+                  switch (controller.selectedTab.value) {
+                    case 0:
+                      return _buildOverviewTab(context, isCompact: true);
+                    case 1:
+                      return _buildProductionTab(context);
+                    case 2:
+                      return _buildDistributionTab(context);
+                    case 3:
+                      return _buildFridgeStockTab(context);
+                    case 4:
+                      return _buildMonthlyAlertsTab(context);
+                    default:
+                      return _buildOverviewTab(context, isCompact: true);
+                  }
+                }),
+                const SizedBox(height: 70), // FloatingActionButton clearance
+              ],
+            ),
+          ),
         ),
       ),
     );
@@ -296,6 +507,7 @@ class MilkMainView extends GetView<MilkController> {
   }
 
   // ===========================================================================
+  // ===========================================================================
   // TOP ACTION BAR (Date Navigator & Quick Actions)
   // ===========================================================================
   Widget _buildTopActionBar(BuildContext context, {bool isCompact = false}) {
@@ -313,7 +525,8 @@ class MilkMainView extends GetView<MilkController> {
           ),
         ),
         child: Row(
-          mainAxisSize: MainAxisSize.min,
+          mainAxisSize: isCompact ? MainAxisSize.max : MainAxisSize.min,
+          mainAxisAlignment: isCompact ? MainAxisAlignment.spaceBetween : MainAxisAlignment.start,
           children: [
             IconButton(
               icon: const Icon(Icons.chevron_left_rounded, size: 20),
@@ -336,6 +549,7 @@ class MilkMainView extends GetView<MilkController> {
               child: Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                 child: Row(
+                  mainAxisSize: MainAxisSize.min,
                   children: [
                     const Icon(PhosphorIconsRegular.calendar, size: 16, color: AppColors.primary),
                     const SizedBox(width: 8),
@@ -375,6 +589,55 @@ class MilkMainView extends GetView<MilkController> {
       ),
     );
 
+    if (isCompact) {
+      // In mobile view: Date navigator spans full width on top, followed by a sleek 1-row quick action strip
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          dateNavigator,
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              Expanded(
+                child: CustomButton(
+                  text: '+ Yield',
+                  icon: PhosphorIconsRegular.drop,
+                  height: 38,
+                  onPressed: () => AddProductionDialog.show(context, mode: ProductionEntryMode.single),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: CustomButton(
+                  text: '+ Distribute',
+                  icon: PhosphorIconsRegular.truck,
+                  variant: ButtonVariant.secondary,
+                  height: 38,
+                  onPressed: () => AddDistributionDialog.show(
+                    context,
+                    milkDate: controller.selectedDate.value,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: CustomButton(
+                  text: '+ Waste',
+                  icon: Icons.delete_sweep_rounded,
+                  variant: ButtonVariant.outlined,
+                  height: 38,
+                  onPressed: () => DisposeMilkDialog.show(
+                    context,
+                    milkDate: controller.selectedDateFormatted,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      );
+    }
+
     final actionButtons = Wrap(
       spacing: 10,
       runSpacing: 10,
@@ -405,23 +668,26 @@ class MilkMainView extends GetView<MilkController> {
       ],
     );
 
-    if (isCompact) {
-      return Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          dateNavigator,
-          const SizedBox(height: 10),
-          actionButtons,
-        ],
-      );
-    }
-
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        dateNavigator,
-        actionButtons,
-      ],
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        if (constraints.maxWidth < 720) {
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              dateNavigator,
+              const SizedBox(height: 10),
+              actionButtons,
+            ],
+          );
+        }
+        return Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            dateNavigator,
+            actionButtons,
+          ],
+        );
+      },
     );
   }
 
@@ -450,20 +716,24 @@ class MilkMainView extends GetView<MilkController> {
             color: isDark ? AppColors.borderDark : AppColors.borderLight,
           ),
         ),
-        padding: const EdgeInsets.all(6),
+        padding: EdgeInsets.all(isCompact ? 4 : 6),
         child: SingleChildScrollView(
           scrollDirection: Axis.horizontal,
+          physics: const BouncingScrollPhysics(),
           child: Row(
             children: List.generate(tabs.length, (idx) {
               final isSelected = current == idx;
               final tab = tabs[idx];
               return Padding(
-                padding: const EdgeInsets.only(right: 6),
+                padding: const EdgeInsets.only(right: 4),
                 child: InkWell(
                   borderRadius: BorderRadius.circular(8),
                   onTap: () => controller.changeTab(idx),
                   child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                    padding: EdgeInsets.symmetric(
+                      horizontal: isCompact ? 12 : 16,
+                      vertical: isCompact ? 8 : 10,
+                    ),
                     decoration: BoxDecoration(
                       color: isSelected
                           ? AppColors.primary
@@ -475,16 +745,16 @@ class MilkMainView extends GetView<MilkController> {
                       children: [
                         Icon(
                           tab['icon'] as IconData,
-                          size: 17,
+                          size: isCompact ? 15 : 17,
                           color: isSelected
                               ? Colors.white
                               : (isDark ? AppColors.textMutedDark : AppColors.textSecondaryLight),
                         ),
-                        const SizedBox(width: 8),
+                        const SizedBox(width: 7),
                         Text(
                           tab['title'] as String,
                           style: TextStyle(
-                            fontSize: 13,
+                            fontSize: isCompact ? 12 : 13,
                             fontWeight: isSelected ? FontWeight.bold : FontWeight.w500,
                             color: isSelected
                                 ? Colors.white
@@ -506,7 +776,7 @@ class MilkMainView extends GetView<MilkController> {
   // ===========================================================================
   // TAB 1: DAILY OVERVIEW & BALANCE SHEET
   // ===========================================================================
-  Widget _buildOverviewTab(BuildContext context) {
+  Widget _buildOverviewTab(BuildContext context, {bool isCompact = false}) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
 
@@ -528,7 +798,7 @@ class MilkMainView extends GetView<MilkController> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           // Summary Metrics Cards (Herd & Cattle Style with Hover Lift & Glow)
-          _buildMetricCards(context, prod, dist, disp, stock),
+          _buildMetricCards(context, prod, dist, disp, stock, isCompact: isCompact),
           const SizedBox(height: 18),
 
           // In-App Milk Production Variance & Alerts Banner on Dashboard
@@ -537,7 +807,7 @@ class MilkMainView extends GetView<MilkController> {
 
           // Daily Balance Sheet Visual Progression Card
           Container(
-            padding: const EdgeInsets.all(22),
+            padding: EdgeInsets.all(isCompact ? 16 : 22),
             decoration: BoxDecoration(
               color: isDark ? AppColors.surfaceDark : Colors.white,
               borderRadius: BorderRadius.circular(12),
@@ -548,55 +818,101 @@ class MilkMainView extends GetView<MilkController> {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Wrap(
-                  spacing: 12,
-                  runSpacing: 10,
-                  alignment: WrapAlignment.spaceBetween,
-                  crossAxisAlignment: WrapCrossAlignment.center,
-                  children: [
-                    Row(
-                      mainAxisSize: MainAxisSize.min,
+                LayoutBuilder(
+                  builder: (context, constraints) {
+                    final isSmall = constraints.maxWidth < 650;
+                    if (isSmall) {
+                      return Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              const Icon(PhosphorIconsRegular.scales, color: AppColors.primary, size: 20),
+                              const SizedBox(width: 8),
+                              const Expanded(
+                                child: Text(
+                                  'Daily Milk Balance Flow',
+                                  style: TextStyle(fontSize: 15.5, fontWeight: FontWeight.bold),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 8),
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: AppColors.primary.withValues(alpha: 0.12),
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Text(
+                              '${controller.selectedDateDisplay}  •  Morning: ${stock.morningAvailable} L  |  Evening: ${stock.eveningAvailable} L',
+                              style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.bold, color: AppColors.primary),
+                            ),
+                          ),
+                        ],
+                      );
+                    }
+                    return Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
-                        const Icon(PhosphorIconsRegular.scales, color: AppColors.primary, size: 20),
-                        const SizedBox(width: 8),
-                        Flexible(
+                        Row(
+                          children: [
+                            const Icon(PhosphorIconsRegular.scales, color: AppColors.primary, size: 20),
+                            const SizedBox(width: 8),
+                            Text(
+                              'Daily Milk Balance Flow (${controller.selectedDateDisplay})',
+                              style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                            ),
+                          ],
+                        ),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                          decoration: BoxDecoration(
+                            color: AppColors.primary.withValues(alpha: 0.12),
+                            borderRadius: BorderRadius.circular(6),
+                          ),
                           child: Text(
-                            'Daily Milk Balance Flow (${controller.selectedDateDisplay})',
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                            'Morning Avail: ${stock.morningAvailable} L  |  Evening Avail: ${stock.eveningAvailable} L',
+                            style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.primary),
                           ),
                         ),
                       ],
-                    ),
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: AppColors.primary.withValues(alpha: 0.12),
-                        borderRadius: BorderRadius.circular(6),
-                      ),
-                      child: Text(
-                        'Morning Avail: ${stock.morningAvailable} L  |  Evening Avail: ${stock.eveningAvailable} L',
-                        style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.primary),
-                      ),
-                    ),
-                  ],
+                    );
+                  },
                 ),
-                const SizedBox(height: 20),
+                const SizedBox(height: 18),
 
-                // Mathematical Flow Row
+                // Mathematical Flow Row (2x2 grid on mobile, row on tablet/desktop)
                 LayoutBuilder(
                   builder: (context, constraints) {
                     final isSmall = constraints.maxWidth < 650;
                     if (isSmall) {
                       return Column(
                         children: [
-                          _buildBalanceFlowItem('Produced', '${prod.totalProduced} L', const Color(0xFF384C28)),
-                          const Icon(Icons.remove, size: 20),
-                          _buildBalanceFlowItem('Distributed', '${dist.totalDistributed} L', const Color(0xFFE98324)),
-                          const Icon(Icons.remove, size: 20),
-                          _buildBalanceFlowItem('Disposed', '${disp.totalDisposed} L', AppColors.error),
-                          const Icon(Icons.drag_handle, size: 20),
-                          _buildBalanceFlowItem('Remaining Fridge', '${stock.remainingFridgeMilk} L', const Color(0xFF2563EB)),
+                          Row(
+                            children: [
+                              Expanded(child: _buildBalanceFlowItem('Produced', '${prod.totalProduced} L', const Color(0xFF384C28))),
+                              const Padding(
+                                padding: EdgeInsets.symmetric(horizontal: 4),
+                                child: Icon(Icons.remove_rounded, color: Colors.grey, size: 20),
+                              ),
+                              Expanded(child: _buildBalanceFlowItem('Distributed', '${dist.totalDistributed} L', const Color(0xFFE98324))),
+                            ],
+                          ),
+                          const Padding(
+                            padding: EdgeInsets.symmetric(vertical: 4),
+                            child: Icon(Icons.remove_rounded, color: Colors.grey, size: 20),
+                          ),
+                          Row(
+                            children: [
+                              Expanded(child: _buildBalanceFlowItem('Disposed', '${disp.totalDisposed} L', AppColors.error)),
+                              const Padding(
+                                padding: EdgeInsets.symmetric(horizontal: 4),
+                                child: Icon(Icons.drag_handle_rounded, color: Colors.grey, size: 20),
+                              ),
+                              Expanded(child: _buildBalanceFlowItem('Remaining Fridge', '${stock.remainingFridgeMilk} L', const Color(0xFF2563EB))),
+                            ],
+                          ),
                         ],
                       );
                     }
@@ -622,7 +938,7 @@ class MilkMainView extends GetView<MilkController> {
                     );
                   },
                 ),
-                const SizedBox(height: 20),
+                const SizedBox(height: 18),
 
                 // Shift-wise Breakdown Details
                 LayoutBuilder(
@@ -729,9 +1045,11 @@ class MilkMainView extends GetView<MilkController> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     final tile1 = _HoverableMetricTile(
-      title: 'Total Day Produced',
+      title: isCompact ? 'Total Produced' : 'Total Day Produced',
       value: '${prod.totalProduced.toStringAsFixed(1)} L',
-      subtitle: '${prod.totalCowsCount} cows (${prod.morningCowsCount}M + ${prod.eveningCowsCount}E)',
+      subtitle: isCompact
+          ? '${prod.totalCowsCount} cows (${prod.morningCowsCount}M+${prod.eveningCowsCount}E)'
+          : '${prod.totalCowsCount} cows (${prod.morningCowsCount}M + ${prod.eveningCowsCount}E)',
       icon: PhosphorIconsRegular.drop,
       color: AppColors.primary,
       isDark: isDark,
@@ -740,9 +1058,11 @@ class MilkMainView extends GetView<MilkController> {
     );
 
     final tile2 = _HoverableMetricTile(
-      title: 'Total Distributed',
+      title: isCompact ? 'Distributed' : 'Total Distributed',
       value: '${dist.totalDistributed.toStringAsFixed(1)} L',
-      subtitle: 'Revenue: ₹ ${dist.totalRevenue.toStringAsFixed(0)}',
+      subtitle: isCompact
+          ? '₹ ${dist.totalRevenue.toStringAsFixed(0)} rev'
+          : 'Revenue: ₹ ${dist.totalRevenue.toStringAsFixed(0)}',
       icon: PhosphorIconsRegular.truck,
       color: const Color(0xFFE98324),
       isDark: isDark,
@@ -751,9 +1071,9 @@ class MilkMainView extends GetView<MilkController> {
     );
 
     final tile3 = _HoverableMetricTile(
-      title: 'Fridge Leftover Stock',
+      title: isCompact ? 'Fridge Stock' : 'Fridge Leftover Stock',
       value: '${stock.remainingFridgeMilk.toStringAsFixed(1)} L',
-      subtitle: 'Available in fridge pool',
+      subtitle: isCompact ? 'Chiller pool' : 'Available in fridge pool',
       icon: Icons.kitchen_rounded,
       color: const Color(0xFF2563EB),
       isDark: isDark,
@@ -762,9 +1082,9 @@ class MilkMainView extends GetView<MilkController> {
     );
 
     final tile4 = _HoverableMetricTile(
-      title: 'Total Disposed / Waste',
+      title: isCompact ? 'Disposed Waste' : 'Total Disposed / Waste',
       value: '${disp.totalDisposed.toStringAsFixed(1)} L',
-      subtitle: 'Spoiled/sour write-off',
+      subtitle: isCompact ? 'Spoiled write-off' : 'Spoiled/sour write-off',
       icon: Icons.delete_sweep_rounded,
       color: AppColors.error,
       isDark: isDark,
@@ -872,88 +1192,88 @@ class MilkMainView extends GetView<MilkController> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  Expanded(
-                    child: Row(
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.all(10),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFE98324),
-                            borderRadius: BorderRadius.circular(10),
-                            boxShadow: [
-                              BoxShadow(
-                                color: const Color(0xFFE98324).withValues(alpha: 0.35),
-                                blurRadius: 8,
-                                offset: const Offset(0, 3),
-                              ),
-                            ],
-                          ),
-                          child: const Icon(
-                            Icons.crisis_alert_rounded,
-                            color: Colors.white,
-                            size: 22,
-                          ),
+              LayoutBuilder(
+                builder: (context, constraints) {
+                  final isCompact = constraints.maxWidth < 720;
+                  final headerText = Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFE98324),
+                          borderRadius: BorderRadius.circular(10),
+                          boxShadow: [
+                            BoxShadow(
+                              color: const Color(0xFFE98324).withValues(alpha: 0.35),
+                              blurRadius: 8,
+                              offset: const Offset(0, 3),
+                            ),
+                          ],
                         ),
-                        const SizedBox(width: 14),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(
-                                children: [
-                                  const Text(
-                                    'Milk Production Alerts & Drop Warnings',
-                                    style: TextStyle(
-                                      fontSize: 15.5,
-                                      fontWeight: FontWeight.w800,
-                                      letterSpacing: -0.2,
-                                    ),
+                        child: const Icon(
+                          Icons.crisis_alert_rounded,
+                          color: Colors.white,
+                          size: 22,
+                        ),
+                      ),
+                      const SizedBox(width: 14),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Wrap(
+                              spacing: 10,
+                              runSpacing: 6,
+                              crossAxisAlignment: WrapCrossAlignment.center,
+                              children: [
+                                const Text(
+                                  'Milk Production Alerts & Drop Warnings',
+                                  style: TextStyle(
+                                    fontSize: 15.5,
+                                    fontWeight: FontWeight.w800,
+                                    letterSpacing: -0.2,
                                   ),
-                                  const SizedBox(width: 10),
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                                    decoration: BoxDecoration(
-                                      color: const Color(0xFFD32F2F),
-                                      borderRadius: BorderRadius.circular(12),
-                                    ),
-                                    child: Row(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        const Icon(Icons.warning_amber_rounded, size: 12, color: Colors.white),
-                                        const SizedBox(width: 4),
-                                        Text(
-                                          '${alerts.length} ACTIVE ALERT${alerts.length > 1 ? 'S' : ''}',
-                                          style: const TextStyle(
-                                            fontSize: 10.5,
-                                            fontWeight: FontWeight.bold,
-                                            color: Colors.white,
-                                            letterSpacing: 0.3,
-                                          ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              const SizedBox(height: 3),
-                              Text(
-                                'Cows exhibiting yield fluctuations ≥ ±10%. Click any alert to view diagnosis & metrics.',
-                                style: TextStyle(
-                                  fontSize: 12.5,
-                                  color: isDark ? AppColors.textMutedDark : AppColors.textSecondaryLight,
                                 ),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFFD32F2F),
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  child: Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      const Icon(Icons.warning_amber_rounded, size: 12, color: Colors.white),
+                                      const SizedBox(width: 4),
+                                      Text(
+                                        '${alerts.length} ACTIVE ALERT${alerts.length > 1 ? 'S' : ''}',
+                                        style: const TextStyle(
+                                          fontSize: 10.5,
+                                          fontWeight: FontWeight.bold,
+                                          color: Colors.white,
+                                          letterSpacing: 0.3,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 3),
+                            Text(
+                              'Cows exhibiting yield fluctuations ≥ ±10%. Click any alert to view diagnosis & metrics.',
+                              style: TextStyle(
+                                fontSize: 12.5,
+                                color: isDark ? AppColors.textMutedDark : AppColors.textSecondaryLight,
                               ),
-                            ],
-                          ),
+                            ),
+                          ],
                         ),
-                      ],
-                    ),
-                  ),
-                  const SizedBox(width: 14),
-                  Wrap(
+                      ),
+                    ],
+                  );
+
+                  final actionButtons = Wrap(
                     spacing: 8,
                     runSpacing: 8,
                     children: [
@@ -973,8 +1293,28 @@ class MilkMainView extends GetView<MilkController> {
                         onPressed: () => controller.changeTab(4),
                       ),
                     ],
-                  ),
-                ],
+                  );
+
+                  if (isCompact) {
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        headerText,
+                        const SizedBox(height: 14),
+                        actionButtons,
+                      ],
+                    );
+                  }
+
+                  return Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      Expanded(child: headerText),
+                      const SizedBox(width: 14),
+                      actionButtons,
+                    ],
+                  );
+                },
               ),
               const SizedBox(height: 14),
               Divider(
@@ -1077,6 +1417,7 @@ class MilkMainView extends GetView<MilkController> {
         ),
         borderRadius: BorderRadius.circular(10),
         child: Container(
+          width: double.infinity,
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
           decoration: BoxDecoration(
             color: isDark ? const Color(0xFF1E281E) : Colors.white,
@@ -1096,31 +1437,30 @@ class MilkMainView extends GetView<MilkController> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              // Top line: Alert Icon, Cow Tag, Drop Badge, and TimeAgo on the far right
               Row(
                 crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
-                  Container(
-                    padding: const EdgeInsets.all(6),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFD32F2F).withValues(alpha: 0.12),
-                      borderRadius: BorderRadius.circular(6),
-                    ),
-                    child: const Icon(
-                      Icons.crisis_alert_rounded,
-                      size: 16,
-                      color: Color(0xFFD32F2F),
-                    ),
-                  ),
-                  const SizedBox(width: 10),
                   Expanded(
                     child: Wrap(
-                      spacing: 8,
-                      runSpacing: 6,
                       crossAxisAlignment: WrapCrossAlignment.center,
+                      spacing: 6,
+                      runSpacing: 4,
                       children: [
-                        // Cow Tag
                         Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                          padding: const EdgeInsets.all(5),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFD32F2F).withValues(alpha: 0.12),
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: const Icon(
+                            Icons.crisis_alert_rounded,
+                            size: 15,
+                            color: Color(0xFFD32F2F),
+                          ),
+                        ),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
                           decoration: BoxDecoration(
                             color: AppColors.primary.withValues(alpha: 0.1),
                             borderRadius: BorderRadius.circular(6),
@@ -1137,11 +1477,9 @@ class MilkMainView extends GetView<MilkController> {
                             ),
                           ),
                         ),
-
-                        // Drop Badge
                         if (parsed.dropPercent != null)
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 3),
                             decoration: BoxDecoration(
                               color: const Color(0xFFFDE8E8),
                               borderRadius: BorderRadius.circular(6),
@@ -1154,14 +1492,14 @@ class MilkMainView extends GetView<MilkController> {
                               children: [
                                 const Icon(
                                   Icons.trending_down_rounded,
-                                  size: 13,
+                                  size: 12,
                                   color: Color(0xFFD32F2F),
                                 ),
                                 const SizedBox(width: 3),
                                 Text(
                                   parsed.dropPercent!,
                                   style: const TextStyle(
-                                    fontSize: 11,
+                                    fontSize: 10.5,
                                     fontWeight: FontWeight.bold,
                                     color: Color(0xFFD32F2F),
                                   ),
@@ -1169,8 +1507,33 @@ class MilkMainView extends GetView<MilkController> {
                               ],
                             ),
                           ),
+                      ],
+                    ),
+                  ),
+                  if (notif.timeAgo.isNotEmpty) ...[
+                    const SizedBox(width: 8),
+                    Text(
+                      notif.timeAgo,
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: isDark ? AppColors.textMutedDark : AppColors.textMutedLight,
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+              const SizedBox(height: 8),
 
-                        // Shift Badge
+              // Middle line: Shift Badge, Yield Transition, and View Details button
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Expanded(
+                    child: Wrap(
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      spacing: 6,
+                      runSpacing: 4,
+                      children: [
                         if (parsed.shift != null)
                           Container(
                             padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
@@ -1187,8 +1550,6 @@ class MilkMainView extends GetView<MilkController> {
                               ),
                             ),
                           ),
-
-                        // Yield breakdown
                         if (parsed.currentYield != null && parsed.priorYield != null)
                           Text(
                             '(${parsed.priorYield} ➔ ${parsed.currentYield})',
@@ -1201,18 +1562,9 @@ class MilkMainView extends GetView<MilkController> {
                       ],
                     ),
                   ),
-                  const SizedBox(width: 10),
-                  if (notif.timeAgo.isNotEmpty)
-                    Text(
-                      notif.timeAgo,
-                      style: TextStyle(
-                        fontSize: 11,
-                        color: isDark ? AppColors.textMutedDark : AppColors.textMutedLight,
-                      ),
-                    ),
                   const SizedBox(width: 8),
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                     decoration: BoxDecoration(
                       color: const Color(0xFFE98324).withValues(alpha: 0.12),
                       borderRadius: BorderRadius.circular(6),
@@ -1231,7 +1583,7 @@ class MilkMainView extends GetView<MilkController> {
                         SizedBox(width: 3),
                         Icon(
                           Icons.open_in_new_rounded,
-                          size: 12,
+                          size: 11,
                           color: Color(0xFFE98324),
                         ),
                       ],
@@ -1240,18 +1592,17 @@ class MilkMainView extends GetView<MilkController> {
                 ],
               ),
               const SizedBox(height: 8),
-              Padding(
-                padding: const EdgeInsets.only(left: 32),
-                child: Text(
-                  notif.message,
-                  style: TextStyle(
-                    fontSize: 12.5,
-                    height: 1.35,
-                    color: isDark ? AppColors.textPrimaryDark : const Color(0xFF2E3A28),
-                  ),
-                  maxLines: 2,
-                  overflow: TextOverflow.ellipsis,
+
+              // Bottom line: Message description
+              Text(
+                notif.message,
+                style: TextStyle(
+                  fontSize: 12,
+                  height: 1.35,
+                  color: isDark ? AppColors.textPrimaryDark : const Color(0xFF2E3A28),
                 ),
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
               ),
             ],
           ),
@@ -1344,9 +1695,41 @@ class MilkMainView extends GetView<MilkController> {
                   return Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      shiftTabs,
+                      SingleChildScrollView(
+                        scrollDirection: Axis.horizontal,
+                        child: shiftTabs,
+                      ),
                       const SizedBox(height: 12),
-                      actionButtons,
+                      Row(
+                        children: [
+                          Expanded(
+                            child: CustomButton(
+                              text: '+ Bulk Entry',
+                              icon: Icons.groups_rounded,
+                              variant: ButtonVariant.outlined,
+                              height: 38,
+                              onPressed: () => AddProductionDialog.show(
+                                context,
+                                mode: ProductionEntryMode.bulk,
+                                shift: controller.productionShift.value,
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: CustomButton(
+                              text: '+ Single Cow',
+                              icon: Icons.add_rounded,
+                              height: 38,
+                              onPressed: () => AddProductionDialog.show(
+                                context,
+                                mode: ProductionEntryMode.single,
+                                shift: controller.productionShift.value,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
                     ],
                   );
                 }
@@ -1363,9 +1746,10 @@ class MilkMainView extends GetView<MilkController> {
           ),
           const Divider(height: 1),
 
-          // Data Table
+          // Data Table or Mobile Cards List
           LayoutBuilder(
             builder: (context, constraints) {
+              final isCardView = constraints.maxWidth < 750;
               const double minTableWidth = 980.0;
               final double tableWidth = constraints.maxWidth < minTableWidth
                   ? minTableWidth
@@ -1373,6 +1757,12 @@ class MilkMainView extends GetView<MilkController> {
 
               return Obx(() {
                 if (controller.isLoadingProduction.value) {
+                  if (isCardView) {
+                    return const Padding(
+                      padding: EdgeInsets.all(14),
+                      child: CustomListShimmer(itemCount: 4),
+                    );
+                  }
                   return SingleChildScrollView(
                     scrollDirection: Axis.horizontal,
                     child: SizedBox(
@@ -1398,7 +1788,7 @@ class MilkMainView extends GetView<MilkController> {
                 final items = controller.productionList;
                 if (items.isEmpty) {
                   return Padding(
-                    padding: const EdgeInsets.all(50),
+                    padding: const EdgeInsets.all(36),
                     child: Center(
                       child: Column(
                         mainAxisSize: MainAxisSize.min,
@@ -1420,30 +1810,29 @@ class MilkMainView extends GetView<MilkController> {
                           ),
                           const SizedBox(height: 6),
                           const Text(
-                            'Use "+ Single Cow Entry" or "+ Bulk Entry (Shift)" to record milk yields.',
+                            'Use "+ Single Cow" or "+ Bulk Entry" to record milk yields.',
                             style: TextStyle(fontSize: 13, color: AppColors.textSecondaryLight),
                           ),
                           const SizedBox(height: 18),
-                          Wrap(
-                            spacing: 12,
+                          Row(
+                            mainAxisSize: MainAxisSize.min,
                             children: [
                               CustomButton(
-                                text: '+ Bulk Entry (Shift)',
+                                text: '+ Bulk Entry',
                                 icon: Icons.groups_rounded,
                                 variant: ButtonVariant.outlined,
-                                width: 170,
-                                height: 40,
+                                height: 38,
                                 onPressed: () => AddProductionDialog.show(
                                   context,
                                   mode: ProductionEntryMode.bulk,
                                   shift: controller.productionShift.value,
                                 ),
                               ),
+                              const SizedBox(width: 8),
                               CustomButton(
-                                text: '+ Single Cow Entry',
+                                text: '+ Single Cow',
                                 icon: Icons.add_rounded,
-                                width: 170,
-                                height: 40,
+                                height: 38,
                                 onPressed: () => AddProductionDialog.show(
                                   context,
                                   mode: ProductionEntryMode.single,
@@ -1455,6 +1844,13 @@ class MilkMainView extends GetView<MilkController> {
                         ],
                       ),
                     ),
+                  );
+                }
+
+                if (isCardView) {
+                  return Padding(
+                    padding: const EdgeInsets.all(14),
+                    child: _buildProductionCardsList(context, isDark),
                   );
                 }
 
@@ -1560,29 +1956,49 @@ class MilkMainView extends GetView<MilkController> {
           // Subheader: Shift Tabs & Add Action
           Padding(
             padding: const EdgeInsets.all(18.0),
-            child: Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                // Animated Shift pills
-                _buildDistributionShiftTabs(context, isDark),
-
-                // Add Distribution Button
-                CustomButton(
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final isMobile = constraints.maxWidth < 620;
+                final shiftTabs = _buildDistributionShiftTabs(context, isDark);
+                final actionBtn = CustomButton(
                   text: '+ Record Distribution',
                   icon: PhosphorIconsRegular.truck,
                   onPressed: () => AddDistributionDialog.show(
                     context,
                     milkDate: controller.selectedDate.value,
                   ),
-                ),
-              ],
+                );
+
+                if (isMobile) {
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      SingleChildScrollView(
+                        scrollDirection: Axis.horizontal,
+                        child: shiftTabs,
+                      ),
+                      const SizedBox(height: 12),
+                      actionBtn,
+                    ],
+                  );
+                }
+
+                return Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    shiftTabs,
+                    actionBtn,
+                  ],
+                );
+              },
             ),
           ),
           const Divider(height: 1),
 
-          // Data Table
+          // Data Table or Mobile Cards List
           LayoutBuilder(
             builder: (context, constraints) {
+              final isCardView = constraints.maxWidth < 750;
               const double minTableWidth = 980.0;
               final double tableWidth = constraints.maxWidth < minTableWidth
                   ? minTableWidth
@@ -1590,6 +2006,12 @@ class MilkMainView extends GetView<MilkController> {
 
               return Obx(() {
                 if (controller.isLoadingDistribution.value) {
+                  if (isCardView) {
+                    return const Padding(
+                      padding: EdgeInsets.all(14),
+                      child: CustomListShimmer(itemCount: 4),
+                    );
+                  }
                   return SingleChildScrollView(
                     scrollDirection: Axis.horizontal,
                     child: SizedBox(
@@ -1616,7 +2038,7 @@ class MilkMainView extends GetView<MilkController> {
                 final items = controller.distributionList;
                 if (items.isEmpty) {
                   return Padding(
-                    padding: const EdgeInsets.all(50),
+                    padding: EdgeInsets.all(isCardView ? 24 : 50),
                     child: Center(
                       child: Column(
                         mainAxisSize: MainAxisSize.min,
@@ -1640,6 +2062,7 @@ class MilkMainView extends GetView<MilkController> {
                           const Text(
                             'Click "+ Record Distribution" to record customer sales or plant transfers.',
                             style: TextStyle(fontSize: 13, color: AppColors.textSecondaryLight),
+                            textAlign: TextAlign.center,
                           ),
                           const SizedBox(height: 18),
                           CustomButton(
@@ -1655,6 +2078,13 @@ class MilkMainView extends GetView<MilkController> {
                         ],
                       ),
                     ),
+                  );
+                }
+
+                if (isCardView) {
+                  return Padding(
+                    padding: const EdgeInsets.all(14),
+                    child: _buildDistributionCardsList(context, isDark),
                   );
                 }
 
@@ -1751,26 +2181,50 @@ class MilkMainView extends GetView<MilkController> {
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  const Row(
+              LayoutBuilder(
+                builder: (context, constraints) {
+                  final isMobile = constraints.maxWidth < 650;
+                  final titleWidget = Row(
+                    mainAxisSize: MainAxisSize.min,
                     children: [
-                      Icon(Icons.kitchen_rounded, color: Color(0xFF2563EB), size: 22),
-                      SizedBox(width: 10),
-                      Text(
-                        'Pending Leftover Milk in Fridge Pool',
-                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                      const Icon(Icons.kitchen_rounded, color: Color(0xFF2563EB), size: 22),
+                      const SizedBox(width: 10),
+                      Flexible(
+                        child: Text(
+                          'Pending Leftover Milk in Fridge Pool',
+                          style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+                          overflow: TextOverflow.ellipsis,
+                        ),
                       ),
                     ],
-                  ),
-                  CustomButton(
+                  );
+
+                  final actionBtn = CustomButton(
                     text: '+ Record Waste Disposal',
                     icon: Icons.delete_sweep_rounded,
                     variant: ButtonVariant.danger,
                     onPressed: () => DisposeMilkDialog.show(context),
-                  ),
-                ],
+                  );
+
+                  if (isMobile) {
+                    return Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        titleWidget,
+                        const SizedBox(height: 12),
+                        actionBtn,
+                      ],
+                    );
+                  }
+
+                  return Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                    children: [
+                      titleWidget,
+                      actionBtn,
+                    ],
+                  );
+                },
               ),
               const SizedBox(height: 6),
               Text(
@@ -1782,9 +2236,10 @@ class MilkMainView extends GetView<MilkController> {
               ),
               const SizedBox(height: 14),
 
-              // Fridge Table
+              // Fridge Table or Mobile Cards
               LayoutBuilder(
                 builder: (context, constraints) {
+                  final isCardView = constraints.maxWidth < 750;
                   const double minTableWidth = 850.0;
                   final double tableWidth = constraints.maxWidth < minTableWidth
                       ? minTableWidth
@@ -1792,6 +2247,12 @@ class MilkMainView extends GetView<MilkController> {
 
                   return Obx(() {
                     if (controller.isLoadingFridgeStock.value) {
+                      if (isCardView) {
+                        return const Padding(
+                          padding: EdgeInsets.symmetric(vertical: 8),
+                          child: CustomListShimmer(itemCount: 3),
+                        );
+                      }
                       return SingleChildScrollView(
                         scrollDirection: Axis.horizontal,
                         child: SizedBox(
@@ -1816,9 +2277,19 @@ class MilkMainView extends GetView<MilkController> {
                     final stocks = controller.fridgeStockList;
                     if (stocks.isEmpty) {
                       return Container(
-                        padding: const EdgeInsets.all(32),
+                        padding: EdgeInsets.all(isCardView ? 24 : 32),
                         alignment: Alignment.center,
-                        child: const Text('All past milk batches are distributed or accounted for. No pending fridge stock.'),
+                        child: const Text(
+                          'All past milk batches are distributed or accounted for. No pending fridge stock.',
+                          textAlign: TextAlign.center,
+                        ),
+                      );
+                    }
+
+                    if (isCardView) {
+                      return Padding(
+                        padding: const EdgeInsets.only(top: 8),
+                        child: _buildFridgeStockCardsList(context, isDark),
                       );
                     }
 
@@ -1905,6 +2376,7 @@ class MilkMainView extends GetView<MilkController> {
 
               LayoutBuilder(
                 builder: (context, constraints) {
+                  final isCardView = constraints.maxWidth < 750;
                   const double minTableWidth = 920.0;
                   final double tableWidth = constraints.maxWidth < minTableWidth
                       ? minTableWidth
@@ -1912,6 +2384,12 @@ class MilkMainView extends GetView<MilkController> {
 
                   return Obx(() {
                     if (controller.isLoadingDisposal.value) {
+                      if (isCardView) {
+                        return const Padding(
+                          padding: EdgeInsets.all(14),
+                          child: CustomListShimmer(itemCount: 3),
+                        );
+                      }
                       return SingleChildScrollView(
                         scrollDirection: Axis.horizontal,
                         child: SizedBox(
@@ -1935,9 +2413,21 @@ class MilkMainView extends GetView<MilkController> {
 
                     final disposals = controller.disposalList;
                     if (disposals.isEmpty) {
-                      return const Padding(
-                        padding: EdgeInsets.all(36),
-                        child: Center(child: Text('No milk disposals recorded.')),
+                      return Padding(
+                        padding: EdgeInsets.all(isCardView ? 24 : 36),
+                        child: const Center(
+                          child: Text(
+                            'No milk disposals recorded.',
+                            textAlign: TextAlign.center,
+                          ),
+                        ),
+                      );
+                    }
+
+                    if (isCardView) {
+                      return Padding(
+                        padding: const EdgeInsets.all(14),
+                        child: _buildDisposalCardsList(context, isDark),
                       );
                     }
 
@@ -2029,10 +2519,10 @@ class MilkMainView extends GetView<MilkController> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           // Header & Trigger Analysis
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Row(
+          LayoutBuilder(
+            builder: (context, constraints) {
+              final isMobile = constraints.maxWidth < 680;
+              final headerInfo = Row(
                 children: [
                   Container(
                     padding: const EdgeInsets.all(10),
@@ -2047,35 +2537,56 @@ class MilkMainView extends GetView<MilkController> {
                     ),
                   ),
                   const SizedBox(width: 12),
-                  Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      const Text(
-                        'Monthly Variance Analysis & In-App Alerts',
-                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                      ),
-                      Text(
-                        'Monitors cows with production fluctuations ≥ ±10% to catch health issues early.',
-                        style: TextStyle(
-                          fontSize: 12,
-                          color: isDark ? AppColors.textMutedDark : AppColors.textMutedLight,
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'Monthly Variance Analysis & In-App Alerts',
+                          style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
                         ),
-                      ),
-                    ],
+                        Text(
+                          'Monitors cows with production fluctuations ≥ ±10% to catch health issues early.',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: isDark ? AppColors.textMutedDark : AppColors.textMutedLight,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ],
-              ),
+              );
 
-              // Action Trigger
-              Obx(
+              final actionBtn = Obx(
                 () => CustomButton(
                   text: 'Run Monthly Analysis',
                   icon: Icons.play_arrow_rounded,
                   isLoading: controller.isCheckingMonthlyAlerts.value,
                   onPressed: () => controller.runMonthlyAnalysis(),
                 ),
-              ),
-            ],
+              );
+
+              if (isMobile) {
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    headerInfo,
+                    const SizedBox(height: 14),
+                    actionBtn,
+                  ],
+                );
+              }
+
+              return Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Expanded(child: headerInfo),
+                  const SizedBox(width: 14),
+                  actionBtn,
+                ],
+              );
+            },
           ),
           const SizedBox(height: 18),
           const Divider(height: 1),
@@ -2272,6 +2783,949 @@ class MilkMainView extends GetView<MilkController> {
           ),
         ),
       ),
+    );
+  }
+
+  // ===========================================================================
+  // MOBILE / TABLET CARDS LISTS & ACTIONS (HERD & CATTLE PATTERN)
+  // ===========================================================================
+
+  Widget _buildProductionCardsList(BuildContext context, bool isDark) {
+    final items = controller.productionList;
+    return Column(
+      children: items.asMap().entries.map((entry) {
+        final prod = entry.value;
+        final cow = controller.findCowById(prod.cowId);
+        final worker = controller.findWorkerById(prod.workerId);
+
+        // Resolve Cow Name (never show raw mongo id)
+        String cowName = '';
+        if (prod.cowName != null &&
+            prod.cowName!.trim().isNotEmpty &&
+            !MilkProductionModel.isMongoHexId(prod.cowName)) {
+          cowName = prod.cowName!.trim();
+        } else if (cow?.calfName != null &&
+            cow!.calfName!.trim().isNotEmpty &&
+            !MilkProductionModel.isMongoHexId(cow.calfName)) {
+          cowName = cow.calfName!.trim();
+        }
+
+        // Resolve Cow Tag (never show raw mongo id)
+        String cowTag = '';
+        if (prod.cowTag.trim().isNotEmpty && !MilkProductionModel.isMongoHexId(prod.cowTag)) {
+          cowTag = prod.cowTag.trim();
+        } else if (cow?.tagId != null &&
+            cow!.tagId.trim().isNotEmpty &&
+            !MilkProductionModel.isMongoHexId(cow.tagId)) {
+          cowTag = cow.tagId.trim();
+        }
+
+        // Resolve Worker Name (never show Worker #<mongoId>)
+        String workerDisplayName = 'Assigned Worker';
+        if (prod.workerName != null &&
+            prod.workerName!.trim().isNotEmpty &&
+            !MilkProductionModel.isMongoHexId(prod.workerName) &&
+            !prod.workerName!.startsWith('Worker #')) {
+          workerDisplayName = prod.workerName!.trim();
+        } else if (worker?.name != null &&
+            worker!.name.trim().isNotEmpty &&
+            !MilkProductionModel.isMongoHexId(worker.name)) {
+          workerDisplayName = worker.name.trim();
+        }
+
+        final isMorning = prod.shift.toLowerCase() == 'morning';
+        final shiftColor = isMorning ? const Color(0xFFE98324) : const Color(0xFF4F46E5);
+        final shiftIcon = isMorning ? Icons.wb_sunny_rounded : Icons.nights_stay_rounded;
+        final shiftLabel = isMorning ? 'Morning' : 'Evening';
+
+        return _HoverableListCard(
+          margin: const EdgeInsets.only(bottom: 12),
+          child: Padding(
+            padding: const EdgeInsets.all(14),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Header row: Tag ID badge + Cow Name & Shift pill
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Expanded(
+                      child: Row(
+                        children: [
+                          if (cowTag.isNotEmpty)
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3.5),
+                              decoration: BoxDecoration(
+                                color: AppColors.primary.withValues(alpha: 0.12),
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                              child: Text(
+                                cowTag,
+                                style: const TextStyle(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.bold,
+                                  fontFamily: 'monospace',
+                                  color: AppColors.primary,
+                                ),
+                              ),
+                            ),
+                          if (cowName.isNotEmpty) ...[
+                            const SizedBox(width: 8),
+                            Flexible(
+                              child: Text(
+                                cowName,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                  fontSize: 13.5,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    // Shift pill
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3.5),
+                      decoration: BoxDecoration(
+                        color: shiftColor.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(6),
+                        border: Border.all(
+                          color: shiftColor.withValues(alpha: 0.3),
+                          width: 0.8,
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(shiftIcon, size: 12, color: shiftColor),
+                          const SizedBox(width: 4),
+                          Text(
+                            shiftLabel,
+                            style: TextStyle(
+                              fontSize: 11.5,
+                              fontWeight: FontWeight.bold,
+                              color: shiftColor,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+
+                // Middle: Quantity stat & Alert badge
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(6),
+                          decoration: BoxDecoration(
+                            color: AppColors.primary.withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: const Icon(PhosphorIconsRegular.drop, size: 18, color: AppColors.primary),
+                        ),
+                        const SizedBox(width: 8),
+                        Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Text(
+                              'YIELD',
+                              style: TextStyle(
+                                fontSize: 10,
+                                fontWeight: FontWeight.bold,
+                                color: isDark ? AppColors.textMutedDark : AppColors.textMutedLight,
+                                letterSpacing: 0.5,
+                              ),
+                            ),
+                            Text(
+                              '${prod.quantity.toStringAsFixed(1)} L',
+                              style: TextStyle(
+                                fontSize: 18,
+                                fontWeight: FontWeight.w800,
+                                color: isDark ? AppColors.textPrimaryDark : AppColors.textPrimaryLight,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                    // Status Badge
+                    prod.alertGenerated || (prod.variance != null && prod.variance!.abs() >= 10)
+                        ? Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: AppColors.warningBg,
+                              borderRadius: BorderRadius.circular(6),
+                              border: Border.all(color: AppColors.warning.withValues(alpha: 0.4), width: 0.8),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const Icon(Icons.warning_amber_rounded, size: 14, color: AppColors.warning),
+                                const SizedBox(width: 4),
+                                Text(
+                                  prod.variance != null ? '${prod.variance!.toStringAsFixed(1)}%' : 'Alert',
+                                  style: const TextStyle(
+                                    fontSize: 11.5,
+                                    fontWeight: FontWeight.bold,
+                                    color: AppColors.warning,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          )
+                        : Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                            decoration: BoxDecoration(
+                              color: AppColors.primary.withValues(alpha: 0.10),
+                              borderRadius: BorderRadius.circular(6),
+                              border: Border.all(color: AppColors.primary.withValues(alpha: 0.25), width: 0.8),
+                            ),
+                            child: const Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(Icons.check_circle_outline_rounded, size: 13, color: AppColors.primary),
+                                SizedBox(width: 4),
+                                Text(
+                                  'Normal',
+                                  style: TextStyle(color: AppColors.primary, fontSize: 11.5, fontWeight: FontWeight.bold),
+                                ),
+                              ],
+                            ),
+                          ),
+                  ],
+                ),
+                const SizedBox(height: 10),
+                const Divider(height: 1),
+                const SizedBox(height: 8),
+
+                // Footer: Worker name & Remarks
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Expanded(
+                      child: Row(
+                        children: [
+                          Icon(
+                            PhosphorIconsRegular.user,
+                            size: 13,
+                            color: isDark ? AppColors.textMutedDark : AppColors.textMutedLight,
+                          ),
+                          const SizedBox(width: 5),
+                          Flexible(
+                            child: Text(
+                              workerDisplayName,
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                fontSize: 11.5,
+                                color: isDark ? AppColors.textMutedDark : AppColors.textSecondaryLight,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    if (prod.remarks?.isNotEmpty == true) ...[
+                      const SizedBox(width: 8),
+                      Flexible(
+                        child: Text(
+                          prod.remarks!,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontStyle: FontStyle.italic,
+                            color: isDark ? AppColors.textMutedDark : AppColors.textMutedLight,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ],
+            ),
+          ),
+        );
+      }).toList(),
+    );
+  }
+
+  Widget _buildDistributionCardsList(BuildContext context, bool isDark) {
+    final items = controller.distributionList;
+    return Column(
+      children: items.asMap().entries.map((entry) {
+        final dist = entry.value;
+
+        // Resolve Recipient Name (never show raw mongo hex id)
+        String recipientDisplay = dist.recipientName.trim();
+        if (recipientDisplay.isEmpty || MilkDistributionModel.isMongoHexId(recipientDisplay)) {
+          if (dist.recipientType == 'staff') {
+            final worker = controller.findWorkerById(dist.customerId ?? recipientDisplay);
+            recipientDisplay = worker?.name ?? 'Staff Member';
+          } else {
+            recipientDisplay = dist.recipientTypeEnum.label;
+          }
+        } else if (dist.recipientType == 'staff') {
+          final worker = controller.findWorkerById(dist.customerId ?? recipientDisplay);
+          if (worker != null && worker.name.trim().isNotEmpty) {
+            recipientDisplay = worker.name.trim();
+          }
+        }
+
+        final shiftLabel = dist.isAllShiftPool
+            ? 'All Shifts (Chiller)'
+            : (dist.shift.toLowerCase() == 'morning' ? 'Morning Shift' : 'Evening Shift');
+        final shiftIcon = dist.isAllShiftPool
+            ? Icons.kitchen_rounded
+            : (dist.shift.toLowerCase() == 'morning' ? Icons.wb_sunny_rounded : Icons.nights_stay_rounded);
+        final shiftColor = dist.isAllShiftPool
+            ? const Color(0xFF2563EB)
+            : (dist.shift.toLowerCase() == 'morning' ? const Color(0xFFE98324) : const Color(0xFF4F46E5));
+
+        return _HoverableListCard(
+          margin: const EdgeInsets.only(bottom: 12),
+          child: Padding(
+            padding: const EdgeInsets.all(14),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Top: Recipient Avatar + Name & Shift Pill
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Expanded(
+                      child: Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(6),
+                            decoration: BoxDecoration(
+                              color: dist.recipientTypeEnum.color.withValues(alpha: 0.12),
+                              shape: BoxShape.circle,
+                            ),
+                            child: Icon(
+                              dist.recipientTypeEnum.icon,
+                              size: 15,
+                              color: dist.recipientTypeEnum.color,
+                            ),
+                          ),
+                          const SizedBox(width: 8),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Text(
+                                  recipientDisplay,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                    fontSize: 13.5,
+                                    fontWeight: FontWeight.bold,
+                                    color: isDark ? AppColors.textPrimaryDark : AppColors.textPrimaryLight,
+                                  ),
+                                ),
+                                Text(
+                                  dist.recipientTypeEnum.label,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    color: dist.recipientTypeEnum.color,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3.5),
+                      decoration: BoxDecoration(
+                        color: shiftColor.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(6),
+                        border: Border.all(
+                          color: shiftColor.withValues(alpha: 0.3),
+                          width: 0.8,
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(shiftIcon, size: 12, color: shiftColor),
+                          const SizedBox(width: 4),
+                          Text(
+                            shiftLabel,
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.bold,
+                              color: shiftColor,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+
+                // Middle stats: Quantity & Total Amount
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'QUANTITY',
+                          style: TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.bold,
+                            color: isDark ? AppColors.textMutedDark : AppColors.textMutedLight,
+                            letterSpacing: 0.5,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          '${dist.quantity.toStringAsFixed(1)} L',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w800,
+                            color: isDark ? AppColors.textPrimaryDark : AppColors.textPrimaryLight,
+                          ),
+                        ),
+                        if (dist.ratePerLiter > 0)
+                          Text(
+                            '₹${dist.ratePerLiter.toStringAsFixed(2)} / L',
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: isDark ? AppColors.textMutedDark : AppColors.textMutedLight,
+                            ),
+                          ),
+                      ],
+                    ),
+                    // Total Amount Badge
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF10B981).withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(
+                          color: const Color(0xFF10B981).withValues(alpha: 0.3),
+                          width: 0.8,
+                        ),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.end,
+                        children: [
+                          const Text(
+                            'TOTAL',
+                            style: TextStyle(
+                              fontSize: 9.5,
+                              fontWeight: FontWeight.bold,
+                              color: Color(0xFF059669),
+                            ),
+                          ),
+                          Text(
+                            '₹${dist.totalAmount.toStringAsFixed(2)}',
+                            style: const TextStyle(
+                              fontSize: 15,
+                              fontWeight: FontWeight.bold,
+                              color: Color(0xFF059669),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 10),
+                const Divider(height: 1),
+                const SizedBox(height: 8),
+
+                // Footer: Date + Entry Type pill + remarks
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(PhosphorIconsRegular.calendarBlank, size: 13, color: AppColors.textMutedLight),
+                        const SizedBox(width: 4),
+                        Text(
+                          dist.milkDate,
+                          style: TextStyle(
+                            fontSize: 11.5,
+                            color: isDark ? AppColors.textMutedDark : AppColors.textSecondaryLight,
+                          ),
+                        ),
+                      ],
+                    ),
+                    dist.isDelayedDistribution
+                        ? Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFEFF6FF),
+                              borderRadius: BorderRadius.circular(4),
+                              border: Border.all(color: const Color(0xFFBFDBFE), width: 0.8),
+                            ),
+                            child: const Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(Icons.kitchen_rounded, size: 11, color: Color(0xFF2563EB)),
+                                SizedBox(width: 3),
+                                Text(
+                                  'Fridge Pool',
+                                  style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.bold, color: Color(0xFF2563EB)),
+                                ),
+                              ],
+                            ),
+                          )
+                        : Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFFF0FDF4),
+                              borderRadius: BorderRadius.circular(4),
+                              border: Border.all(color: const Color(0xFFBBF7D0), width: 0.8),
+                            ),
+                            child: const Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                Icon(Icons.flash_on_rounded, size: 11, color: Color(0xFF16A34A)),
+                                SizedBox(width: 3),
+                                Text(
+                                  'Direct Shift',
+                                  style: TextStyle(fontSize: 10.5, fontWeight: FontWeight.bold, color: Color(0xFF16A34A)),
+                                ),
+                              ],
+                            ),
+                          ),
+                  ],
+                ),
+                if (dist.remarks?.isNotEmpty == true) ...[
+                  const SizedBox(height: 6),
+                  Text(
+                    dist.remarks!,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: 11,
+                      fontStyle: FontStyle.italic,
+                      color: isDark ? AppColors.textMutedDark : AppColors.textMutedLight,
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        );
+      }).toList(),
+    );
+  }
+
+  Widget _buildFridgeStockCardsList(BuildContext context, bool isDark) {
+    final stocks = controller.fridgeStockList;
+    return Column(
+      children: stocks.asMap().entries.map((entry) {
+        final item = entry.value;
+
+        return _HoverableListCard(
+          margin: const EdgeInsets.only(bottom: 12),
+          child: Padding(
+            padding: const EdgeInsets.all(14),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Top: Batch Date and Remaining In Fridge Badge
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(PhosphorIconsRegular.calendarBlank, size: 15, color: Color(0xFF2563EB)),
+                        const SizedBox(width: 6),
+                        Text(
+                          item.milkDate,
+                          style: TextStyle(
+                            fontSize: 14,
+                            fontWeight: FontWeight.bold,
+                            color: isDark ? AppColors.textPrimaryDark : AppColors.textPrimaryLight,
+                          ),
+                        ),
+                      ],
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF2563EB).withValues(alpha: 0.14),
+                        borderRadius: BorderRadius.circular(6),
+                        border: Border.all(
+                          color: const Color(0xFF2563EB).withValues(alpha: 0.35),
+                          width: 0.8,
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(Icons.kitchen_rounded, size: 13, color: Color(0xFF2563EB)),
+                          const SizedBox(width: 4),
+                          Text(
+                            '${item.remainingFridgeMilk.toStringAsFixed(1)} L Fridge',
+                            style: const TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                              color: Color(0xFF2563EB),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+
+                // Flow breakdown stats: Produced -> Distributed -> Disposed
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: isDark ? AppColors.surfaceDark : const Color(0xFFF8FAFC),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(
+                      color: isDark ? AppColors.borderDark : AppColors.borderLight,
+                      width: 0.8,
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.spaceAround,
+                    children: [
+                      Column(
+                        children: [
+                          Text(
+                            'PRODUCED',
+                            style: TextStyle(
+                              fontSize: 9.5,
+                              fontWeight: FontWeight.bold,
+                              color: isDark ? AppColors.textMutedDark : AppColors.textMutedLight,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            '${item.totalProduced.toStringAsFixed(1)} L',
+                            style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
+                          ),
+                        ],
+                      ),
+                      Container(width: 1, height: 26, color: isDark ? AppColors.borderDark : AppColors.borderLight),
+                      Column(
+                        children: [
+                          Text(
+                            'DISTRIBUTED',
+                            style: TextStyle(
+                              fontSize: 9.5,
+                              fontWeight: FontWeight.bold,
+                              color: isDark ? AppColors.textMutedDark : AppColors.textMutedLight,
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            '${item.totalDistributed.toStringAsFixed(1)} L',
+                            style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
+                          ),
+                        ],
+                      ),
+                      Container(width: 1, height: 26, color: isDark ? AppColors.borderDark : AppColors.borderLight),
+                      Column(
+                        children: [
+                          Text(
+                            'DISPOSED',
+                            style: TextStyle(
+                              fontSize: 9.5,
+                              fontWeight: FontWeight.bold,
+                              color: item.totalDisposed > 0 ? AppColors.error : (isDark ? AppColors.textMutedDark : AppColors.textMutedLight),
+                            ),
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            '${item.totalDisposed.toStringAsFixed(1)} L',
+                            style: TextStyle(
+                              fontSize: 13,
+                              fontWeight: FontWeight.bold,
+                              color: item.totalDisposed > 0 ? AppColors.error : null,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 12),
+
+                // Action button: Dispose Milk
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton.icon(
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: AppColors.errorBg,
+                      foregroundColor: AppColors.error,
+                      elevation: 0,
+                      padding: const EdgeInsets.symmetric(vertical: 8),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                      side: BorderSide(color: AppColors.error.withValues(alpha: 0.3), width: 0.8),
+                    ),
+                    icon: const Icon(Icons.delete_outline_rounded, size: 16),
+                    label: const Text('Dispose Spoiled Milk', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                    onPressed: () {
+                      DisposeMilkDialog.show(
+                        context,
+                        milkDate: item.milkDate,
+                        maxQuantity: item.remainingFridgeMilk,
+                      );
+                    },
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      }).toList(),
+    );
+  }
+
+  Widget _buildDisposalCardsList(BuildContext context, bool isDark) {
+    final disposals = controller.disposalList;
+    return Column(
+      children: disposals.asMap().entries.map((entry) {
+        final d = entry.value;
+
+        return _HoverableListCard(
+          margin: const EdgeInsets.only(bottom: 12),
+          child: Padding(
+            padding: const EdgeInsets.all(14),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(Icons.history_rounded, size: 16, color: AppColors.error),
+                        const SizedBox(width: 6),
+                        Text(
+                          'Disposed: ${d.disposalDate}',
+                          style: TextStyle(
+                            fontSize: 13,
+                            fontWeight: FontWeight.bold,
+                            color: isDark ? AppColors.textPrimaryDark : AppColors.textPrimaryLight,
+                          ),
+                        ),
+                      ],
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3.5),
+                      decoration: BoxDecoration(
+                        color: AppColors.errorBg,
+                        borderRadius: BorderRadius.circular(6),
+                        border: Border.all(color: AppColors.error.withValues(alpha: 0.3), width: 0.8),
+                      ),
+                      child: Text(
+                        '-${d.quantity.toStringAsFixed(1)} L',
+                        style: const TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                          color: AppColors.error,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Row(
+                  children: [
+                    Text(
+                      'Batch Date: ',
+                      style: TextStyle(
+                        fontSize: 11.5,
+                        color: isDark ? AppColors.textMutedDark : AppColors.textMutedLight,
+                      ),
+                    ),
+                    Text(
+                      d.milkDate,
+                      style: const TextStyle(fontSize: 11.5, fontWeight: FontWeight.w600),
+                    ),
+                    const Spacer(),
+                    if (d.reportedByName?.isNotEmpty == true) ...[
+                      Icon(PhosphorIconsRegular.user, size: 12, color: isDark ? AppColors.textMutedDark : AppColors.textMutedLight),
+                      const SizedBox(width: 4),
+                      Text(
+                        d.reportedByName!,
+                        style: TextStyle(
+                          fontSize: 11,
+                          color: isDark ? AppColors.textMutedDark : AppColors.textSecondaryLight,
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+                if (d.reason.isNotEmpty) ...[
+                  const SizedBox(height: 6),
+                  Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: isDark ? AppColors.surfaceDark : const Color(0xFFF1F5F9),
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: Text(
+                      'Reason: ${d.reason}',
+                      style: TextStyle(
+                        fontSize: 11,
+                        color: isDark ? AppColors.textMutedDark : AppColors.textSecondaryLight,
+                      ),
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+        );
+      }).toList(),
+    );
+  }
+
+  void _showQuickActionModal(BuildContext context) {
+    final theme = Theme.of(context);
+    final isDark = theme.brightness == Brightness.dark;
+
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: isDark ? AppColors.surfaceDark : Colors.white,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (ctx) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text(
+                      'Milk Quick Actions',
+                      style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold),
+                    ),
+                    IconButton(
+                      icon: const Icon(Icons.close_rounded, size: 20),
+                      onPressed: () => Navigator.of(ctx).pop(),
+                      visualDensity: VisualDensity.compact,
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                ListTile(
+                  leading: Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: AppColors.primary.withValues(alpha: 0.12),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(Icons.add_rounded, color: AppColors.primary, size: 20),
+                  ),
+                  title: const Text('Record Single Cow Yield', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
+                  subtitle: const Text('Add yield for an individual cow', style: TextStyle(fontSize: 12)),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  onTap: () {
+                    Navigator.of(ctx).pop();
+                    AddProductionDialog.show(
+                      context,
+                      mode: ProductionEntryMode.single,
+                      shift: controller.productionShift.value,
+                    );
+                  },
+                ),
+                ListTile(
+                  leading: Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF4F46E5).withValues(alpha: 0.12),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(Icons.groups_rounded, color: Color(0xFF4F46E5), size: 20),
+                  ),
+                  title: const Text('Bulk Production Entry', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
+                  subtitle: const Text('Enter milk for all cows in shed at once', style: TextStyle(fontSize: 12)),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  onTap: () {
+                    Navigator.of(ctx).pop();
+                    AddProductionDialog.show(
+                      context,
+                      mode: ProductionEntryMode.bulk,
+                      shift: controller.productionShift.value,
+                    );
+                  },
+                ),
+                ListTile(
+                  leading: Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFE98324).withValues(alpha: 0.12),
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(PhosphorIconsRegular.truck, color: Color(0xFFE98324), size: 20),
+                  ),
+                  title: const Text('Record Milk Distribution', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
+                  subtitle: const Text('Log sales, staff distribution, or calf feeding', style: TextStyle(fontSize: 12)),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  onTap: () {
+                    Navigator.of(ctx).pop();
+                    AddDistributionDialog.show(
+                      context,
+                      milkDate: controller.selectedDate.value,
+                    );
+                  },
+                ),
+                ListTile(
+                  leading: Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: AppColors.errorBg,
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(Icons.delete_sweep_rounded, color: AppColors.error, size: 20),
+                  ),
+                  title: const Text('Record Waste Disposal', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
+                  subtitle: const Text('Log curdled, spoiled, or wasted milk', style: TextStyle(fontSize: 12)),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                  onTap: () {
+                    Navigator.of(ctx).pop();
+                    DisposeMilkDialog.show(context);
+                  },
+                ),
+                const SizedBox(height: 8),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 }
@@ -3549,7 +5003,7 @@ class _HoverableMetricTileState extends State<_HoverableMetricTile> {
                   children: [
                     Text(
                       widget.title,
-                      maxLines: 1,
+                      maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
                         fontSize: widget.isCompact ? 11 : 12,
@@ -3590,3 +5044,51 @@ class _HoverableMetricTileState extends State<_HoverableMetricTile> {
     );
   }
 }
+
+/// Hoverable Card for mobile/tablet list views matching Herd & Cattle architecture
+class _HoverableListCard extends StatefulWidget {
+  final Widget child;
+  final EdgeInsetsGeometry? margin;
+  const _HoverableListCard({required this.child, this.margin});
+
+  @override
+  State<_HoverableListCard> createState() => _HoverableListCardState();
+}
+
+class _HoverableListCardState extends State<_HoverableListCard> {
+  bool _isHovered = false;
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    return MouseRegion(
+      cursor: SystemMouseCursors.click,
+      onEnter: (_) => setState(() => _isHovered = true),
+      onExit: (_) => setState(() => _isHovered = false),
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 160),
+        curve: Curves.easeInOut,
+        margin: widget.margin,
+        decoration: BoxDecoration(
+          color: Theme.of(context).cardColor,
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(
+            color: _isHovered
+                ? (isDark ? AppColors.primaryLight : AppColors.primary.withValues(alpha: 0.45))
+                : (isDark ? AppColors.borderDark : AppColors.borderLight),
+            width: _isHovered ? 1.2 : 1.0,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: _isHovered ? 0.08 : 0.03),
+              blurRadius: _isHovered ? 8 : 3,
+              offset: Offset(0, _isHovered ? 3 : 1),
+            ),
+          ],
+        ),
+        child: widget.child,
+      ),
+    );
+  }
+}
+

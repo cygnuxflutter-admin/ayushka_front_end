@@ -28,9 +28,9 @@ class AddCowScreen extends GetView<AddCowController> {
   @override
   Widget build(BuildContext context) {
     return ResponsiveLayout(
-      mobile: _buildMobileScaffold(context),
-      tablet: _buildTabletScaffold(context),
-      desktop: _buildDesktopScaffold(context),
+      mobileBuilder: (ctx) => _buildMobileScaffold(ctx),
+      tabletBuilder: (ctx) => _buildTabletScaffold(ctx),
+      desktopBuilder: (ctx) => _buildDesktopScaffold(ctx),
     );
   }
 
@@ -112,21 +112,30 @@ class AddCowScreen extends GetView<AddCowController> {
   // MOBILE SCAFFOLD
   // -------------------------------------------------------------------
   Widget _buildMobileScaffold(BuildContext context) {
+    final canPop = Navigator.canPop(context);
     return GestureDetector(
       onTap: () => FocusScope.of(context).unfocus(),
       child: Scaffold(
         appBar: AppBar(
           title: Text(controller.isEditMode ? 'Edit Cattle' : 'Add Cow'),
+          leading: canPop
+              ? IconButton(
+                  icon: const Icon(Icons.arrow_back_rounded),
+                  onPressed: () => Navigator.of(context).pop(),
+                )
+              : null,
           actions: const [
             NotificationBellWidget(),
           ],
         ),
-        drawer: Obx(
-          () => MobileDrawer(
-            currentUser: controller.currentUser.value,
-            onLogout: controller.logout,
-          ),
-        ),
+        drawer: canPop
+            ? null
+            : Obx(
+                () => MobileDrawer(
+                  currentUser: controller.currentUser.value,
+                  onLogout: controller.logout,
+                ),
+              ),
         body: SingleChildScrollView(
           padding: const EdgeInsets.symmetric(horizontal: 14.0, vertical: 12.0),
           child: _buildFormContent(context, crossAxisCount: 1),

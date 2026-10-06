@@ -11,6 +11,7 @@ import '../../core/widgets/custom_button.dart';
 import '../../core/widgets/custom_loader.dart';
 import '../../core/widgets/custom_pagination.dart';
 import '../../core/widgets/custom_shimmer.dart';
+import '../../core/widgets/mobile_list_bottom_loader.dart';
 import '../../core/widgets/global_gaushala_selector.dart';
 import '../../core/widgets/header_user_profile_badge.dart';
 import '../../data/models/treatment_model.dart';
@@ -166,21 +167,27 @@ class TreatmentListScreen extends GetView<TreatmentController> {
       ),
       body: RefreshIndicator(
         onRefresh: controller.refreshData,
-        child: SingleChildScrollView(
-          physics: const AlwaysScrollableScrollPhysics(),
-          padding: const EdgeInsets.all(16.0),
-          child: Column(
-            children: [
-              _buildTopSummaryCards(context, isCompact: true),
-              const SizedBox(height: 14),
-              _buildTodayDueBanner(context),
-              const SizedBox(height: 14),
-              _buildSearchAndFiltersMobile(context),
-              const SizedBox(height: 14),
-              _buildTreatmentsCardsList(context),
-              const SizedBox(height: 14),
-              _buildPaginationBar(context),
-            ],
+        child: NotificationListener<ScrollNotification>(
+          onNotification: (ScrollNotification scrollInfo) {
+            if (scrollInfo.metrics.pixels >= scrollInfo.metrics.maxScrollExtent - 200) {
+              controller.loadMoreMobileTreatments();
+            }
+            return false;
+          },
+          child: SingleChildScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              children: [
+                _buildTopSummaryCards(context, isCompact: true),
+                const SizedBox(height: 14),
+                _buildTodayDueBanner(context),
+                const SizedBox(height: 14),
+                _buildSearchAndFiltersMobile(context),
+                const SizedBox(height: 14),
+                _buildTreatmentsCardsList(context),
+              ],
+            ),
           ),
         ),
       ),
@@ -1401,13 +1408,14 @@ class TreatmentListScreen extends GetView<TreatmentController> {
   // ---------------------------------------------------------------------------
   Widget _buildTreatmentsCardsList(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final isMobile = ResponsiveLayout.isMobile(context);
 
     return Obx(() {
       if (controller.isLoading.value) {
         return const CustomListShimmer(itemCount: 6);
       }
 
-      final items = controller.treatments;
+      final items = isMobile ? controller.mobileTreatments : controller.treatments;
       if (items.isEmpty) {
         return Padding(
           padding: const EdgeInsets.all(40.0),
@@ -1423,23 +1431,34 @@ class TreatmentListScreen extends GetView<TreatmentController> {
         );
       }
 
-      return ListView.separated(
-        shrinkWrap: true,
-        physics: const NeverScrollableScrollPhysics(),
-        itemCount: items.length,
-        separatorBuilder: (_, index) => const SizedBox(height: 12),
-        itemBuilder: (ctx, idx) {
-          final t = items[idx];
-          return _HoverableTreatmentMobileCard(
-            key: ValueKey(t.id),
-            treatment: t,
-            isDark: isDark,
-            onView: () => controller.goToTreatmentDetails(t, context),
-            onAdministerDose: () => controller.openAdministerDoseDialog(context, t),
-            onChangeStatus: () => controller.openChangeStatusDialog(context, t),
-            onDelete: () => controller.deleteTreatment(context, t),
-          );
-        },
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          ListView.separated(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            itemCount: items.length,
+            separatorBuilder: (context, index) => const SizedBox(height: 12),
+            itemBuilder: (ctx, idx) {
+              final t = items[idx];
+              return _HoverableTreatmentMobileCard(
+                key: ValueKey(t.id),
+                treatment: t,
+                isDark: isDark,
+                onView: () => controller.goToTreatmentDetails(t, context),
+                onAdministerDose: () => controller.openAdministerDoseDialog(context, t),
+                onChangeStatus: () => controller.openChangeStatusDialog(context, t),
+                onDelete: () => controller.deleteTreatment(context, t),
+              );
+            },
+          ),
+          if (isMobile)
+            MobileListBottomLoader(
+              hasMore: controller.hasMoreMobileTreatments,
+              isLoading: controller.isLoadingMoreTreatments.value,
+              totalCount: controller.totalItems.value,
+            ),
+        ],
       );
     });
   }
@@ -1448,6 +1467,7 @@ class TreatmentListScreen extends GetView<TreatmentController> {
   // PAGINATION BAR
   // ---------------------------------------------------------------------------
   Widget _buildPaginationBar(BuildContext context) {
+    if (ResponsiveLayout.isMobile(context)) return const SizedBox.shrink();
     return Obx(
       () => CustomPagination(
         totalItems: controller.totalItems.value,

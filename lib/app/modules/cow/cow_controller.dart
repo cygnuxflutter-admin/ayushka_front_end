@@ -85,6 +85,16 @@ class CowController extends GetxController {
   // Pagination states
   final RxInt currentPage = 1.obs;
   final RxInt rowsPerPage = 5.obs;
+  final RxInt mobileLimit = 10.obs;
+
+  List<CowModel> get mobileCows => filteredCows.take(mobileLimit.value).toList();
+  bool get hasMoreMobile => mobileLimit.value < filteredCows.length;
+
+  void loadMoreMobile() {
+    if (hasMoreMobile) {
+      mobileLimit.value += 10;
+    }
+  }
 
   /// Returns true if the logged-in user can change the active gaushala
   bool get canChangeGaushala => _gaushalaService.canChangeGaushala;
@@ -112,7 +122,10 @@ class CowController extends GetxController {
   void onInit() {
     super.onInit();
     _loadUser();
-    debounce(searchQuery, (_) => currentPage.value = 1, time: const Duration(milliseconds: 150));
+    debounce(searchQuery, (_) {
+      currentPage.value = 1;
+      mobileLimit.value = 10;
+    }, time: const Duration(milliseconds: 150));
     ever(_gaushalaService.selectedGaushala, (GaushalaModel? g) {
       if (g != null && g.id.isNotEmpty && selectedGaushalaId.value != g.id) {
         onGlobalGaushalaChanged(g);

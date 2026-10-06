@@ -3,11 +3,13 @@ import 'package:get/get.dart';
 import 'package:intl/intl.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 
+import '../../../core/utils/responsive_layout.dart';
 import '../../../core/values/app_colors.dart';
 import '../../../core/values/app_constants.dart';
 import '../../../core/widgets/custom_button.dart';
 import '../../../core/widgets/custom_dropdown_search.dart';
 import '../../../core/widgets/custom_pagination.dart';
+import '../../../core/widgets/mobile_list_bottom_loader.dart';
 import '../../../data/models/medical_item_model.dart';
 import '../dialogs/transaction_details_dialog.dart';
 import '../medical_stock_controller.dart';
@@ -24,40 +26,48 @@ class StockLedgerView extends StatelessWidget {
     final controller = Get.find<MedicalStockController>();
     final dateFormat = DateFormat('dd MMM yyyy, hh:mm a');
 
-    return SingleChildScrollView(
-      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
-      child: Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: AppConstants.maxContentWidth),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              // -----------------------------------------------------------
-              // TOP HEADER
-              // -----------------------------------------------------------
-              StaggeredEntrance(
-                index: 0,
-                child: _buildHeader(context, controller),
-              ),
-              const SizedBox(height: 18),
+    return NotificationListener<ScrollNotification>(
+      onNotification: (ScrollNotification scrollInfo) {
+        if (scrollInfo.metrics.pixels >= scrollInfo.metrics.maxScrollExtent - 200) {
+          controller.loadMoreMobileLedger();
+        }
+        return false;
+      },
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: AppConstants.maxContentWidth),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                // -----------------------------------------------------------
+                // TOP HEADER
+                // -----------------------------------------------------------
+                StaggeredEntrance(
+                  index: 0,
+                  child: _buildHeader(context, controller),
+                ),
+                const SizedBox(height: 18),
 
-              // -----------------------------------------------------------
-              // FILTERS BAR (DATE RANGE, TYPE, MEDICINE)
-              // -----------------------------------------------------------
-              StaggeredEntrance(
-                index: 1,
-                child: _buildFiltersBar(context, controller),
-              ),
-              const SizedBox(height: 18),
+                // -----------------------------------------------------------
+                // FILTERS BAR (DATE RANGE, TYPE, MEDICINE)
+                // -----------------------------------------------------------
+                StaggeredEntrance(
+                  index: 1,
+                  child: _buildFiltersBar(context, controller),
+                ),
+                const SizedBox(height: 18),
 
-              // -----------------------------------------------------------
-              // LEDGER DATA TABLE
-              // -----------------------------------------------------------
-              StaggeredEntrance(
-                index: 2,
-                child: _buildLedgerTableCard(context, controller, dateFormat),
-              ),
-            ],
+                // -----------------------------------------------------------
+                // LEDGER DATA TABLE
+                // -----------------------------------------------------------
+                StaggeredEntrance(
+                  index: 2,
+                  child: _buildLedgerTableCard(context, controller, dateFormat),
+                ),
+              ],
+            ),
           ),
         ),
       ),
@@ -393,7 +403,8 @@ class StockLedgerView extends StatelessWidget {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Obx(() {
-            final paginated = controller.paginatedTransactions;
+            final isMobile = ResponsiveLayout.isMobile(context);
+            final paginated = isMobile ? controller.mobileTransactions : controller.paginatedTransactions;
 
             if (paginated.isEmpty) {
               return Padding(
@@ -415,6 +426,29 @@ class StockLedgerView extends StatelessWidget {
                     ],
                   ),
                 ),
+              );
+            }
+
+            if (isMobile) {
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  ListView.separated(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    padding: const EdgeInsets.all(12),
+                    itemCount: paginated.length,
+                    separatorBuilder: (context, index) => const SizedBox(height: 10),
+                    itemBuilder: (context, index) {
+                      final txn = paginated[index];
+                      return _buildMobileTransactionCard(context, txn, dateFormat);
+                    },
+                  ),
+                  MobileListBottomLoader(
+                    hasMore: controller.hasMoreMobileLedger,
+                    totalCount: controller.filteredTransactions.length,
+                  ),
+                ],
               );
             }
 
@@ -476,13 +510,14 @@ class StockLedgerView extends StatelessWidget {
           }),
 
           // Pagination Bar
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-            decoration: const BoxDecoration(
-              border: Border(top: BorderSide(color: AppColors.borderLight)),
-            ),
-            child: Obx(
-              () => CustomPagination(
+          Obx(() {
+            if (ResponsiveLayout.isMobile(context)) return const SizedBox.shrink();
+            return Container(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+              decoration: const BoxDecoration(
+                border: Border(top: BorderSide(color: AppColors.borderLight)),
+              ),
+              child: CustomPagination(
                 currentPage: controller.ledgerPage.value,
                 totalItems: controller.filteredTransactions.length,
                 rowsPerPage: controller.ledgerLimit.value,
@@ -492,8 +527,8 @@ class StockLedgerView extends StatelessWidget {
                   controller.ledgerPage.value = 1;
                 },
               ),
-            ),
-          ),
+            );
+          }),
         ],
       ),
     );
@@ -511,6 +546,172 @@ class StockLedgerView extends StatelessWidget {
     );
   }
 
+  Widget _buildMobileTransactionCard(
+    BuildContext context,
+    MedicalTransactionModel txn,
+    DateFormat dateFormat,
+  ) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final type = txn.typeEnum;
+    final isInward = txn.isInward;
+    final Color primaryThemeColor = isDark ? AppColors.primaryLight : AppColors.primary;
+    final Color accentColor = isInward
+        ? primaryThemeColor
+        : (txn.isDisposal ? AppColors.error : const Color(0xFFEA580C));
+    final Color badgeColor = isInward ? primaryThemeColor : type.color;
+
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: isDark ? AppColors.surfaceDark : Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: isDark ? AppColors.borderDark : AppColors.borderLight,
+        ),
+      ),
+      child: InkWell(
+        onTap: () => TransactionDetailsDialog.show(context, transaction: txn),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: badgeColor.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(6),
+                    border: Border.all(
+                      color: badgeColor.withValues(alpha: 0.30),
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(type.icon, size: 13, color: badgeColor),
+                      const SizedBox(width: 4),
+                      Text(
+                        type.code,
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.bold,
+                          color: badgeColor,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Text(
+                  txn.transactionDate != null ? dateFormat.format(txn.transactionDate!) : '-',
+                  style: TextStyle(
+                    fontSize: 11,
+                    color: isDark ? AppColors.textSecondaryDark : AppColors.textSecondaryLight,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 10),
+            Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        txn.itemName,
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 14,
+                          color: isDark ? AppColors.textPrimaryDark : AppColors.textPrimaryLight,
+                        ),
+                      ),
+                      if (txn.itemCode.isNotEmpty)
+                        Text(
+                          txn.itemCode,
+                          style: const TextStyle(fontSize: 11, color: AppColors.textMutedLight),
+                        ),
+                    ],
+                  ),
+                ),
+                Text(
+                  '${isInward ? '+' : '-'} ${txn.quantity.toStringAsFixed(0)} ${txn.unit}',
+                  style: TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 14,
+                    color: accentColor,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Expanded(
+                  child: Text(
+                    'Reason: ${txn.reason}',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: isDark ? AppColors.textSecondaryDark : AppColors.textSecondaryLight,
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+                if (txn.cowTagId?.isNotEmpty == true || txn.supplierOrDonorName.isNotEmpty || txn.doctorName.isNotEmpty)
+                  Padding(
+                    padding: const EdgeInsets.only(left: 8),
+                    child: Text(
+                      txn.cowTagId?.isNotEmpty == true
+                          ? 'Tag: ${txn.cowTagId!}'
+                          : (txn.supplierOrDonorName.isNotEmpty
+                              ? txn.supplierOrDonorName
+                              : 'Dr. ${txn.doctorName}'),
+                      style: TextStyle(
+                        fontSize: 11.5,
+                        fontWeight: FontWeight.w500,
+                        color: isDark ? AppColors.textPrimaryDark : AppColors.textPrimaryLight,
+                      ),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                  ),
+              ],
+            ),
+            if (txn.batches.isNotEmpty) ...[
+              const SizedBox(height: 8),
+              Wrap(
+                spacing: 6,
+                runSpacing: 4,
+                children: txn.batches.map((b) {
+                  return Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: isDark ? AppColors.surfaceDark : Colors.grey.shade100,
+                      borderRadius: BorderRadius.circular(4),
+                      border: Border.all(
+                        color: isDark ? AppColors.borderDark : Colors.grey.shade300,
+                      ),
+                    ),
+                    child: Text(
+                      '${b.batchNumber}: ${b.quantity.toStringAsFixed(0)}',
+                      style: TextStyle(
+                        fontSize: 10,
+                        fontFamily: 'monospace',
+                        color: isDark ? Colors.grey.shade300 : Colors.grey.shade800,
+                      ),
+                    ),
+                  );
+                }).toList(),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
 }
 
 /// Interactive table row with Herd & Cattle animated container, 3.5px left indicator,

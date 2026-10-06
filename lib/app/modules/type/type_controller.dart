@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import '../../core/utils/responsive_layout.dart';
 import '../../core/values/app_colors.dart';
 import '../../core/widgets/custom_button.dart';
 import '../../core/widgets/custom_dropdown_search.dart';
@@ -13,6 +14,7 @@ import '../../data/services/gaushala_session_service.dart';
 import '../../data/services/storage_service.dart';
 import '../../routes/app_routes.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
+import 'views/edit_type_screen.dart';
 
 /// Controller managing Cattle Type Master state, operations, and navigation.
 class TypeController extends GetxController {
@@ -114,12 +116,23 @@ class TypeController extends GetxController {
     currentPage.value = 1;
   }
 
+  // Mobile Continuous Scrolling
+  final RxInt mobileLimit = 10.obs;
+  List<TypeModel> get mobileTypes => filteredTypes.take(mobileLimit.value).toList();
+  bool get hasMoreMobile => mobileLimit.value < filteredTypes.length;
+  void loadMoreMobile() {
+    if (hasMoreMobile) {
+      mobileLimit.value += 10;
+    }
+  }
+
   void setGaushalaFilter(String? gaushalaId) {
     if (gaushalaId == null || gaushalaId.isEmpty || gaushalaId == 'all') return;
     if (selectedGaushalaFilter.value == gaushalaId) return;
 
     selectedGaushalaFilter.value = gaushalaId;
     currentPage.value = 1;
+    mobileLimit.value = 10;
 
     // Sync global session if admin
     final match = findGaushala(gaushalaId);
@@ -133,19 +146,24 @@ class TypeController extends GetxController {
   void clearFilters() {
     searchQuery.value = '';
     currentPage.value = 1;
+    mobileLimit.value = 10;
   }
 
   @override
   void onInit() {
     super.onInit();
     _loadUser();
-    debounce(searchQuery, (_) => currentPage.value = 1, time: const Duration(milliseconds: 100));
+    debounce(searchQuery, (_) {
+      currentPage.value = 1;
+      mobileLimit.value = 10;
+    }, time: const Duration(milliseconds: 100));
 
     // Listen to global AppBar gaushala changes
     ever(_gaushalaService.selectedGaushala, (GaushalaModel? g) {
       if (g != null && g.id.isNotEmpty && selectedGaushalaFilter.value != g.id) {
         selectedGaushalaFilter.value = g.id;
         currentPage.value = 1;
+        mobileLimit.value = 10;
         fetchTypes(gaushalaId: g.id, showLoading: true);
       }
     });
@@ -255,6 +273,7 @@ class TypeController extends GetxController {
   /// User-initiated refresh action (triggers shimmer + spinning icon)
   Future<void> refreshTypes() async {
     if (isLoading.value || isRefreshing.value) return;
+    mobileLimit.value = 10;
     await Future.wait([
       fetchTypes(
         gaushalaId: selectedGaushalaFilter.value,
@@ -552,6 +571,13 @@ class TypeController extends GetxController {
 
   /// Open Dialog to Edit Type
   void openEditTypeDialog(BuildContext context, TypeModel type) {
+    if (ResponsiveLayout.isMobile(context)) {
+      Navigator.of(context).push(
+        MaterialPageRoute(builder: (_) => EditTypeScreen(type: type)),
+      );
+      return;
+    }
+
     final formKey = GlobalKey<FormState>();
     final nameController = TextEditingController(text: type.typeName);
 

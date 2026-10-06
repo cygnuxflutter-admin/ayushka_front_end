@@ -9,6 +9,7 @@ import '../../core/values/app_constants.dart';
 import '../../core/widgets/custom_button.dart';
 import '../../core/widgets/custom_loader.dart';
 import '../../core/widgets/custom_pagination.dart';
+import '../../core/widgets/mobile_list_bottom_loader.dart';
 import '../../core/widgets/custom_shimmer.dart';
 import '../../core/widgets/global_gaushala_selector.dart';
 import '../../core/widgets/header_user_profile_badge.dart';
@@ -165,15 +166,23 @@ class UserScreen extends GetView<UserController> {
       ),
       body: RefreshIndicator(
         onRefresh: controller.refreshUsers,
-        child: SingleChildScrollView(
-          physics: const AlwaysScrollableScrollPhysics(),
-          padding: const EdgeInsets.all(16.0),
-          child: Column(
-            children: [
-              _buildSearchAndFilters(context, isMobile: true),
-              const SizedBox(height: 16),
-              _buildUsersCardsList(context),
-            ],
+        child: NotificationListener<ScrollNotification>(
+          onNotification: (ScrollNotification scrollInfo) {
+            if (scrollInfo.metrics.pixels >= scrollInfo.metrics.maxScrollExtent - 200) {
+              controller.loadMoreMobile();
+            }
+            return false;
+          },
+          child: SingleChildScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              children: [
+                _buildSearchAndFilters(context, isMobile: true),
+                const SizedBox(height: 16),
+                _buildUsersCardsList(context),
+              ],
+            ),
           ),
         ),
       ),
@@ -1255,7 +1264,8 @@ class UserScreen extends GetView<UserController> {
         );
       }
 
-      final pageUsers = controller.paginatedUsers;
+      final isMobile = ResponsiveLayout.isMobile(context);
+      final displayUsers = isMobile ? controller.mobileUsers : controller.paginatedUsers;
 
       return Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -1263,10 +1273,10 @@ class UserScreen extends GetView<UserController> {
           ListView.separated(
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
-            itemCount: pageUsers.length,
+            itemCount: displayUsers.length,
             separatorBuilder: (context, index) => const SizedBox(height: 12),
             itemBuilder: (context, index) {
-              final user = pageUsers[index];
+              final user = displayUsers[index];
 
           return _HoverableListCard(
             child: Padding(
@@ -1413,28 +1423,36 @@ class UserScreen extends GetView<UserController> {
           );
         },
       ),
-      const SizedBox(height: 14),
-      Card(
-        margin: EdgeInsets.zero,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(12),
-          side: BorderSide(
-            color: isDark ? AppColors.borderDark : AppColors.borderLight,
-          ),
-        ),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(12),
-          child: CustomPagination(
-            totalItems: list.length,
-            currentPage: controller.currentPage.value,
-            rowsPerPage: controller.rowsPerPage.value,
-            onPageChanged: controller.setPage,
-            onRowsPerPageChanged: controller.setRowsPerPage,
-          ),
-        ),
-      ),
-    ],
-  );
+          if (isMobile) ...[
+            const SizedBox(height: 16),
+            MobileListBottomLoader(
+              hasMore: controller.hasMoreMobile,
+              totalCount: list.length,
+            ),
+          ] else ...[
+            const SizedBox(height: 14),
+            Card(
+              margin: EdgeInsets.zero,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+                side: BorderSide(
+                  color: isDark ? AppColors.borderDark : AppColors.borderLight,
+                ),
+              ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(12),
+                child: CustomPagination(
+                  totalItems: list.length,
+                  currentPage: controller.currentPage.value,
+                  rowsPerPage: controller.rowsPerPage.value,
+                  onPageChanged: controller.setPage,
+                  onRowsPerPageChanged: controller.setRowsPerPage,
+                ),
+              ),
+            ),
+          ],
+        ],
+      );
 });
 }
 

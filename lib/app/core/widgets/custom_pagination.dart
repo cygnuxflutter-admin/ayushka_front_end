@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
+import '../utils/responsive_layout.dart';
 import '../values/app_colors.dart';
 
 /// Reusable, responsive pagination bar for Ayushka Admin data tables and lists.
@@ -23,6 +24,11 @@ class CustomPagination extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Hide pagination controls exclusively on mobile
+    if (ResponsiveLayout.isMobile(context)) {
+      return const SizedBox.shrink();
+    }
+
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
 

@@ -11,6 +11,7 @@ import '../../core/widgets/custom_dropdown_search.dart';
 import '../../core/widgets/custom_loader.dart';
 import '../../core/widgets/custom_pagination.dart';
 import '../../core/widgets/custom_shimmer.dart';
+import '../../core/widgets/mobile_list_bottom_loader.dart';
 import '../../core/widgets/global_gaushala_selector.dart';
 import '../../core/widgets/header_user_profile_badge.dart';
 import '../notification/widgets/notification_bell_widget.dart';
@@ -183,15 +184,23 @@ class FeedStockTransactionScreen extends GetView<FeedStockTransactionController>
           ),
         ],
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          children: [
-            _buildStockAlertBanner(context),
-            _buildSearchAndFilters(context, isCompact: true),
-            const SizedBox(height: 14),
-            _buildTransactionsMobileList(context),
-          ],
+      body: NotificationListener<ScrollNotification>(
+        onNotification: (ScrollNotification scrollInfo) {
+          if (scrollInfo.metrics.pixels >= scrollInfo.metrics.maxScrollExtent - 200) {
+            controller.loadMoreMobileTransactions();
+          }
+          return false;
+        },
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            children: [
+              _buildStockAlertBanner(context),
+              _buildSearchAndFilters(context, isCompact: true),
+              const SizedBox(height: 14),
+              _buildTransactionsMobileList(context),
+            ],
+          ),
         ),
       ),
     );
@@ -1069,26 +1078,38 @@ class FeedStockTransactionScreen extends GetView<FeedStockTransactionController>
         );
       }
 
-      final list = controller.transactions;
+      final isMobile = ResponsiveLayout.isMobile(context);
+      final list = isMobile ? controller.mobileTransactions : controller.transactions;
 
       if (list.isEmpty) {
         return _buildEmptyState(context);
       }
 
-      return ListView.separated(
-        shrinkWrap: true,
-        physics: const NeverScrollableScrollPhysics(),
-        itemCount: list.length,
-        separatorBuilder: (_, index) => const SizedBox(height: 10),
-        itemBuilder: (ctx, index) {
-          final tx = list[index];
-          return _HoverableTransactionMobileCard(
-            key: ValueKey(tx.id),
-            tx: tx,
-            isDark: isDark,
-            onTap: () => controller.openTransactionDetailsDialog(context, tx),
-          );
-        },
+      return Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          ListView.separated(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            itemCount: list.length,
+            separatorBuilder: (context, index) => const SizedBox(height: 10),
+            itemBuilder: (ctx, index) {
+              final tx = list[index];
+              return _HoverableTransactionMobileCard(
+                key: ValueKey(tx.id),
+                tx: tx,
+                isDark: isDark,
+                onTap: () => controller.openTransactionDetailsDialog(context, tx),
+              );
+            },
+          ),
+          if (isMobile)
+            MobileListBottomLoader(
+              hasMore: controller.hasMoreMobileTransactions,
+              isLoading: controller.isLoadingMoreTransactions.value,
+              totalCount: controller.totalRecords.value,
+            ),
+        ],
       );
     });
   }

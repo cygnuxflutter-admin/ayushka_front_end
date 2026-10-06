@@ -9,6 +9,7 @@ import '../../core/widgets/custom_button.dart';
 import '../../core/widgets/custom_dropdown_search.dart';
 import '../../core/widgets/custom_loader.dart';
 import '../../core/widgets/custom_pagination.dart';
+import '../../core/widgets/mobile_list_bottom_loader.dart';
 import '../../core/widgets/custom_shimmer.dart';
 import '../../core/widgets/global_gaushala_selector.dart';
 import '../../core/widgets/header_user_profile_badge.dart';
@@ -176,15 +177,23 @@ class WorkerScreen extends GetView<WorkerController> {
         label: const Text('Add Worker'),
         onPressed: () => controller.openAddWorkerDialog(context),
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: [
-            const DepartmentSummaryCards(isCompact: true),
-            const SizedBox(height: 16),
-            _buildWorkersTableCard(context),
-          ],
+      body: NotificationListener<ScrollNotification>(
+        onNotification: (ScrollNotification scrollInfo) {
+          if (scrollInfo.metrics.pixels >= scrollInfo.metrics.maxScrollExtent - 200) {
+            controller.loadMoreWorkers();
+          }
+          return false;
+        },
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              const DepartmentSummaryCards(isCompact: true),
+              const SizedBox(height: 16),
+              _buildWorkersTableCard(context),
+            ],
+          ),
         ),
       ),
     );
@@ -554,7 +563,8 @@ class WorkerScreen extends GetView<WorkerController> {
               );
             }
 
-            final list = controller.workers;
+            final isMobile = ResponsiveLayout.isMobile(context);
+            final list = isMobile ? controller.mobileWorkers : controller.workers;
             if (list.isEmpty) {
               return Padding(
                 padding: const EdgeInsets.symmetric(vertical: 50.0),
@@ -596,23 +606,34 @@ class WorkerScreen extends GetView<WorkerController> {
 
                 if (!isWideScreen) {
                   // Tablet/Mobile Card list view with hover feedback
-                  return ListView.separated(
-                    shrinkWrap: true,
-                    physics: const NeverScrollableScrollPhysics(),
-                    itemCount: list.length,
-                    separatorBuilder: (context, _) => const Divider(height: 1),
-                    itemBuilder: (context, index) {
-                      final worker = list[index];
-                      return _HoverableWorkerMobileCard(
-                        key: ValueKey('${worker.id}_${worker.isActive}_${worker.leavingDate}_${worker.isDelete}'),
-                        worker: worker,
-                        isDark: isDark,
-                        onEdit: () => controller.openEditWorkerDialog(context, worker),
-                        onMarkLeft: () => controller.openMarkLeftDialog(context, worker),
-                        onToggleStatus: () => controller.toggleWorkerStatus(worker),
-                        onDelete: () => controller.confirmDeleteWorker(context, worker),
-                      );
-                    },
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      ListView.separated(
+                        shrinkWrap: true,
+                        physics: const NeverScrollableScrollPhysics(),
+                        itemCount: list.length,
+                        separatorBuilder: (context, _) => const Divider(height: 1),
+                        itemBuilder: (context, index) {
+                          final worker = list[index];
+                          return _HoverableWorkerMobileCard(
+                            key: ValueKey('${worker.id}_${worker.isActive}_${worker.leavingDate}_${worker.isDelete}'),
+                            worker: worker,
+                            isDark: isDark,
+                            onEdit: () => controller.openEditWorkerDialog(context, worker),
+                            onMarkLeft: () => controller.openMarkLeftDialog(context, worker),
+                            onToggleStatus: () => controller.toggleWorkerStatus(worker),
+                            onDelete: () => controller.confirmDeleteWorker(context, worker),
+                          );
+                        },
+                      ),
+                      if (isMobile)
+                        MobileListBottomLoader(
+                          hasMore: controller.hasMoreMobile,
+                          isLoading: controller.isLoadingMore.value,
+                          totalCount: controller.totalWorkers.value,
+                        ),
+                    ],
                   );
                 }
 
@@ -678,7 +699,7 @@ class WorkerScreen extends GetView<WorkerController> {
           // PAGINATION FOOTER
           // ---------------------------------------------------------
           Obx(() {
-            if (controller.totalWorkers.value == 0) return const SizedBox.shrink();
+            if (ResponsiveLayout.isMobile(context) || controller.totalWorkers.value == 0) return const SizedBox.shrink();
 
             return Container(
               padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),

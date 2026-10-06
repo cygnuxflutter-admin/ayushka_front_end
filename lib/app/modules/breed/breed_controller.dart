@@ -31,6 +31,16 @@ class BreedController extends GetxController {
   // Pagination states
   final RxInt currentPage = 1.obs;
   final RxInt rowsPerPage = 5.obs;
+  final RxInt mobileLimit = 10.obs;
+
+  List<BreedModel> get mobileBreeds => filteredBreeds.take(mobileLimit.value).toList();
+  bool get hasMoreMobile => mobileLimit.value < filteredBreeds.length;
+
+  void loadMoreMobile() {
+    if (hasMoreMobile) {
+      mobileLimit.value += 10;
+    }
+  }
 
   List<BreedModel> get filteredBreeds {
     final query = searchQuery.value.trim().toLowerCase();
@@ -78,7 +88,10 @@ class BreedController extends GetxController {
   void onInit() {
     super.onInit();
     _loadUser();
-    debounce(searchQuery, (_) => currentPage.value = 1, time: const Duration(milliseconds: 100));
+    debounce(searchQuery, (_) {
+      currentPage.value = 1;
+      mobileLimit.value = 10;
+    }, time: const Duration(milliseconds: 100));
     // Instantly hydrate existing data from cache if present
     if (_cachedBreeds.isNotEmpty) {
       breeds.assignAll(_cachedBreeds);

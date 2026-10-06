@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import '../../core/utils/responsive_layout.dart';
 import '../../core/widgets/custom_snackbar.dart';
 import '../../data/models/gaushala_model.dart';
 import '../../data/models/treatment_model.dart';
@@ -33,6 +34,11 @@ class TreatmentController extends GetxController {
 
   // Treatment Data List
   final RxList<CowTreatmentModel> treatments = <CowTreatmentModel>[].obs;
+  final RxList<CowTreatmentModel> mobileTreatments = <CowTreatmentModel>[].obs;
+  final RxInt mobilePage = 1.obs;
+  final RxBool isLoadingMoreTreatments = false.obs;
+  bool get hasMoreMobileTreatments => mobileTreatments.length < totalItems.value;
+
   final RxBool isLoading = false.obs;
   final RxBool isRefreshing = false.obs;
 
@@ -175,7 +181,7 @@ class TreatmentController extends GetxController {
   }
 
   /// Fetches paginated treatments list with all active filters
-  Future<void> fetchTreatments({bool isSilent = false}) async {
+  Future<void> fetchTreatments({bool isSilent = false, bool resetMobile = true}) async {
     final gId = currentGaushalaId;
     if (gId.isEmpty) return;
 
@@ -188,6 +194,10 @@ class TreatmentController extends GetxController {
         treatments.assignAll(dueList);
         totalItems.value = dueList.length;
         totalPages.value = 1;
+        if (resetMobile) {
+          mobilePage.value = 1;
+          mobileTreatments.assignAll(dueList);
+        }
         return;
       }
 
@@ -205,6 +215,10 @@ class TreatmentController extends GetxController {
       treatments.assignAll(result.items);
       totalItems.value = result.total;
       totalPages.value = result.totalPages;
+      if (resetMobile) {
+        mobilePage.value = currentPage.value;
+        mobileTreatments.assignAll(result.items);
+      }
     } catch (e) {
       CustomSnackbar.showError(
         title: 'Error',
@@ -212,6 +226,33 @@ class TreatmentController extends GetxController {
       );
     } finally {
       if (!isSilent) isLoading.value = false;
+    }
+  }
+
+  Future<void> loadMoreMobileTreatments() async {
+    if (isLoadingMoreTreatments.value || !hasMoreMobileTreatments || filterOnlyDueToday.value) return;
+    final gId = currentGaushalaId;
+    if (gId.isEmpty) return;
+
+    isLoadingMoreTreatments.value = true;
+    try {
+      final nextPage = mobilePage.value + 1;
+      final result = await _apiService.getTreatments(
+        gaushalaId: gId,
+        status: statusFilter.value == 'ALL' ? null : statusFilter.value,
+        severity: severityFilter.value == 'ALL' ? null : severityFilter.value,
+        search: searchQuery.value.isEmpty ? null : searchQuery.value,
+        page: nextPage,
+        limit: rowsPerPage.value,
+        startDate: startDateFilter.value,
+        endDate: endDateFilter.value,
+      );
+      mobileTreatments.addAll(result.items);
+      mobilePage.value = nextPage;
+      totalItems.value = result.total;
+    } catch (_) {
+    } finally {
+      isLoadingMoreTreatments.value = false;
     }
   }
 
@@ -315,7 +356,7 @@ class TreatmentController extends GetxController {
     BuildContext? context,
   ]) async {
     final ctx = context ?? Get.context;
-    if (ctx != null) {
+    if (ctx != null && !ResponsiveLayout.isMobile(ctx)) {
       final updated = await TreatmentDetailsDialog.show(
         ctx,
         treatment: treatment,
@@ -324,10 +365,13 @@ class TreatmentController extends GetxController {
         loadAll();
       }
     } else {
-      Get.toNamed(
+      final result = await Get.toNamed(
         AppRoutes.treatmentDetails,
         arguments: {'treatmentId': treatment.id, 'treatment': treatment},
       );
+      if (result == true) {
+        loadAll();
+      }
     }
   }
 

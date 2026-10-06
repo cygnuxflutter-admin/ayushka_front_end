@@ -1040,6 +1040,10 @@ class _AddTreatmentDialogState extends State<AddTreatmentDialog> {
             hint: 'e.g. 9876543210',
             controller: _doctorContactController,
             keyboardType: TextInputType.phone,
+            inputFormatters: [
+              FilteringTextInputFormatter.digitsOnly,
+              LengthLimitingTextInputFormatter(15),
+            ],
             prefixIcon: const Icon(PhosphorIconsRegular.phone, size: 18),
           ),
           const SizedBox(height: 14),
@@ -1075,6 +1079,10 @@ class _AddTreatmentDialogState extends State<AddTreatmentDialog> {
                   hint: 'e.g. 9876543210',
                   controller: _doctorContactController,
                   keyboardType: TextInputType.phone,
+                  inputFormatters: [
+                    FilteringTextInputFormatter.digitsOnly,
+                    LengthLimitingTextInputFormatter(15),
+                  ],
                   prefixIcon: const Icon(PhosphorIconsRegular.phone, size: 18),
                 ),
               ),

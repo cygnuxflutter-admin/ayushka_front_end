@@ -37,6 +37,11 @@ class FeedStockTransactionController extends GetxController {
 
   // Data lists
   final RxList<FeedStockTransactionModel> transactions = <FeedStockTransactionModel>[].obs;
+  final RxList<FeedStockTransactionModel> mobileTransactions = <FeedStockTransactionModel>[].obs;
+  final RxInt mobilePage = 1.obs;
+  final RxBool isLoadingMoreTransactions = false.obs;
+  bool get hasMoreMobileTransactions => mobileTransactions.length < totalRecords.value;
+
   final RxList<FeedItemModel> feedItems = <FeedItemModel>[].obs;
   final RxList<ShedModel> sheds = <ShedModel>[].obs;
   final RxList<GaushalaModel> gaushalas = <GaushalaModel>[].obs;
@@ -170,7 +175,7 @@ class FeedStockTransactionController extends GetxController {
     } catch (_) {}
   }
 
-  Future<void> fetchTransactions({bool showRefreshing = false}) async {
+  Future<void> fetchTransactions({bool showRefreshing = false, bool resetMobile = true}) async {
     if (showRefreshing) {
       isRefreshing.value = true;
     } else if (transactions.isEmpty) {
@@ -192,6 +197,10 @@ class FeedStockTransactionController extends GetxController {
       transactions.assignAll(result.items);
       totalRecords.value = result.total;
       totalPages.value = result.totalPages;
+      if (resetMobile) {
+        mobilePage.value = currentPage.value;
+        mobileTransactions.assignAll(result.items);
+      }
     } catch (e) {
       CustomSnackbar.showError(
         title: 'Error',
@@ -200,6 +209,30 @@ class FeedStockTransactionController extends GetxController {
     } finally {
       isLoading.value = false;
       isRefreshing.value = false;
+    }
+  }
+
+  Future<void> loadMoreMobileTransactions() async {
+    if (isLoadingMoreTransactions.value || !hasMoreMobileTransactions) return;
+    isLoadingMoreTransactions.value = true;
+    try {
+      final nextPage = mobilePage.value + 1;
+      final result = await _apiService.getFeedStockTransactions(
+        gaushalaId: selectedGaushalaFilter.value,
+        itemId: selectedItemFilter.value,
+        type: selectedTypeFilter.value == 'ALL' ? null : selectedTypeFilter.value,
+        shedId: selectedShedFilter.value,
+        reason: selectedReasonFilter.value == 'ALL' ? null : selectedReasonFilter.value,
+        page: nextPage,
+        limit: rowsPerPage.value,
+        search: searchQuery.value.trim().isEmpty ? null : searchQuery.value.trim(),
+      );
+      mobileTransactions.addAll(result.items);
+      mobilePage.value = nextPage;
+      totalRecords.value = result.total;
+    } catch (_) {
+    } finally {
+      isLoadingMoreTransactions.value = false;
     }
   }
 
@@ -603,6 +636,9 @@ class FeedStockTransactionController extends GetxController {
                                     hint: 'e.g. 500',
                                     prefixIcon: const Icon(PhosphorIconsRegular.scales, size: 18),
                                     keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                                    inputFormatters: [
+                                      FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*')),
+                                    ],
                                     validator: (val) {
                                       if (val == null || val.trim().isEmpty) return 'Enter quantity';
                                       final n = double.tryParse(val.trim());
@@ -620,6 +656,9 @@ class FeedStockTransactionController extends GetxController {
                                   hint: 'e.g. 15.00',
                                   prefixIcon: const Icon(PhosphorIconsRegular.currencyInr, size: 18),
                                   keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                                  inputFormatters: [
+                                    FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*')),
+                                  ],
                                 ),
                               ),
                             ],

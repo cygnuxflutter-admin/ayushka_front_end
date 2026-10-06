@@ -3,11 +3,13 @@ import 'package:get/get.dart';
 import 'package:intl/intl.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 
+import '../../../core/utils/responsive_layout.dart';
 import '../../../core/values/app_colors.dart';
 import '../../../core/values/app_constants.dart';
 import '../../../core/widgets/custom_button.dart';
 import '../../../core/widgets/custom_dropdown_search.dart';
 import '../../../core/widgets/custom_pagination.dart';
+import '../../../core/widgets/mobile_list_bottom_loader.dart';
 import '../../../core/widgets/custom_text_field.dart';
 import '../../../data/models/medical_item_model.dart';
 import '../dialogs/dispose_stock_dialog.dart';
@@ -25,34 +27,42 @@ class BatchesTrackerView extends StatelessWidget {
     final controller = Get.find<MedicalStockController>();
     final dateFormat = DateFormat('dd MMM yyyy');
 
-    return SingleChildScrollView(
-      padding: EdgeInsets.symmetric(
-        horizontal: MediaQuery.of(context).size.width < 600 ? 14 : 24,
-        vertical: 16,
-      ),
-      child: Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: AppConstants.maxContentWidth),
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              // -----------------------------------------------------------
-              // TOP HEADER
-              // -----------------------------------------------------------
-              _buildHeader(context, controller),
-              const SizedBox(height: 18),
+    return NotificationListener<ScrollNotification>(
+      onNotification: (ScrollNotification scrollInfo) {
+        if (scrollInfo.metrics.pixels >= scrollInfo.metrics.maxScrollExtent - 200) {
+          controller.loadMoreMobileBatches();
+        }
+        return false;
+      },
+      child: SingleChildScrollView(
+        padding: EdgeInsets.symmetric(
+          horizontal: MediaQuery.of(context).size.width < 600 ? 14 : 24,
+          vertical: 16,
+        ),
+        child: Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: AppConstants.maxContentWidth),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                // -----------------------------------------------------------
+                // TOP HEADER
+                // -----------------------------------------------------------
+                _buildHeader(context, controller),
+                const SizedBox(height: 18),
 
-              // -----------------------------------------------------------
-              // FILTER TABS & SEARCH BAR
-              // -----------------------------------------------------------
-              _buildFilterBar(context, controller),
-              const SizedBox(height: 18),
+                // -----------------------------------------------------------
+                // FILTER TABS & SEARCH BAR
+                // -----------------------------------------------------------
+                _buildFilterBar(context, controller),
+                const SizedBox(height: 18),
 
-              // -----------------------------------------------------------
-              // BATCHES DATA TABLE
-              // -----------------------------------------------------------
-              _buildBatchesTableCard(context, controller, dateFormat),
-            ],
+                // -----------------------------------------------------------
+                // BATCHES DATA TABLE
+                // -----------------------------------------------------------
+                _buildBatchesTableCard(context, controller, dateFormat),
+              ],
+            ),
           ),
         ),
       ),
@@ -433,7 +443,8 @@ Widget _buildBatchesTableCard(BuildContext context, MedicalStockController contr
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Obx(() {
-            final list = controller.filteredBatches;
+            final isMobile = ResponsiveLayout.isMobile(context);
+            final list = isMobile ? controller.mobileBatches : controller.filteredBatches;
 
             if (list.isEmpty) {
               return Padding(
@@ -455,6 +466,29 @@ Widget _buildBatchesTableCard(BuildContext context, MedicalStockController contr
                     ],
                   ),
                 ),
+              );
+            }
+
+            if (isMobile) {
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  ListView.separated(
+                    shrinkWrap: true,
+                    physics: const NeverScrollableScrollPhysics(),
+                    padding: const EdgeInsets.all(12),
+                    itemCount: list.length,
+                    separatorBuilder: (context, index) => const SizedBox(height: 10),
+                    itemBuilder: (context, index) {
+                      final batch = list[index];
+                      return _buildMobileBatchCard(context, batch, dateFormat, controller);
+                    },
+                  ),
+                  MobileListBottomLoader(
+                    hasMore: controller.hasMoreMobileBatches,
+                    totalCount: controller.filteredBatches.length,
+                  ),
+                ],
               );
             }
 
@@ -519,13 +553,14 @@ Widget _buildBatchesTableCard(BuildContext context, MedicalStockController contr
           }),
 
           // Pagination Bar
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
-            decoration: const BoxDecoration(
-              border: Border(top: BorderSide(color: AppColors.borderLight)),
-            ),
-            child: Obx(
-              () => CustomPagination(
+          Obx(() {
+            if (ResponsiveLayout.isMobile(context)) return const SizedBox.shrink();
+            return Container(
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+              decoration: const BoxDecoration(
+                border: Border(top: BorderSide(color: AppColors.borderLight)),
+              ),
+              child: CustomPagination(
                 currentPage: controller.batchesCurrentPage.value,
                 totalItems: controller.filteredBatches.length,
                 rowsPerPage: controller.batchesPerPage.value,
@@ -533,8 +568,8 @@ Widget _buildBatchesTableCard(BuildContext context, MedicalStockController contr
                 onPageChanged: controller.setBatchesPage,
                 onRowsPerPageChanged: controller.setBatchesPerPage,
               ),
-            ),
-          ),
+            );
+          }),
         ],
       ),
     ),
@@ -553,6 +588,116 @@ Widget _buildBatchesTableCard(BuildContext context, MedicalStockController contr
           color: AppColors.textSecondaryLight,
           letterSpacing: 0.3,
         ),
+      ),
+    );
+  }
+
+  Widget _buildMobileBatchCard(
+    BuildContext context,
+    MedicalBatchModel batch,
+    DateFormat dateFormat,
+    MedicalStockController controller,
+  ) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final isExpired = batch.isExpired;
+    final Color accentColor = isExpired
+        ? AppColors.error
+        : (batch.isExpiringSoon ? const Color(0xFFEA580C) : AppColors.primary);
+
+    return Container(
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        color: isDark ? AppColors.surfaceDark : Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: isDark ? AppColors.borderDark : AppColors.borderLight,
+        ),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color: accentColor.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(6),
+                  border: Border.all(color: accentColor.withValues(alpha: 0.3)),
+                ),
+                child: Text(
+                  batch.batchNumber,
+                  style: TextStyle(
+                    fontFamily: 'monospace',
+                    fontWeight: FontWeight.bold,
+                    fontSize: 12,
+                    color: accentColor,
+                  ),
+                ),
+              ),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color: accentColor.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Text(
+                  batch.expiryStatus.label,
+                  style: TextStyle(
+                    fontSize: 10.5,
+                    fontWeight: FontWeight.bold,
+                    color: accentColor,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            batch.itemName,
+            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
+          ),
+          if (batch.itemCode.isNotEmpty) ...[
+            const SizedBox(height: 2),
+            Text(
+              'Code: ${batch.itemCode}',
+              style: const TextStyle(fontSize: 11.5, color: AppColors.textSecondaryLight),
+            ),
+          ],
+          const SizedBox(height: 8),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Stock: ${batch.availableQuantity.toStringAsFixed(0)} / ${batch.quantity.toStringAsFixed(0)}',
+                style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+              ),
+              Text(
+                'Expires: ${dateFormat.format(batch.expiryDate)}',
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w600,
+                  color: isExpired ? AppColors.error : AppColors.textSecondaryLight,
+                ),
+              ),
+            ],
+          ),
+          if (batch.isExpired || batch.isExpiringSoon) ...[
+            const SizedBox(height: 10),
+            Align(
+              alignment: Alignment.centerRight,
+              child: CustomButton(
+                text: 'Dispose Stock',
+                icon: PhosphorIconsRegular.trash,
+                variant: ButtonVariant.outlined,
+                height: 32,
+                padding: const EdgeInsets.symmetric(horizontal: 10),
+                onPressed: () => DisposeStockDialog.show(context, batch: batch),
+              ),
+            ),
+          ],
+        ],
       ),
     );
   }

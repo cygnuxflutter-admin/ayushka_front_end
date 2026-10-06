@@ -2,12 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 
+import '../../../core/utils/responsive_layout.dart';
 import '../../../core/values/app_colors.dart';
 import '../../../core/values/app_constants.dart';
 import '../../../core/widgets/custom_button.dart';
 import '../../../core/widgets/custom_dropdown_search.dart';
 import '../../../core/widgets/custom_loader.dart';
 import '../../../core/widgets/custom_pagination.dart';
+import '../../../core/widgets/mobile_list_bottom_loader.dart';
 import '../../../core/widgets/custom_shimmer.dart';
 import '../../../data/models/medical_item_model.dart';
 import '../../../routes/app_routes.dart';
@@ -36,8 +38,15 @@ class MedicineMasterView extends StatelessWidget {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
 
-    return SingleChildScrollView(
-      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
+    return NotificationListener<ScrollNotification>(
+      onNotification: (ScrollNotification scrollInfo) {
+        if (scrollInfo.metrics.pixels >= scrollInfo.metrics.maxScrollExtent - 200) {
+          controller.loadMoreMobileItems();
+        }
+        return false;
+      },
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 20),
       child: Center(
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: AppConstants.maxContentWidth),
@@ -79,7 +88,8 @@ class MedicineMasterView extends StatelessWidget {
           ),
         ),
       ),
-    );
+    ),
+  );
   }
 
   // ---------------------------------------------------------------------------
@@ -671,7 +681,8 @@ class MedicineMasterView extends StatelessWidget {
         return const CustomListShimmer(itemCount: 6);
       }
 
-      final list = controller.paginatedItems;
+      final isMobile = ResponsiveLayout.isMobile(context);
+      final list = isMobile ? controller.mobileItems : controller.paginatedItems;
       if (controller.filteredItems.isEmpty) {
         return _buildEmptyState(context, controller);
       }
@@ -855,17 +866,25 @@ class MedicineMasterView extends StatelessWidget {
             ),
           );
         }),
-          const SizedBox(height: 8),
-          CustomPagination(
-            totalItems: controller.filteredItems.length,
-            currentPage: controller.itemsCurrentPage.value,
-            rowsPerPage: controller.itemsPerPage.value,
-            onPageChanged: (page) => controller.itemsCurrentPage.value = page,
-            onRowsPerPageChanged: (rows) {
-              controller.itemsPerPage.value = rows;
-              controller.itemsCurrentPage.value = 1;
-            },
-          ),
+          if (isMobile) ...[
+            const SizedBox(height: 16),
+            MobileListBottomLoader(
+              hasMore: controller.hasMoreMobileItems,
+              totalCount: controller.filteredItems.length,
+            ),
+          ] else ...[
+            const SizedBox(height: 8),
+            CustomPagination(
+              totalItems: controller.filteredItems.length,
+              currentPage: controller.itemsCurrentPage.value,
+              rowsPerPage: controller.itemsPerPage.value,
+              onPageChanged: (page) => controller.itemsCurrentPage.value = page,
+              onRowsPerPageChanged: (rows) {
+                controller.itemsPerPage.value = rows;
+                controller.itemsCurrentPage.value = 1;
+              },
+            ),
+          ],
         ],
       );
     });

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 import '../../core/utils/responsive_layout.dart';
@@ -541,6 +542,9 @@ class AddCowScreen extends GetView<AddCowController> {
                         label: 'Calf Weight (kg) *',
                         hint: 'e.g. 25',
                         keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                        inputFormatters: [
+                          FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*')),
+                        ],
                         prefixIcon: const Icon(PhosphorIconsRegular.scales, size: 18),
                         validator: (val) {
                           if (val == null || val.trim().isEmpty) {

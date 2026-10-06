@@ -9,6 +9,7 @@ import '../../core/widgets/custom_loader.dart';
 import '../../core/widgets/custom_pagination.dart';
 import '../../core/widgets/custom_shimmer.dart';
 import '../../core/widgets/custom_snackbar.dart';
+import '../../core/widgets/mobile_list_bottom_loader.dart';
 import '../../core/widgets/global_gaushala_selector.dart';
 import '../../core/widgets/header_user_profile_badge.dart';
 import '../notification/widgets/notification_bell_widget.dart';
@@ -156,15 +157,23 @@ class BreedScreen extends GetView<BreedController> {
       ),
       body: RefreshIndicator(
         onRefresh: controller.refreshBreeds,
-        child: SingleChildScrollView(
-          physics: const AlwaysScrollableScrollPhysics(),
-          padding: const EdgeInsets.all(16.0),
-          child: Column(
-            children: [
-              _buildSearchBox(context),
-              const SizedBox(height: 16),
-              _buildBreedList(context),
-            ],
+        child: NotificationListener<ScrollNotification>(
+          onNotification: (ScrollNotification scrollInfo) {
+            if (scrollInfo.metrics.pixels >= scrollInfo.metrics.maxScrollExtent - 200) {
+              controller.loadMoreMobile();
+            }
+            return false;
+          },
+          child: SingleChildScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              children: [
+                _buildSearchBox(context),
+                const SizedBox(height: 16),
+                _buildBreedList(context),
+              ],
+            ),
           ),
         ),
       ),
@@ -595,7 +604,8 @@ class BreedScreen extends GetView<BreedController> {
         );
       }
 
-      final paginatedList = controller.paginatedBreeds;
+      final isMobile = ResponsiveLayout.isMobile(context);
+      final displayList = isMobile ? controller.mobileBreeds : controller.paginatedBreeds;
 
       return Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -603,10 +613,10 @@ class BreedScreen extends GetView<BreedController> {
           ListView.separated(
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
-            itemCount: paginatedList.length,
-            separatorBuilder: (_, index) => const SizedBox(height: 10),
+            itemCount: displayList.length,
+            separatorBuilder: (context, index) => const SizedBox(height: 10),
             itemBuilder: (context, index) {
-              final BreedModel breed = paginatedList[index];
+              final BreedModel breed = displayList[index];
 
               return _HoverableListCard(
                 child: ListTile(
@@ -630,26 +640,33 @@ class BreedScreen extends GetView<BreedController> {
               );
             },
           ),
-          const SizedBox(height: 14),
-          Card(
-            margin: EdgeInsets.zero,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-              side: BorderSide(
-                color: isDark ? AppColors.borderDark : AppColors.borderLight,
+          if (isMobile)
+            MobileListBottomLoader(
+              hasMore: controller.hasMoreMobile,
+              totalCount: list.length,
+            )
+          else ...[
+            const SizedBox(height: 14),
+            Card(
+              margin: EdgeInsets.zero,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+                side: BorderSide(
+                  color: isDark ? AppColors.borderDark : AppColors.borderLight,
+                ),
+              ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(12),
+                child: CustomPagination(
+                  totalItems: list.length,
+                  currentPage: controller.currentPage.value,
+                  rowsPerPage: controller.rowsPerPage.value,
+                  onPageChanged: controller.setPage,
+                  onRowsPerPageChanged: controller.setRowsPerPage,
+                ),
               ),
             ),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(12),
-              child: CustomPagination(
-                totalItems: list.length,
-                currentPage: controller.currentPage.value,
-                rowsPerPage: controller.rowsPerPage.value,
-                onPageChanged: controller.setPage,
-                onRowsPerPageChanged: controller.setRowsPerPage,
-              ),
-            ),
-          ),
+          ],
         ],
       );
     });

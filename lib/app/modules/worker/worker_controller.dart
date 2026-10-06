@@ -9,6 +9,7 @@ import '../../core/widgets/custom_button.dart';
 import '../../core/widgets/custom_dropdown_search.dart';
 import '../../core/widgets/custom_snackbar.dart';
 import '../../core/widgets/custom_text_field.dart';
+import '../../core/utils/responsive_layout.dart';
 import '../../data/models/department_model.dart';
 import '../../data/models/department_summary_model.dart';
 import '../../data/models/user_model.dart';
@@ -18,6 +19,7 @@ import '../../data/services/gaushala_session_service.dart';
 import '../../data/services/storage_service.dart';
 import '../../routes/app_routes.dart';
 import 'department_controller.dart';
+import 'views/edit_worker_screen.dart';
 
 /// Controller managing Worker Operations, Filters, Summary Metrics, and Dialogs.
 class WorkerController extends GetxController {
@@ -49,6 +51,51 @@ class WorkerController extends GetxController {
   final RxInt rowsPerPage = 5.obs;
   final RxInt totalWorkers = 0.obs;
   final RxInt totalPages = 1.obs;
+
+  // Mobile infinite scroll state
+  final RxList<WorkerModel> mobileWorkers = <WorkerModel>[].obs;
+  final RxInt mobilePage = 1.obs;
+  final RxBool isLoadingMore = false.obs;
+
+  bool get hasMoreMobile => mobileWorkers.length < totalWorkers.value;
+
+  Future<void> loadMoreWorkers() async {
+    if (isLoadingMore.value || isLoading.value || !hasMoreMobile) return;
+    final gId = currentGaushalaId;
+    if (gId.isEmpty || gId == 'all') return;
+
+    isLoadingMore.value = true;
+    try {
+      bool? activeParam;
+      if (selectedStatusFilter.value == 'active') {
+        activeParam = true;
+      } else if (selectedStatusFilter.value == 'inactive') {
+        activeParam = false;
+      }
+
+      final deptParam = selectedDepartmentFilter.value;
+      final cleanDept = (deptParam != null && deptParam.isNotEmpty && deptParam != 'all') ? deptParam : null;
+
+      final nextPage = mobilePage.value + 1;
+      final res = await _apiService.getWorkers(
+        gaushalaId: gId,
+        departmentId: cleanDept,
+        isActive: activeParam,
+        search: searchQuery.value.trim().isNotEmpty ? searchQuery.value.trim() : null,
+        page: nextPage,
+        limit: rowsPerPage.value,
+      );
+
+      mobileWorkers.addAll(res.items);
+      mobilePage.value = nextPage;
+      totalWorkers.value = res.total;
+      totalPages.value = res.totalPages;
+    } catch (_) {
+      // Handled silently
+    } finally {
+      isLoadingMore.value = false;
+    }
+  }
 
   String get currentGaushalaId => _gaushalaService.selectedGaushalaId;
 
@@ -162,6 +209,8 @@ class WorkerController extends GetxController {
     final gId = currentGaushalaId;
     if (gId.isEmpty || gId == 'all') {
       workers.clear();
+      mobileWorkers.clear();
+      mobilePage.value = 1;
       totalWorkers.value = 0;
       totalPages.value = 1;
       return;
@@ -195,6 +244,10 @@ class WorkerController extends GetxController {
       );
 
       workers.assignAll(res.items);
+      if (currentPage.value == 1) {
+        mobilePage.value = 1;
+        mobileWorkers.assignAll(res.items);
+      }
       totalWorkers.value = res.total;
       totalPages.value = res.totalPages;
     } catch (e) {
@@ -640,6 +693,11 @@ class WorkerController extends GetxController {
 
   /// Edit Worker Dialog: Admin can update Name, Department, and Status (isActive).
   void openEditWorkerDialog(BuildContext context, WorkerModel worker) {
+    if (ResponsiveLayout.isMobile(context)) {
+      Get.to(() => EditWorkerScreen(worker: worker));
+      return;
+    }
+
     final formKey = GlobalKey<FormState>();
     final nameController = TextEditingController(text: worker.name);
     final RxBool isActive = worker.isActive.obs;

@@ -2,8 +2,7 @@
 <project version="4">
   <component name="ProjectModuleManager">
     <modules>
-      <module fileurl="file://$PROJECT_DIR$/ayushka.iml" filepath="$PROJECT_DIR$/ayushka.iml" />
-      <module fileurl="file://$PROJECT_DIR$/android/ayushka_android.iml" filepath="$PROJECT_DIR$/android/ayushka_android.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/ayushka-git.iml" filepath="$PROJECT_DIR$/.idea/ayushka-git.iml" />
     </modules>
   </component>
 </project>

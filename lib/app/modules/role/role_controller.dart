@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import '../../core/utils/responsive_layout.dart';
 import '../../core/values/app_colors.dart';
 import '../../core/widgets/custom_button.dart';
 import '../../core/widgets/custom_snackbar.dart';
@@ -10,6 +11,7 @@ import '../../data/services/api_service.dart';
 import '../../data/services/storage_service.dart';
 import '../../routes/app_routes.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
+import 'views/edit_role_screen.dart';
 
 /// Controller managing Role Master state, operations, and navigation.
 class RoleController extends GetxController {
@@ -74,11 +76,24 @@ class RoleController extends GetxController {
     currentPage.value = 1;
   }
 
+  // Mobile Continuous Scrolling
+  final RxInt mobileLimit = 10.obs;
+  List<RoleModel> get mobileRoles => filteredRoles.take(mobileLimit.value).toList();
+  bool get hasMoreMobile => mobileLimit.value < filteredRoles.length;
+  void loadMoreMobile() {
+    if (hasMoreMobile) {
+      mobileLimit.value += 10;
+    }
+  }
+
   @override
   void onInit() {
     super.onInit();
     _loadUser();
-    debounce(searchQuery, (_) => currentPage.value = 1, time: const Duration(milliseconds: 100));
+    debounce(searchQuery, (_) {
+      currentPage.value = 1;
+      mobileLimit.value = 10;
+    }, time: const Duration(milliseconds: 100));
     // Instantly hydrate existing data from cache if present
     if (_cachedRoles.isNotEmpty) {
       roles.assignAll(_cachedRoles);
@@ -136,6 +151,7 @@ class RoleController extends GetxController {
   /// User-initiated refresh action (triggers shimmer + spinning icon)
   Future<void> refreshRoles() async {
     if (isLoading.value || isRefreshing.value) return;
+    mobileLimit.value = 10;
     await fetchRoles(showLoading: true, isManualRefresh: true);
   }
 
@@ -340,6 +356,13 @@ class RoleController extends GetxController {
 
   /// Open Dialog to Edit Role
   void openEditRoleDialog(BuildContext context, RoleModel role) {
+    if (ResponsiveLayout.isMobile(context)) {
+      Navigator.of(context).push(
+        MaterialPageRoute(builder: (_) => EditRoleScreen(role: role)),
+      );
+      return;
+    }
+
     final formKey = GlobalKey<FormState>();
     final nameController = TextEditingController(text: role.roleName);
 

@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:intl/intl.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 
+import '../../../core/utils/responsive_layout.dart';
 import '../../../core/values/app_colors.dart';
 import '../../../core/values/app_constants.dart';
 import '../../../core/widgets/custom_button.dart';
@@ -11,6 +13,7 @@ import '../../../core/widgets/custom_snackbar.dart';
 import '../../../core/widgets/custom_text_field.dart';
 import '../../../data/models/medical_item_model.dart';
 import '../medical_stock_controller.dart';
+import '../views/edit_medicine_screen.dart';
 
 /// Modal dialog for adding or editing a Medicine SKU in the Medicine Master.
 /// Uses the Herd & Cattle form design system (AddCowScreen) with executive header,
@@ -21,7 +24,11 @@ class AddEditMedicineDialog extends StatefulWidget {
 
   const AddEditMedicineDialog({super.key, this.existingItem});
 
-  static Future<void> show(BuildContext context, {MedicalItemModel? existingItem}) {
+  static Future<void> show(BuildContext context, {MedicalItemModel? existingItem}) async {
+    if (existingItem != null && ResponsiveLayout.isMobile(context)) {
+      await Get.to(() => EditMedicineScreen(item: existingItem));
+      return;
+    }
     return showDialog<void>(
       context: context,
       barrierDismissible: false,
@@ -432,7 +439,10 @@ class _AddEditMedicineDialogState extends State<AddEditMedicineDialog> {
                             label: 'Min Stock Reorder Alert *',
                             hint: 'e.g. 25',
                             controller: _minStockController,
-                            keyboardType: TextInputType.number,
+                            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                            inputFormatters: [
+                              FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*')),
+                            ],
                             prefixIcon: const Icon(PhosphorIconsRegular.warningCircle, size: 18),
                             validator: (val) {
                               if (val == null || val.trim().isEmpty) return 'Alert threshold is required';
@@ -526,13 +536,19 @@ class _AddEditMedicineDialogState extends State<AddEditMedicineDialog> {
                                     CustomTextField(
                                       label: 'Quantity *',
                                       controller: _initialQtyController,
-                                      keyboardType: TextInputType.number,
+                                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                                      inputFormatters: [
+                                        FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*')),
+                                      ],
                                       prefixIcon: const Icon(PhosphorIconsRegular.scales, size: 18),
                                     ),
                                     CustomTextField(
                                       label: 'Unit Purchase Rate (₹)',
                                       controller: _initialUnitPriceController,
-                                      keyboardType: TextInputType.number,
+                                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                                      inputFormatters: [
+                                        FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*')),
+                                      ],
                                       prefixIcon: const Icon(PhosphorIconsRegular.currencyInr, size: 18),
                                     ),
                                   ],

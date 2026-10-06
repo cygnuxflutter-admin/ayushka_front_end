@@ -124,10 +124,31 @@ class MedicalStockController extends GetxController {
   final RxInt itemsCurrentPage = 1.obs;
   final RxInt itemsPerPage = 5.obs;
 
+  // Mobile infinite scroll for items
+  final RxInt mobileItemsLimit = 10.obs;
+
+  List<MedicalItemModel> get mobileItems {
+    final list = filteredItems;
+    return list.take(mobileItemsLimit.value).toList();
+  }
+
+  bool get hasMoreMobileItems => mobileItemsLimit.value < filteredItems.length;
+
+  void loadMoreMobileItems() {
+    if (hasMoreMobileItems) {
+      mobileItemsLimit.value += 10;
+    }
+  }
+
+  void resetMobileItemsLimit() {
+    mobileItemsLimit.value = 10;
+  }
+
   void setStockFilter(String filter) {
     selectedStockFilter.value = filter;
     lowStockOnlyFilter.value = (filter == 'low');
     itemsCurrentPage.value = 1;
+    resetMobileItemsLimit();
   }
 
   void clearMedicineFilters() {
@@ -137,6 +158,7 @@ class MedicalStockController extends GetxController {
     selectedStockFilter.value = 'all';
     lowStockOnlyFilter.value = false;
     itemsCurrentPage.value = 1;
+    resetMobileItemsLimit();
   }
 
   // -------------------------------------------------------------
@@ -174,6 +196,26 @@ class MedicalStockController extends GetxController {
   final RxInt batchesCurrentPage = 1.obs;
   final RxInt batchesPerPage = 5.obs;
 
+  // Mobile infinite scroll for batches
+  final RxInt mobileBatchesLimit = 10.obs;
+
+  List<MedicalBatchModel> get mobileBatches {
+    final list = filteredBatches;
+    return list.take(mobileBatchesLimit.value).toList();
+  }
+
+  bool get hasMoreMobileBatches => mobileBatchesLimit.value < filteredBatches.length;
+
+  void loadMoreMobileBatches() {
+    if (hasMoreMobileBatches) {
+      mobileBatchesLimit.value += 10;
+    }
+  }
+
+  void resetMobileBatchesLimit() {
+    mobileBatchesLimit.value = 10;
+  }
+
   // -------------------------------------------------------------
   // TAB 5: STOCK LEDGER / TRANSACTION AUDIT LOG
   // -------------------------------------------------------------
@@ -184,6 +226,26 @@ class MedicalStockController extends GetxController {
   final Rxn<DateTime> ledgerEndDate = Rxn<DateTime>();
   final RxInt ledgerPage = 1.obs;
   final RxInt ledgerLimit = 5.obs;
+
+  // Mobile infinite scroll for ledger
+  final RxInt mobileLedgerLimit = 10.obs;
+
+  List<MedicalTransactionModel> get mobileTransactions {
+    final list = filteredTransactions;
+    return list.take(mobileLedgerLimit.value).toList();
+  }
+
+  bool get hasMoreMobileLedger => mobileLedgerLimit.value < filteredTransactions.length;
+
+  void loadMoreMobileLedger() {
+    if (hasMoreMobileLedger) {
+      mobileLedgerLimit.value += 10;
+    }
+  }
+
+  void resetMobileLedgerLimit() {
+    mobileLedgerLimit.value = 10;
+  }
 
   // Getters for Gaushala
   String get activeGaushalaId => _gaushalaService.selectedGaushalaId;

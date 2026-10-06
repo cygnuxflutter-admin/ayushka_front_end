@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:intl/intl.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
@@ -235,7 +236,10 @@ class _DisposeStockDialogState extends State<DisposeStockDialog> {
                       label: 'Quantity to Dispose / Write-off *',
                       hint: 'Enter quantity',
                       controller: _quantityController,
-                      keyboardType: TextInputType.number,
+                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                      inputFormatters: [
+                        FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*')),
+                      ],
                       prefixIcon: const Icon(PhosphorIconsRegular.numberSquareOne, size: 18),
                       validator: (val) {
                         if (val == null || val.trim().isEmpty) return 'Quantity is required';

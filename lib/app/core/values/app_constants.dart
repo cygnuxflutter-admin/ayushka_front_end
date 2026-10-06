@@ -27,7 +27,7 @@ abstract class AppConstants {
   static const String keyIsAdminPermission = 'is_admin_permission';
 
   // Responsive Breakpoints (px)
-  static const double mobileBreakpoint = 650.0;
+  static const double mobileBreakpoint = 768.0;
   static const double tabletBreakpoint = 1100.0;
 
   // UI Dimensions

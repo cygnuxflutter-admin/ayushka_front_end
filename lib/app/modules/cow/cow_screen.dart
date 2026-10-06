@@ -10,6 +10,7 @@ import '../../core/widgets/custom_button.dart';
 import '../../core/widgets/custom_loader.dart';
 import '../../core/widgets/custom_pagination.dart';
 import '../../core/widgets/custom_shimmer.dart';
+import '../../core/widgets/mobile_list_bottom_loader.dart';
 import '../../core/widgets/global_gaushala_selector.dart';
 import '../../core/widgets/header_user_profile_badge.dart';
 import '../../data/models/cow_model.dart';
@@ -291,17 +292,25 @@ class CowScreen extends GetView<CowController> {
         children: [
           RefreshIndicator(
             onRefresh: controller.refreshCows,
-            child: SingleChildScrollView(
-              physics: const AlwaysScrollableScrollPhysics(),
-              padding: const EdgeInsets.all(16.0),
-              child: Column(
-                children: [
-                  _buildMetricCards(context, isCompact: true),
-                  const SizedBox(height: 14),
-                  _buildSearchAndFiltersMobile(context),
-                  const SizedBox(height: 16),
-                  _buildCowsListCards(context),
-                ],
+            child: NotificationListener<ScrollNotification>(
+              onNotification: (ScrollNotification scrollInfo) {
+                if (scrollInfo.metrics.pixels >= scrollInfo.metrics.maxScrollExtent - 200) {
+                  controller.loadMoreMobile();
+                }
+                return false;
+              },
+              child: SingleChildScrollView(
+                physics: const AlwaysScrollableScrollPhysics(),
+                padding: const EdgeInsets.all(16.0),
+                child: Column(
+                  children: [
+                    _buildMetricCards(context, isCompact: true),
+                    const SizedBox(height: 14),
+                    _buildSearchAndFiltersMobile(context),
+                    const SizedBox(height: 16),
+                    _buildCowsListCards(context),
+                  ],
+                ),
               ),
             ),
           ),
@@ -1410,7 +1419,8 @@ class CowScreen extends GetView<CowController> {
         return const CustomListShimmer(itemCount: 6);
       }
 
-      final list = controller.paginatedCows;
+      final isMobile = ResponsiveLayout.isMobile(context);
+      final list = isMobile ? controller.mobileCows : controller.paginatedCows;
       if (controller.filteredCows.isEmpty) {
         return Padding(
           padding: const EdgeInsets.all(40.0),
@@ -1588,17 +1598,24 @@ class CowScreen extends GetView<CowController> {
           ),
         );
       }),
-          const SizedBox(height: 8),
-          CustomPagination(
-            totalItems: controller.filteredCows.length,
-            currentPage: controller.currentPage.value,
-            rowsPerPage: controller.rowsPerPage.value,
-            onPageChanged: (page) => controller.currentPage.value = page,
-            onRowsPerPageChanged: (rows) {
-              controller.rowsPerPage.value = rows;
-              controller.currentPage.value = 1;
-            },
-          ),
+          if (isMobile)
+            MobileListBottomLoader(
+              hasMore: controller.hasMoreMobile,
+              totalCount: controller.filteredCows.length,
+            )
+          else ...[
+            const SizedBox(height: 8),
+            CustomPagination(
+              totalItems: controller.filteredCows.length,
+              currentPage: controller.currentPage.value,
+              rowsPerPage: controller.rowsPerPage.value,
+              onPageChanged: (page) => controller.currentPage.value = page,
+              onRowsPerPageChanged: (rows) {
+                controller.rowsPerPage.value = rows;
+                controller.currentPage.value = 1;
+              },
+            ),
+          ],
         ],
       );
     });

@@ -32,6 +32,16 @@ class GaushalaController extends GetxController {
   // Pagination states
   final RxInt currentPage = 1.obs;
   final RxInt rowsPerPage = 5.obs;
+  final RxInt mobileLimit = 10.obs;
+
+  List<GaushalaModel> get mobileGaushalas => filteredGaushalas.take(mobileLimit.value).toList();
+  bool get hasMoreMobile => mobileLimit.value < filteredGaushalas.length;
+
+  void loadMoreMobile() {
+    if (hasMoreMobile) {
+      mobileLimit.value += 10;
+    }
+  }
 
   List<GaushalaModel> get filteredGaushalas {
     final query = searchQuery.value.trim().toLowerCase();
@@ -79,7 +89,10 @@ class GaushalaController extends GetxController {
   void onInit() {
     super.onInit();
     _loadUser();
-    debounce(searchQuery, (_) => currentPage.value = 1, time: const Duration(milliseconds: 100));
+    debounce(searchQuery, (_) {
+      currentPage.value = 1;
+      mobileLimit.value = 10;
+    }, time: const Duration(milliseconds: 100));
     // Instantly hydrate existing data from cache if present
     if (_cachedGaushalas.isNotEmpty) {
       gaushalas.assignAll(_cachedGaushalas);

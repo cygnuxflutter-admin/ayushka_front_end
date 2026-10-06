@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:intl/intl.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
@@ -225,7 +226,10 @@ class StockOutwardView extends StatelessWidget {
                   label: 'Quantity to Dispense *',
                   hint: 'e.g. 50',
                   controller: controller.outwardQuantityController,
-                  keyboardType: TextInputType.number,
+                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                  inputFormatters: [
+                    FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*')),
+                  ],
                   prefixIcon: const Icon(PhosphorIconsRegular.numberSquareOne, size: 18),
                 ),
               ),

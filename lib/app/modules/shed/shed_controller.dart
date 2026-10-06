@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
+import '../../core/utils/responsive_layout.dart';
 import '../../core/values/app_colors.dart';
 import '../../core/widgets/custom_button.dart';
 import '../../core/widgets/custom_dropdown_search.dart';
@@ -14,6 +15,7 @@ import '../../data/services/storage_service.dart';
 import '../../routes/app_routes.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 import '../cow/widgets/shed_transfer_history_dialog.dart';
+import 'views/edit_shed_screen.dart';
 
 /// Controller managing Sheds Master state, operations, and navigation.
 class ShedController extends GetxController {
@@ -98,6 +100,16 @@ class ShedController extends GetxController {
     currentPage.value = 1;
   }
 
+  // Mobile Continuous Scrolling
+  final RxInt mobileLimit = 10.obs;
+  List<ShedModel> get mobileSheds => filteredSheds.take(mobileLimit.value).toList();
+  bool get hasMoreMobile => mobileLimit.value < filteredSheds.length;
+  void loadMoreMobile() {
+    if (hasMoreMobile) {
+      mobileLimit.value += 10;
+    }
+  }
+
   void setGaushalaFilter(String? gaushalaId) {
     final cleanId = (gaushalaId == null || gaushalaId.isEmpty || gaushalaId == 'all')
         ? null
@@ -105,6 +117,7 @@ class ShedController extends GetxController {
     if (selectedGaushalaFilter.value == cleanId) return;
     selectedGaushalaFilter.value = cleanId;
     currentPage.value = 1;
+    mobileLimit.value = 10;
     fetchSheds(gaushalaId: cleanId, showLoading: true);
   }
 
@@ -113,6 +126,7 @@ class ShedController extends GetxController {
     final hadGaushalaFilter = selectedGaushalaFilter.value != null;
     selectedGaushalaFilter.value = null;
     currentPage.value = 1;
+    mobileLimit.value = 10;
     if (hadGaushalaFilter) {
       fetchSheds(gaushalaId: null, showLoading: true);
     }
@@ -122,7 +136,10 @@ class ShedController extends GetxController {
   void onInit() {
     super.onInit();
     _loadUser();
-    debounce(searchQuery, (_) => currentPage.value = 1, time: const Duration(milliseconds: 100));
+    debounce(searchQuery, (_) {
+      currentPage.value = 1;
+      mobileLimit.value = 10;
+    }, time: const Duration(milliseconds: 100));
 
     final initialGId = _gaushalaService.selectedGaushalaId;
     if (initialGId.isNotEmpty) {
@@ -209,6 +226,7 @@ class ShedController extends GetxController {
   /// User-initiated refresh action (triggers shimmer + spinning icon)
   Future<void> refreshSheds() async {
     if (isLoading.value || isRefreshing.value) return;
+    mobileLimit.value = 10;
     await Future.wait([
       fetchSheds(
         gaushalaId: selectedGaushalaFilter.value,
@@ -544,6 +562,13 @@ class ShedController extends GetxController {
 
   /// Open Dialog to Edit Shed
   void openEditShedDialog(BuildContext context, ShedModel shed) {
+    if (ResponsiveLayout.isMobile(context)) {
+      Navigator.of(context).push(
+        MaterialPageRoute(builder: (_) => EditShedScreen(shed: shed)),
+      );
+      return;
+    }
+
     final formKey = GlobalKey<FormState>();
     final nameController = TextEditingController(text: shed.shedName);
     final numberController = TextEditingController(text: shed.shedNumber);

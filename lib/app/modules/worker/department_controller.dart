@@ -2,6 +2,7 @@ import 'package:dio/dio.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
+import '../../core/utils/responsive_layout.dart';
 import '../../core/values/app_colors.dart';
 import '../../core/widgets/custom_button.dart';
 import '../../core/widgets/custom_snackbar.dart';
@@ -9,6 +10,7 @@ import '../../core/widgets/custom_text_field.dart';
 import '../../data/models/department_model.dart';
 import '../../data/services/api_service.dart';
 import '../../data/services/gaushala_session_service.dart';
+import 'views/edit_department_screen.dart';
 
 /// Controller managing Departments (Master & Filtering).
 class DepartmentController extends GetxController {
@@ -347,6 +349,11 @@ class DepartmentController extends GetxController {
 
   /// Open Dialog to Edit Department
   void openEditDepartmentDialog(BuildContext context, DepartmentModel dept, {VoidCallback? onSuccess}) {
+    if (ResponsiveLayout.isMobile(context)) {
+      Get.to(() => EditDepartmentScreen(department: dept, onSuccess: onSuccess));
+      return;
+    }
+
     final formKey = GlobalKey<FormState>();
     final nameController = TextEditingController(text: dept.departmentName);
     final codeController = TextEditingController(text: dept.departmentCode);

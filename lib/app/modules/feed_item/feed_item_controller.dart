@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:dio/dio.dart';
 import 'package:get/get.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
+import '../../core/utils/responsive_layout.dart';
 import '../../core/values/app_colors.dart';
 import '../../core/widgets/custom_button.dart';
 import '../../core/widgets/custom_dropdown_search.dart';
@@ -15,6 +16,7 @@ import '../../data/services/api_service.dart';
 import '../../data/services/gaushala_session_service.dart';
 import '../../data/services/storage_service.dart';
 import '../../routes/app_routes.dart';
+import 'views/edit_feed_item_screen.dart';
 
 /// Controller managing Feed Stock Items Master state, operations, and dialogs.
 class FeedItemController extends GetxController {
@@ -63,6 +65,26 @@ class FeedItemController extends GetxController {
   // Pagination states
   final RxInt currentPage = 1.obs;
   final RxInt rowsPerPage = 5.obs;
+
+  // Mobile infinite scroll state
+  final RxInt mobileLimit = 10.obs;
+
+  List<FeedItemModel> get mobileFeedItems {
+    final list = filteredFeedItems;
+    return list.take(mobileLimit.value).toList();
+  }
+
+  bool get hasMoreMobile => mobileLimit.value < filteredFeedItems.length;
+
+  void loadMoreMobile() {
+    if (hasMoreMobile) {
+      mobileLimit.value += 10;
+    }
+  }
+
+  void resetMobileLimit() {
+    mobileLimit.value = 10;
+  }
 
   // Metrics
   int get totalItemsCount => feedItems.length;
@@ -166,6 +188,7 @@ class FeedItemController extends GetxController {
 
     selectedGaushalaFilter.value = gaushalaId;
     currentPage.value = 1;
+    resetMobileLimit();
 
     final match = findGaushala(gaushalaId);
     if (match != null && _gaushalaService.canChangeGaushala && _gaushalaService.selectedGaushalaId != gaushalaId) {
@@ -178,16 +201,19 @@ class FeedItemController extends GetxController {
   void setCategoryFilter(String category) {
     selectedCategoryFilter.value = category;
     currentPage.value = 1;
+    resetMobileLimit();
   }
 
   void setStockFilter(String stockStatus) {
     selectedStockFilter.value = stockStatus;
     currentPage.value = 1;
+    resetMobileLimit();
   }
 
   void setStatusFilter(String status) {
     selectedStatusFilter.value = status;
     currentPage.value = 1;
+    resetMobileLimit();
   }
 
   void clearFilters() {
@@ -196,19 +222,24 @@ class FeedItemController extends GetxController {
     selectedStockFilter.value = 'ALL';
     selectedStatusFilter.value = 'ALL';
     currentPage.value = 1;
+    resetMobileLimit();
   }
 
   @override
   void onInit() {
     super.onInit();
     _loadUser();
-    debounce(searchQuery, (_) => currentPage.value = 1, time: const Duration(milliseconds: 100));
+    debounce(searchQuery, (_) {
+      currentPage.value = 1;
+      resetMobileLimit();
+    }, time: const Duration(milliseconds: 100));
 
     // Listen to global AppBar gaushala switch
     ever(_gaushalaService.selectedGaushala, (GaushalaModel? g) {
       if (g != null && g.id.isNotEmpty && selectedGaushalaFilter.value != g.id) {
         selectedGaushalaFilter.value = g.id;
         currentPage.value = 1;
+        resetMobileLimit();
         fetchFeedItems(gaushalaId: g.id, showLoading: true);
       }
     });
@@ -804,6 +835,11 @@ class FeedItemController extends GetxController {
 
   /// Opens the Edit Feed Item modal dialog
   void openEditFeedItemDialog(BuildContext context, FeedItemModel item) {
+    if (ResponsiveLayout.isMobile(context)) {
+      Get.to(() => EditFeedItemScreen(item: item));
+      return;
+    }
+
     final formKey = GlobalKey<FormState>();
     final nameController = TextEditingController(text: item.itemName);
     final codeController = TextEditingController(text: item.itemCode);

@@ -6,6 +6,7 @@ import '../../core/widgets/custom_button.dart';
 import '../../core/widgets/custom_dropdown_search.dart';
 import '../../core/widgets/custom_snackbar.dart';
 import '../../core/widgets/custom_text_field.dart';
+import '../../core/utils/responsive_layout.dart';
 import '../../data/models/gaushala_model.dart';
 import '../../data/models/role_model.dart';
 import '../../data/models/user_model.dart';
@@ -13,6 +14,7 @@ import '../../data/services/api_service.dart';
 import '../../data/services/gaushala_session_service.dart';
 import '../../data/services/storage_service.dart';
 import '../../routes/app_routes.dart';
+import 'views/edit_user_screen.dart';
 
 /// Controller managing User Master state, CRUD operations, filters, and dialogs.
 class UserController extends GetxController {
@@ -41,6 +43,7 @@ class UserController extends GetxController {
   void clearSearch() {
     searchController.clear();
     searchQuery.value = '';
+    resetMobileLimit();
   }
 
   final Rxn<String> selectedGaushalaFilter = Rxn<String>();
@@ -75,11 +78,32 @@ class UserController extends GetxController {
         ? null
         : gaushalaId;
     currentPage.value = 1;
+    resetMobileLimit();
   }
 
   // Pagination states
   final RxInt currentPage = 1.obs;
   final RxInt rowsPerPage = 5.obs;
+
+  // Mobile infinite scroll state
+  final RxInt mobileLimit = 10.obs;
+
+  List<UserModel> get mobileUsers {
+    final list = filteredUsers;
+    return list.take(mobileLimit.value).toList();
+  }
+
+  bool get hasMoreMobile => mobileLimit.value < filteredUsers.length;
+
+  void loadMoreMobile() {
+    if (hasMoreMobile) {
+      mobileLimit.value += 10;
+    }
+  }
+
+  void resetMobileLimit() {
+    mobileLimit.value = 10;
+  }
 
   List<UserModel> get filteredUsers {
     final query = searchQuery.value.trim().toLowerCase();
@@ -160,7 +184,10 @@ class UserController extends GetxController {
     super.onInit();
     _loadUser();
 
-    debounce(searchQuery, (_) => currentPage.value = 1, time: const Duration(milliseconds: 100));
+    debounce(searchQuery, (_) {
+      currentPage.value = 1;
+      resetMobileLimit();
+    }, time: const Duration(milliseconds: 100));
 
     // Hydrate from cache immediately
     if (_cachedUsers.isNotEmpty) {
@@ -745,6 +772,11 @@ class UserController extends GetxController {
 
   /// Opens Dialog to Edit User
   void openEditUserDialog(BuildContext context, UserModel user) {
+    if (ResponsiveLayout.isMobile(context)) {
+      Get.to(() => EditUserScreen(user: user));
+      return;
+    }
+
     final formKey = GlobalKey<FormState>();
     final nameController = TextEditingController(text: user.name);
     final usernameController = TextEditingController(text: user.username ?? '');

@@ -9,6 +9,7 @@ import '../../core/values/app_constants.dart';
 import '../../core/widgets/custom_button.dart';
 import '../../core/widgets/custom_loader.dart';
 import '../../core/widgets/custom_pagination.dart';
+import '../../core/widgets/mobile_list_bottom_loader.dart';
 import '../../core/widgets/custom_shimmer.dart';
 import '../../core/widgets/custom_text_field.dart';
 import '../../core/widgets/global_gaushala_selector.dart';
@@ -155,14 +156,22 @@ class FeedItemScreen extends GetView<FeedItemController> {
           onLogout: controller.logout,
         ),
       ),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          children: [
-            _buildSearchAndFilters(context, isCompact: true),
-            const SizedBox(height: 14),
-            _buildFeedItemList(context),
-          ],
+      body: NotificationListener<ScrollNotification>(
+        onNotification: (ScrollNotification scrollInfo) {
+          if (scrollInfo.metrics.pixels >= scrollInfo.metrics.maxScrollExtent - 200) {
+            controller.loadMoreMobile();
+          }
+          return false;
+        },
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(16.0),
+          child: Column(
+            children: [
+              _buildSearchAndFilters(context, isCompact: true),
+              const SizedBox(height: 14),
+              _buildFeedItemList(context),
+            ],
+          ),
         ),
       ),
       floatingActionButton: FloatingActionButton.extended(
@@ -771,15 +780,18 @@ class FeedItemScreen extends GetView<FeedItemController> {
         return _buildEmptyState(context);
       }
 
+      final isMobile = ResponsiveLayout.isMobile(context);
+      final displayList = isMobile ? controller.mobileFeedItems : controller.paginatedFeedItems;
+
       return Column(
         children: [
           ListView.separated(
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
-            itemCount: list.length,
+            itemCount: displayList.length,
             separatorBuilder: (_, index) => const SizedBox(height: 10),
             itemBuilder: (context, index) {
-              final item = list[index];
+              final item = displayList[index];
               return _HoverableListCard(
                 child: Padding(
                   padding: const EdgeInsets.all(14.0),
@@ -978,22 +990,30 @@ class FeedItemScreen extends GetView<FeedItemController> {
               );
             },
           ),
-          const SizedBox(height: 14),
-          Card(
-            margin: EdgeInsets.zero,
-            elevation: 0,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(AppConstants.defaultBorderRadius),
-              side: BorderSide(color: isDark ? AppColors.borderDark : AppColors.borderLight),
+          if (isMobile) ...[
+            const SizedBox(height: 16),
+            MobileListBottomLoader(
+              hasMore: controller.hasMoreMobile,
+              totalCount: list.length,
             ),
-            child: CustomPagination(
-              totalItems: list.length,
-              currentPage: controller.currentPage.value,
-              rowsPerPage: controller.rowsPerPage.value,
-              onPageChanged: controller.setPage,
-              onRowsPerPageChanged: controller.setRowsPerPage,
+          ] else ...[
+            const SizedBox(height: 14),
+            Card(
+              margin: EdgeInsets.zero,
+              elevation: 0,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(AppConstants.defaultBorderRadius),
+                side: BorderSide(color: isDark ? AppColors.borderDark : AppColors.borderLight),
+              ),
+              child: CustomPagination(
+                totalItems: list.length,
+                currentPage: controller.currentPage.value,
+                rowsPerPage: controller.rowsPerPage.value,
+                onPageChanged: controller.setPage,
+                onRowsPerPageChanged: controller.setRowsPerPage,
+              ),
             ),
-          ),
+          ],
         ],
       );
     });

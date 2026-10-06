@@ -11,6 +11,7 @@ import '../../core/widgets/custom_shimmer.dart';
 import '../../core/widgets/custom_snackbar.dart';
 import '../../core/widgets/global_gaushala_selector.dart';
 import '../../core/widgets/header_user_profile_badge.dart';
+import '../../core/widgets/mobile_list_bottom_loader.dart';
 import '../notification/widgets/notification_bell_widget.dart';
 import '../../data/models/role_model.dart';
 import '../../routes/app_routes.dart';
@@ -154,17 +155,25 @@ class RoleScreen extends GetView<RoleController> {
         label: const Text('Add Role', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
         onPressed: () => controller.openAddRoleDialog(context),
       ),
-      body: RefreshIndicator(
-        onRefresh: controller.refreshRoles,
-        child: SingleChildScrollView(
-          physics: const AlwaysScrollableScrollPhysics(),
-          padding: const EdgeInsets.all(16.0),
-          child: Column(
-            children: [
-              _buildSearchBox(context),
-              const SizedBox(height: 16),
-              _buildRolesList(context),
-            ],
+      body: NotificationListener<ScrollNotification>(
+        onNotification: (scrollInfo) {
+          if (scrollInfo.metrics.extentAfter < 300 && controller.hasMoreMobile) {
+            controller.loadMoreMobile();
+          }
+          return false;
+        },
+        child: RefreshIndicator(
+          onRefresh: controller.refreshRoles,
+          child: SingleChildScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              children: [
+                _buildSearchBox(context),
+                const SizedBox(height: 16),
+                _buildRolesList(context),
+              ],
+            ),
           ),
         ),
       ),
@@ -595,7 +604,8 @@ class RoleScreen extends GetView<RoleController> {
         );
       }
 
-      final paginatedList = controller.paginatedRoles;
+      final isMobile = ResponsiveLayout.isMobile(context);
+      final displayList = isMobile ? controller.mobileRoles : controller.paginatedRoles;
 
       return Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -603,10 +613,10 @@ class RoleScreen extends GetView<RoleController> {
           ListView.separated(
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
-            itemCount: paginatedList.length,
+            itemCount: displayList.length,
             separatorBuilder: (_, index) => const SizedBox(height: 10),
             itemBuilder: (context, index) {
-              final RoleModel role = paginatedList[index];
+              final RoleModel role = displayList[index];
               final color = getRoleBadgeColor(role.roleName);
 
               return _HoverableListCard(
@@ -674,26 +684,33 @@ class RoleScreen extends GetView<RoleController> {
               );
             },
           ),
-          const SizedBox(height: 14),
-          Card(
-            margin: EdgeInsets.zero,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-              side: BorderSide(
-                color: isDark ? AppColors.borderDark : AppColors.borderLight,
+          if (isMobile)
+            MobileListBottomLoader(
+              hasMore: controller.hasMoreMobile,
+              totalCount: list.length,
+            )
+          else ...[
+            const SizedBox(height: 14),
+            Card(
+              margin: EdgeInsets.zero,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+                side: BorderSide(
+                  color: isDark ? AppColors.borderDark : AppColors.borderLight,
+                ),
+              ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(12),
+                child: CustomPagination(
+                  totalItems: list.length,
+                  currentPage: controller.currentPage.value,
+                  rowsPerPage: controller.rowsPerPage.value,
+                  onPageChanged: controller.setPage,
+                  onRowsPerPageChanged: controller.setRowsPerPage,
+                ),
               ),
             ),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(12),
-              child: CustomPagination(
-                totalItems: list.length,
-                currentPage: controller.currentPage.value,
-                rowsPerPage: controller.rowsPerPage.value,
-                onPageChanged: controller.setPage,
-                onRowsPerPageChanged: controller.setRowsPerPage,
-              ),
-            ),
-          ),
+          ],
         ],
       );
     });

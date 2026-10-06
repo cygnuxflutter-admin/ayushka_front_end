@@ -12,6 +12,7 @@ import '../../core/widgets/custom_shimmer.dart';
 import '../../core/widgets/custom_snackbar.dart';
 import '../../core/widgets/global_gaushala_selector.dart';
 import '../../core/widgets/header_user_profile_badge.dart';
+import '../../core/widgets/mobile_list_bottom_loader.dart';
 import '../notification/widgets/notification_bell_widget.dart';
 import '../../data/models/type_model.dart';
 import '../../routes/app_routes.dart';
@@ -155,17 +156,25 @@ class TypeScreen extends GetView<TypeController> {
         label: const Text('Add Type', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
         onPressed: () => controller.openAddTypeDialog(context),
       ),
-      body: RefreshIndicator(
-        onRefresh: controller.refreshTypes,
-        child: SingleChildScrollView(
-          physics: const AlwaysScrollableScrollPhysics(),
-          padding: const EdgeInsets.all(16.0),
-          child: Column(
-            children: [
-              _buildSearchBox(context),
-              const SizedBox(height: 16),
-              _buildTypeList(context),
-            ],
+      body: NotificationListener<ScrollNotification>(
+        onNotification: (scrollInfo) {
+          if (scrollInfo.metrics.extentAfter < 300 && controller.hasMoreMobile) {
+            controller.loadMoreMobile();
+          }
+          return false;
+        },
+        child: RefreshIndicator(
+          onRefresh: controller.refreshTypes,
+          child: SingleChildScrollView(
+            physics: const AlwaysScrollableScrollPhysics(),
+            padding: const EdgeInsets.all(16.0),
+            child: Column(
+              children: [
+                _buildSearchBox(context),
+                const SizedBox(height: 16),
+                _buildTypeList(context),
+              ],
+            ),
           ),
         ),
       ),
@@ -885,7 +894,8 @@ class TypeScreen extends GetView<TypeController> {
         );
       }
 
-      final paginatedList = controller.paginatedTypes;
+      final isMobile = ResponsiveLayout.isMobile(context);
+      final displayList = isMobile ? controller.mobileTypes : controller.paginatedTypes;
 
       return Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -893,10 +903,10 @@ class TypeScreen extends GetView<TypeController> {
           ListView.separated(
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
-            itemCount: paginatedList.length,
+            itemCount: displayList.length,
             separatorBuilder: (_, index) => const SizedBox(height: 10),
             itemBuilder: (context, index) {
-              final TypeModel type = paginatedList[index];
+              final TypeModel type = displayList[index];
               String gaushalaName = type.gaushalaName ?? '';
               if (gaushalaName.isEmpty && type.gaushalaId != null && type.gaushalaId!.isNotEmpty) {
                 final match = controller.gaushalas.firstWhereOrNull((g) => g.id == type.gaushalaId);
@@ -987,26 +997,33 @@ class TypeScreen extends GetView<TypeController> {
               );
             },
           ),
-          const SizedBox(height: 14),
-          Card(
-            margin: EdgeInsets.zero,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-              side: BorderSide(
-                color: isDark ? AppColors.borderDark : AppColors.borderLight,
+          if (isMobile)
+            MobileListBottomLoader(
+              hasMore: controller.hasMoreMobile,
+              totalCount: list.length,
+            )
+          else ...[
+            const SizedBox(height: 14),
+            Card(
+              margin: EdgeInsets.zero,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+                side: BorderSide(
+                  color: isDark ? AppColors.borderDark : AppColors.borderLight,
+                ),
+              ),
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(12),
+                child: CustomPagination(
+                  totalItems: list.length,
+                  currentPage: controller.currentPage.value,
+                  rowsPerPage: controller.rowsPerPage.value,
+                  onPageChanged: controller.setPage,
+                  onRowsPerPageChanged: controller.setRowsPerPage,
+                ),
               ),
             ),
-            child: ClipRRect(
-              borderRadius: BorderRadius.circular(12),
-              child: CustomPagination(
-                totalItems: list.length,
-                currentPage: controller.currentPage.value,
-                rowsPerPage: controller.rowsPerPage.value,
-                onPageChanged: controller.setPage,
-                onRowsPerPageChanged: controller.setRowsPerPage,
-              ),
-            ),
-          ),
+          ],
         ],
       );
     });

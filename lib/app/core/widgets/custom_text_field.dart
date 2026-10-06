@@ -110,7 +110,17 @@ class _CustomTextFieldState extends State<CustomTextField> {
         (widget.isUpperCase ? TextCapitalization.characters : TextCapitalization.none);
 
     final List<TextInputFormatter> effectiveFormatters = [
-      if (widget.inputFormatters != null) ...widget.inputFormatters!,
+      if (widget.inputFormatters != null)
+        ...widget.inputFormatters!
+      else ...[
+        if (widget.keyboardType == TextInputType.phone)
+          FilteringTextInputFormatter.digitsOnly
+        else if (widget.keyboardType.decimal == true)
+          FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*'))
+        else if (widget.keyboardType == TextInputType.number ||
+            widget.keyboardType == const TextInputType.numberWithOptions())
+          FilteringTextInputFormatter.digitsOnly,
+      ],
       if (widget.isUpperCase) const UpperCaseTextFormatter(),
     ];
 

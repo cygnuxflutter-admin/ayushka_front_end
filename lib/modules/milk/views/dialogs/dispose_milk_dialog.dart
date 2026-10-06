@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:intl/intl.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
@@ -275,6 +276,9 @@ class _DisposeMilkDialogState extends State<DisposeMilkDialog> {
                           hint: 'e.g. 10.0',
                           controller: _qtyCtrl,
                           keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                          inputFormatters: [
+                            FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*')),
+                          ],
                           prefixIcon: const Icon(PhosphorIconsRegular.drop, size: 18),
                           validator: (val) {
                             if (val == null || val.trim().isEmpty) return 'Enter quantity';

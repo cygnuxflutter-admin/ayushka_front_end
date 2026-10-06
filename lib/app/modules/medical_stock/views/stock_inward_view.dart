@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:get/get.dart';
 import 'package:intl/intl.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
@@ -579,7 +580,10 @@ class StockInwardView extends StatelessWidget {
                                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
                                 child: TextFormField(
                                   controller: row.quantityController,
-                                  keyboardType: TextInputType.number,
+                                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                                  inputFormatters: [
+                                    FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*')),
+                                  ],
                                   style: const TextStyle(fontSize: 13, fontWeight: FontWeight.bold),
                                   decoration: InputDecoration(
                                     hintText: '0',
@@ -595,7 +599,10 @@ class StockInwardView extends StatelessWidget {
                                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
                                 child: TextFormField(
                                   controller: row.unitPriceController,
-                                  keyboardType: TextInputType.number,
+                                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                                  inputFormatters: [
+                                    FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*')),
+                                  ],
                                   style: const TextStyle(fontSize: 13),
                                   decoration: InputDecoration(
                                     hintText: '0.00',
@@ -611,7 +618,10 @@ class StockInwardView extends StatelessWidget {
                                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
                                 child: TextFormField(
                                   controller: row.mrpController,
-                                  keyboardType: TextInputType.number,
+                                  keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                                  inputFormatters: [
+                                    FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*')),
+                                  ],
                                   style: const TextStyle(fontSize: 13),
                                   decoration: InputDecoration(
                                     hintText: '0.00',

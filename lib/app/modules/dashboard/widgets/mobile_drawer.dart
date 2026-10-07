@@ -385,6 +385,15 @@ class MobileDrawer extends StatelessWidget {
                                     ),
                                   ),
                                 ),
+                              )
+                            else
+                              const Tooltip(
+                                message: 'Gaushala locked to your account',
+                                child: Icon(
+                                  PhosphorIconsRegular.lockSimple,
+                                  size: 14,
+                                  color: Color(0xFF86EFAC),
+                                ),
                               ),
                           ],
                         ),
@@ -408,6 +417,8 @@ class MobileDrawer extends StatelessWidget {
                   Widget buildNavItems() {
                     bool canView(String m, String s) => perm?.canView(m, s) ?? true;
                     bool isModuleVisible(String m) => perm?.isModuleVisible(m) ?? true;
+                    final bool isSuperAdmin = perm?.isSuperAdmin ?? (currentUser?.isSuperAdmin ?? false);
+                    final bool isAdmin = perm?.isAdmin ?? (currentUser?.isAdmin ?? false);
 
                 return ListView(
                   padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
@@ -525,7 +536,8 @@ class MobileDrawer extends StatelessWidget {
                         ),
                       ),
                     ),
-                    if (isModuleVisible(PermissionModules.role) &&
+                    if (isSuperAdmin &&
+                        isModuleVisible(PermissionModules.role) &&
                         canView(PermissionModules.role, PermissionSubModules.roleList))
                       _DrawerItem(
                         icon: PhosphorIconsRegular.shieldCheck,
@@ -535,6 +547,18 @@ class MobileDrawer extends StatelessWidget {
                           Get.back();
                           if (currentRoute != AppRoutes.roles) {
                             Get.offNamed(AppRoutes.roles);
+                          }
+                        },
+                      ),
+                    if (isAdmin)
+                      _DrawerItem(
+                        icon: PhosphorIconsRegular.squaresFour,
+                        label: 'Modules',
+                        isSelected: currentRoute == AppRoutes.moduleManagement,
+                        onTap: () {
+                          Get.back();
+                          if (currentRoute != AppRoutes.moduleManagement) {
+                            Get.offNamed(AppRoutes.moduleManagement);
                           }
                         },
                       ),
@@ -565,7 +589,8 @@ class MobileDrawer extends StatelessWidget {
                           }
                         },
                       ),
-                    if (isModuleVisible(PermissionModules.gaushala) &&
+                    if (isSuperAdmin &&
+                        isModuleVisible(PermissionModules.gaushala) &&
                         canView(PermissionModules.gaushala, PermissionSubModules.gaushalaList))
                       _DrawerItem(
                         icon: PhosphorIconsRegular.barn,
@@ -592,7 +617,8 @@ class MobileDrawer extends StatelessWidget {
                           }
                         },
                       ),
-                    if (isModuleVisible(PermissionModules.breedType) &&
+                    if (isSuperAdmin &&
+                        isModuleVisible(PermissionModules.breedType) &&
                         canView(PermissionModules.breedType, PermissionSubModules.breedTypeList))
                       _DrawerItem(
                         icon: PhosphorIconsRegular.dna,

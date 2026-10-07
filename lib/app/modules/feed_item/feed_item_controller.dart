@@ -46,6 +46,7 @@ class FeedItemController extends GetxController {
   final RxString selectedStatusFilter = 'ALL'.obs; // ALL, ACTIVE, INACTIVE
 
   bool get canChangeGaushala => _gaushalaService.canChangeGaushala;
+  bool get isSuperAdmin => _gaushalaService.isSuperAdmin;
 
   String get selectedGaushalaName {
     final gId = selectedGaushalaFilter.value;
@@ -183,6 +184,7 @@ class FeedItemController extends GetxController {
   }
 
   void setGaushalaFilter(String? gaushalaId) {
+    if (!isSuperAdmin) return;
     if (gaushalaId == null || gaushalaId.isEmpty || gaushalaId == 'all') return;
     if (selectedGaushalaFilter.value == gaushalaId) return;
 
@@ -555,8 +557,9 @@ class FeedItemController extends GetxController {
     final Rx<FeedItemUnit> selectedUnit = FeedItemUnit.kg.obs;
     final RxBool isActive = true.obs;
 
-    final targetGaushalaId = selectedGaushalaFilter.value ?? _gaushalaService.selectedGaushalaId;
-    final Rxn<GaushalaModel> selectedGaushala = Rxn<GaushalaModel>(findGaushala(targetGaushalaId));
+    final defaultG = _gaushalaService.getUserDefaultGaushala() ?? _gaushalaService.selectedGaushala.value;
+    final targetGaushalaId = (isSuperAdmin ? selectedGaushalaFilter.value : null) ?? defaultG?.id ?? _gaushalaService.selectedGaushalaId;
+    final Rxn<GaushalaModel> selectedGaushala = Rxn<GaushalaModel>(findGaushala(targetGaushalaId) ?? defaultG);
 
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
@@ -1320,11 +1323,12 @@ class FeedItemController extends GetxController {
     );
   }
 
-  Widget _buildGaushalaDropdown(bool isDark, Rxn<GaushalaModel> selectedGaushala) {
+  Widget _buildGaushalaDropdown(bool isDark, Rxn<GaushalaModel> selectedGaushala, {bool? enabled}) {
     return Obx(() {
       return CustomDropdownSearch<GaushalaModel>(
         label: 'Gaushala',
         isRequired: true,
+        enabled: enabled ?? isSuperAdmin,
         hint: isLoadingGaushalas.value ? 'Loading gaushalas...' : 'Select Gaushala',
         prefixIcon: Icons.storefront_outlined,
         selectedItem: selectedGaushala.value,

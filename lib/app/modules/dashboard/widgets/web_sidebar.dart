@@ -249,10 +249,11 @@ class WebSidebar extends StatelessWidget {
                     Widget buildNavItems() {
                       bool canView(String m, String s) => perm?.canView(m, s) ?? true;
                       bool isModuleVisible(String m) => perm?.isModuleVisible(m) ?? true;
+                      final bool isSuperAdmin = perm?.isSuperAdmin ?? (currentUser?.isSuperAdmin ?? false);
 
                   // Evaluate visible master sub-items
                   final List<_SidebarSubNavItem> masterItems = [];
-                  if (canView(PermissionModules.role, PermissionSubModules.roleList)) {
+                  if (isSuperAdmin && canView(PermissionModules.role, PermissionSubModules.roleList)) {
                     masterItems.add(
                       _SidebarSubNavItem(
                         icon: PhosphorIconsRegular.shieldCheck,
@@ -261,6 +262,21 @@ class WebSidebar extends StatelessWidget {
                         onTap: () {
                           if (currentRoute != AppRoutes.roles) {
                             Get.offNamed(AppRoutes.roles);
+                          }
+                        },
+                      ),
+                    );
+                  }
+                  final bool isAdmin = perm?.isAdmin ?? (currentUser?.isAdmin ?? false);
+                  if (isAdmin) {
+                    masterItems.add(
+                      _SidebarSubNavItem(
+                        icon: PhosphorIconsRegular.squaresFour,
+                        label: 'Modules',
+                        isSelected: currentRoute == AppRoutes.moduleManagement,
+                        onTap: () {
+                          if (currentRoute != AppRoutes.moduleManagement) {
+                            Get.offNamed(AppRoutes.moduleManagement);
                           }
                         },
                       ),
@@ -295,7 +311,7 @@ class WebSidebar extends StatelessWidget {
                       ),
                     );
                   }
-                  if (canView(PermissionModules.gaushala, PermissionSubModules.gaushalaList)) {
+                  if (isSuperAdmin && canView(PermissionModules.gaushala, PermissionSubModules.gaushalaList)) {
                     masterItems.add(
                       _SidebarSubNavItem(
                         icon: PhosphorIconsRegular.barn,
@@ -324,7 +340,7 @@ class WebSidebar extends StatelessWidget {
                       ),
                     );
                   }
-                  if (canView(PermissionModules.breedType, PermissionSubModules.breedTypeList)) {
+                  if (isSuperAdmin && canView(PermissionModules.breedType, PermissionSubModules.breedTypeList)) {
                     masterItems.add(
                       _SidebarSubNavItem(
                         icon: PhosphorIconsRegular.dna,
@@ -489,6 +505,7 @@ class WebSidebar extends StatelessWidget {
                           label: 'Masters',
                           isCollapsed: collapsed,
                           isInitiallyExpanded: currentRoute == AppRoutes.roles ||
+                              currentRoute == AppRoutes.moduleManagement ||
                               currentRoute == AppRoutes.users ||
                               currentRoute == AppRoutes.workers ||
                               currentRoute == AppRoutes.departments ||

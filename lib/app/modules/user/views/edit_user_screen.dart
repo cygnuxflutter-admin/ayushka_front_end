@@ -164,7 +164,8 @@ class _EditUserScreenState extends State<EditUserScreen> {
               compareFn: (g1, g2) => g1.id == g2.id,
               searchable: true,
               searchHint: 'Search gaushala...',
-              onChanged: (sel) => _selectedGaushala.value = sel,
+              enabled: controller.isSuperAdmin,
+              onChanged: controller.isSuperAdmin ? (sel) => _selectedGaushala.value = sel : null,
               validator: (sel) => sel == null ? 'Gaushala is required' : null,
             );
           }),

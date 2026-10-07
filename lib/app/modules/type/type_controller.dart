@@ -39,6 +39,7 @@ class TypeController extends GetxController {
   final Rxn<String> selectedGaushalaFilter = Rxn<String>();
 
   bool get canChangeGaushala => _gaushalaService.canChangeGaushala;
+  bool get isSuperAdmin => _gaushalaService.isSuperAdmin;
 
   String get selectedGaushalaName {
     final gId = selectedGaushalaFilter.value;
@@ -127,6 +128,7 @@ class TypeController extends GetxController {
   }
 
   void setGaushalaFilter(String? gaushalaId) {
+    if (!isSuperAdmin) return;
     if (gaushalaId == null || gaushalaId.isEmpty || gaushalaId == 'all') return;
     if (selectedGaushalaFilter.value == gaushalaId) return;
 
@@ -225,7 +227,9 @@ class TypeController extends GetxController {
     bool showLoading = false,
     bool isManualRefresh = false,
   }) async {
-    final gId = gaushalaId ?? selectedGaushalaFilter.value ?? _gaushalaService.selectedGaushalaId;
+    final gId = isSuperAdmin
+        ? (gaushalaId ?? selectedGaushalaFilter.value ?? _gaushalaService.selectedGaushalaId)
+        : _gaushalaService.selectedGaushalaId;
     if (gId.isEmpty || gId == 'all') {
       return;
     }
@@ -382,11 +386,13 @@ class TypeController extends GetxController {
   Widget _buildGaushalaDropdown({
     required BuildContext context,
     required Rxn<GaushalaModel> selectedGaushala,
+    bool? enabled,
   }) {
     return Obx(() {
       return CustomDropdownSearch<GaushalaModel>(
         label: 'Gaushala',
         isRequired: true,
+        enabled: enabled ?? isSuperAdmin,
         hint: isLoadingGaushalas.value ? 'Loading gaushalas...' : 'Select Gaushala',
         prefixIcon: Icons.storefront_outlined,
         selectedItem: selectedGaushala.value,
@@ -418,15 +424,13 @@ class TypeController extends GetxController {
     }
 
     GaushalaModel? defaultGaushala;
-    final activeGId = selectedGaushalaFilter.value ?? _gaushalaService.selectedGaushalaId;
+    final defaultG = _gaushalaService.getUserDefaultGaushala() ?? _gaushalaService.selectedGaushala.value;
+    final activeGId = (isSuperAdmin ? selectedGaushalaFilter.value : null) ?? defaultG?.id ?? _gaushalaService.selectedGaushalaId;
     if (activeGId.isNotEmpty) {
       defaultGaushala = gaushalas.firstWhereOrNull((g) => g.id == activeGId) ??
           _gaushalaService.findGaushala(activeGId);
     }
-    final userGId = currentUser.value?.gaushalaId;
-    if (defaultGaushala == null && userGId != null && userGId.isNotEmpty) {
-      defaultGaushala = gaushalas.firstWhereOrNull((g) => g.id == userGId);
-    }
+    defaultGaushala ??= defaultG;
     if (defaultGaushala == null && gaushalas.length == 1) {
       defaultGaushala = gaushalas.first;
     }

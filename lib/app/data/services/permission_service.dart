@@ -20,6 +20,12 @@ class PermissionService extends GetxService with ChangeNotifier {
   bool get isLoading => _isLoading.value;
   bool get isInitialized => _isInitialized.value;
 
+  /// Returns true if the user is a Super Administrator
+  bool get isSuperAdmin {
+    final user = _storageService.getUser();
+    return user?.isSuperAdmin ?? false;
+  }
+
   /// Returns true if the user has Administrator privileges
   bool get isAdmin {
     if (_isAdmin.value) return true;

@@ -35,7 +35,8 @@ class GaushalaSessionService extends GetxService {
   }
 
   UserModel? get currentUser => _storageService.getUser();
-  bool get canChangeGaushala => currentUser?.isAdmin ?? false;
+  bool get isSuperAdmin => currentUser?.isSuperAdmin ?? false;
+  bool get canChangeGaushala => isSuperAdmin;
 
   /// Returns the default Gaushala for the active user session.
   /// Priority:
@@ -149,7 +150,7 @@ class GaushalaSessionService extends GetxService {
     if (!canChangeGaushala) {
       CustomSnackbar.showWarning(
         title: 'Access Restricted',
-        message: 'Only Administrators have permission to switch gaushala stations.',
+        message: 'Only Super Administrators have permission to switch gaushalas.',
       );
       return;
     }

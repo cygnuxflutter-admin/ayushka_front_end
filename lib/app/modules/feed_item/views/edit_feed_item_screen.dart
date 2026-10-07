@@ -108,6 +108,7 @@ class _EditFeedItemScreenState extends State<EditFeedItemScreen> {
           Obx(() {
             return CustomDropdownSearch<GaushalaModel>(
               label: 'Assigned Gaushala',
+              enabled: controller.isSuperAdmin,
               hint: 'All Gaushalas',
               prefixIcon: Icons.storefront_outlined,
               selectedItem: _selectedGaushala.value,

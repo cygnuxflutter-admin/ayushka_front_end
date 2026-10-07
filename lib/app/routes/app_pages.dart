@@ -18,6 +18,8 @@ import '../modules/feed_stock_transaction/feed_stock_transaction_binding.dart';
 import '../modules/feed_stock_transaction/feed_stock_transaction_screen.dart';
 import '../modules/medical_stock/medical_stock_binding.dart';
 import '../modules/medical_stock/medical_stock_screen.dart';
+import '../modules/module_management/module_binding.dart';
+import '../modules/module_management/module_screen.dart';
 import '../modules/role/role_binding.dart';
 import '../modules/role/role_screen.dart';
 import '../modules/shed/shed_binding.dart';
@@ -89,6 +91,14 @@ class AppPages {
       name: AppRoutes.userPermissions,
       page: () => const UserPermissionsScreen(),
       middlewares: [RoutePermissionRegistry.forRoute(AppRoutes.userPermissions)],
+      transition: kIsWeb ? Transition.noTransition : Transition.cupertino,
+      transitionDuration: kIsWeb ? Duration.zero : const Duration(milliseconds: 250),
+    ),
+    GetPage(
+      name: AppRoutes.moduleManagement,
+      page: () => const ModuleScreen(),
+      binding: ModuleBinding(),
+      middlewares: [RoutePermissionRegistry.forRoute(AppRoutes.moduleManagement)],
       transition: kIsWeb ? Transition.noTransition : Transition.cupertino,
       transitionDuration: kIsWeb ? Duration.zero : const Duration(milliseconds: 250),
     ),

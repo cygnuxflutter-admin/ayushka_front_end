@@ -7,6 +7,7 @@ import 'package:phosphor_flutter/phosphor_flutter.dart';
 import '../../../../app/core/values/app_colors.dart';
 import '../../../../app/core/widgets/custom_button.dart';
 import '../../../../app/core/widgets/custom_dropdown_search.dart';
+import '../../../../app/core/widgets/custom_snackbar.dart';
 import '../../../../app/core/widgets/custom_text_field.dart';
 import '../../../../app/data/models/cow_model.dart';
 import '../../../../app/data/models/worker_model.dart';
@@ -20,24 +21,10 @@ class AddProductionDialog extends StatefulWidget {
   final ProductionEntryMode initialMode;
   final String? initialShift;
 
-  const AddProductionDialog({
-    super.key,
-    this.initialMode = ProductionEntryMode.single,
-    this.initialShift,
-  });
+  const AddProductionDialog({super.key, this.initialMode = ProductionEntryMode.single, this.initialShift});
 
-  static Future<void> show(
-    BuildContext context, {
-    ProductionEntryMode mode = ProductionEntryMode.single,
-    String? shift,
-  }) async {
-    await Get.dialog(
-      AddProductionDialog(
-        initialMode: mode,
-        initialShift: shift,
-      ),
-      barrierDismissible: false,
-    );
+  static Future<void> show(BuildContext context, {ProductionEntryMode mode = ProductionEntryMode.single, String? shift}) async {
+    await Get.dialog(AddProductionDialog(initialMode: mode, initialShift: shift), barrierDismissible: false);
   }
 
   @override
@@ -67,6 +54,7 @@ class _AddProductionDialogState extends State<AddProductionDialog> {
   String _bulkSearchFilter = '';
 
   bool _isSubmitting = false;
+  int _formResetKey = 0;
 
   @override
   void initState() {
@@ -88,12 +76,7 @@ class _AddProductionDialogState extends State<AddProductionDialog> {
   void _initializeBulkEntries() {
     for (final cow in _controller.activeCows) {
       if (!_bulkItems.containsKey(cow.id)) {
-        _bulkItems[cow.id] = BulkProductionEntryItem(
-          cowId: cow.id,
-          cowTag: cow.tagId,
-          cowName: cow.calfName,
-          workerId: _bulkDefaultWorker?.id ?? '',
-        );
+        _bulkItems[cow.id] = BulkProductionEntryItem(cowId: cow.id, cowTag: cow.tagId, cowName: cow.calfName, workerId: _bulkDefaultWorker?.id ?? '');
         _bulkQtyControllers[cow.id] = TextEditingController();
       }
     }
@@ -136,13 +119,11 @@ class _AddProductionDialogState extends State<AddProductionDialog> {
   Future<void> _submitSingle() async {
     if (!_formKey.currentState!.validate()) return;
     if (_selectedCow == null) {
-      Get.snackbar('Missing Cow', 'Please select a cow to record production.',
-          snackPosition: SnackPosition.BOTTOM);
+      CustomSnackbar.showWarning(title: 'Missing Cow', message: 'Please select a cow to record production.');
       return;
     }
     if (_selectedWorker == null) {
-      Get.snackbar('Missing Worker', 'Please select the milking worker.',
-          snackPosition: SnackPosition.BOTTOM);
+      CustomSnackbar.showWarning(title: 'Missing Worker', message: 'Please select the milking worker.');
       return;
     }
 
@@ -160,15 +141,25 @@ class _AddProductionDialogState extends State<AddProductionDialog> {
     setState(() => _isSubmitting = false);
 
     if (success) {
-      Get.back();
+      _clearSingleForm();
     }
+  }
+
+  void _clearSingleForm() {
+    setState(() {
+      _selectedCow = null;
+      _selectedWorker = null;
+      _qtyCtrl.clear();
+      _remarksCtrl.clear();
+      _formResetKey++;
+    });
+    _formKey.currentState?.reset();
   }
 
   Future<void> _submitBulk() async {
     final activeEntries = _bulkItems.values.where((e) => e.quantity > 0).toList();
     if (activeEntries.isEmpty) {
-      Get.snackbar('No Quantities', 'Please enter milk quantity for at least one cow.',
-          snackPosition: SnackPosition.BOTTOM);
+      CustomSnackbar.showWarning(title: 'No Quantities', message: 'Please enter milk quantity for at least one cow.');
       return;
     }
 
@@ -178,10 +169,9 @@ class _AddProductionDialogState extends State<AddProductionDialog> {
         entry.workerId = _bulkDefaultWorker!.id;
       }
       if (entry.workerId.isEmpty) {
-        Get.snackbar(
-          'Missing Worker',
-          'Please assign a worker for Cow Tag ${entry.cowTag} or select a Default Worker.',
-          snackPosition: SnackPosition.BOTTOM,
+        CustomSnackbar.showWarning(
+          title: 'Missing Worker',
+          message: 'Please assign a worker for Cow Tag ${entry.cowTag} or select a Default Worker.',
         );
         return;
       }
@@ -197,8 +187,23 @@ class _AddProductionDialogState extends State<AddProductionDialog> {
     setState(() => _isSubmitting = false);
 
     if (success) {
-      Get.back();
+      _clearBulkForm();
     }
+  }
+
+  void _clearBulkForm() {
+    setState(() {
+      _bulkDefaultWorker = null;
+      for (final ctrl in _bulkQtyControllers.values) {
+        ctrl.clear();
+      }
+      for (final item in _bulkItems.values) {
+        item.quantity = 0.0;
+        item.workerId = '';
+      }
+      _bulkSearchCtrl.clear();
+      _formResetKey++;
+    });
   }
 
   @override
@@ -209,16 +214,10 @@ class _AddProductionDialogState extends State<AddProductionDialog> {
 
     return Dialog(
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      insetPadding: EdgeInsets.symmetric(
-        horizontal: MediaQuery.of(context).size.width < 500 ? 12 : 20,
-        vertical: 20,
-      ),
+      insetPadding: EdgeInsets.symmetric(horizontal: MediaQuery.of(context).size.width < 500 ? 12 : 20, vertical: 20),
       backgroundColor: isDark ? AppColors.surfaceDark : Colors.white,
       child: ConstrainedBox(
-        constraints: BoxConstraints(
-          maxWidth: isBulk ? 960 : 580,
-          maxHeight: isBulk ? 780 : 660,
-        ),
+        constraints: BoxConstraints(maxWidth: isBulk ? 960 : 580, maxHeight: isBulk ? 780 : 660),
         child: Padding(
           padding: EdgeInsets.all(MediaQuery.of(context).size.width < 500 ? 16.0 : 24.0),
           child: Column(
@@ -244,9 +243,7 @@ class _AddProductionDialogState extends State<AddProductionDialog> {
               // -------------------------------------------------------------
               // BODY: SINGLE OR BULK
               // -------------------------------------------------------------
-              Expanded(
-                child: isBulk ? _buildBulkBody(isDark) : _buildSingleBody(isDark),
-              ),
+              Expanded(child: isBulk ? _buildBulkBody(isDark) : _buildSingleBody(isDark)),
 
               const SizedBox(height: 16),
               const Divider(height: 1),
@@ -271,47 +268,27 @@ class _AddProductionDialogState extends State<AddProductionDialog> {
           children: [
             Container(
               padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                color: AppColors.primary.withValues(alpha: 0.12),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: const Icon(
-                PhosphorIconsRegular.drop,
-                color: AppColors.primary,
-                size: 22,
-              ),
+              decoration: BoxDecoration(color: AppColors.primary.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(10)),
+              child: const Icon(PhosphorIconsRegular.drop, color: AppColors.primary, size: 22),
             ),
             const SizedBox(width: 14),
             Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  _currentMode == ProductionEntryMode.bulk
-                      ? 'Bulk Milk Production'
-                      : 'Record Cow Milk Production',
-                  style: const TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    letterSpacing: -0.3,
-                  ),
+                  _currentMode == ProductionEntryMode.bulk ? 'Bulk Milk Production' : 'Record Cow Milk Production',
+                  style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, letterSpacing: -0.3),
                 ),
                 const SizedBox(height: 2),
                 Text(
                   'Gaushala: ${_controller.selectedGaushalaName}',
-                  style: TextStyle(
-                    fontSize: 12.5,
-                    color: isDark ? AppColors.textMutedDark : AppColors.textMutedLight,
-                  ),
+                  style: TextStyle(fontSize: 12.5, color: isDark ? AppColors.textMutedDark : AppColors.textMutedLight),
                 ),
               ],
             ),
           ],
         ),
-        IconButton(
-          onPressed: () => Get.back(),
-          icon: const Icon(Icons.close_rounded),
-          tooltip: 'Close',
-        ),
+        IconButton(onPressed: () => Get.back(), icon: const Icon(Icons.close_rounded), tooltip: 'Close'),
       ],
     );
   }
@@ -319,10 +296,7 @@ class _AddProductionDialogState extends State<AddProductionDialog> {
   Widget _buildModeSwitcher(bool isDark) {
     return Container(
       padding: const EdgeInsets.all(4),
-      decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF263A1D) : const Color(0xFFEFF4EB),
-        borderRadius: BorderRadius.circular(10),
-      ),
+      decoration: BoxDecoration(color: isDark ? const Color(0xFF263A1D) : const Color(0xFFEFF4EB), borderRadius: BorderRadius.circular(10)),
       child: Row(
         children: [
           Expanded(
@@ -334,18 +308,10 @@ class _AddProductionDialogState extends State<AddProductionDialog> {
               child: Container(
                 padding: const EdgeInsets.symmetric(vertical: 8),
                 decoration: BoxDecoration(
-                  color: _currentMode == ProductionEntryMode.single
-                      ? (isDark ? AppColors.surfaceDark : Colors.white)
-                      : Colors.transparent,
+                  color: _currentMode == ProductionEntryMode.single ? (isDark ? AppColors.surfaceDark : Colors.white) : Colors.transparent,
                   borderRadius: BorderRadius.circular(8),
                   boxShadow: _currentMode == ProductionEntryMode.single
-                      ? [
-                          BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.06),
-                            blurRadius: 4,
-                            offset: const Offset(0, 1),
-                          )
-                        ]
+                      ? [BoxShadow(color: Colors.black.withValues(alpha: 0.06), blurRadius: 4, offset: const Offset(0, 1))]
                       : null,
                 ),
                 alignment: Alignment.center,
@@ -364,9 +330,7 @@ class _AddProductionDialogState extends State<AddProductionDialog> {
                       'Single Cow Entry',
                       style: TextStyle(
                         fontSize: 13,
-                        fontWeight: _currentMode == ProductionEntryMode.single
-                            ? FontWeight.bold
-                            : FontWeight.w500,
+                        fontWeight: _currentMode == ProductionEntryMode.single ? FontWeight.bold : FontWeight.w500,
                         color: _currentMode == ProductionEntryMode.single
                             ? AppColors.primary
                             : (isDark ? AppColors.textMutedDark : AppColors.textMutedLight),
@@ -389,18 +353,10 @@ class _AddProductionDialogState extends State<AddProductionDialog> {
               child: Container(
                 padding: const EdgeInsets.symmetric(vertical: 8),
                 decoration: BoxDecoration(
-                  color: _currentMode == ProductionEntryMode.bulk
-                      ? (isDark ? AppColors.surfaceDark : Colors.white)
-                      : Colors.transparent,
+                  color: _currentMode == ProductionEntryMode.bulk ? (isDark ? AppColors.surfaceDark : Colors.white) : Colors.transparent,
                   borderRadius: BorderRadius.circular(8),
                   boxShadow: _currentMode == ProductionEntryMode.bulk
-                      ? [
-                          BoxShadow(
-                            color: Colors.black.withValues(alpha: 0.06),
-                            blurRadius: 4,
-                            offset: const Offset(0, 1),
-                          )
-                        ]
+                      ? [BoxShadow(color: Colors.black.withValues(alpha: 0.06), blurRadius: 4, offset: const Offset(0, 1))]
                       : null,
                 ),
                 alignment: Alignment.center,
@@ -419,9 +375,7 @@ class _AddProductionDialogState extends State<AddProductionDialog> {
                       'Bulk Shift Entry',
                       style: TextStyle(
                         fontSize: 13,
-                        fontWeight: _currentMode == ProductionEntryMode.bulk
-                            ? FontWeight.bold
-                            : FontWeight.w500,
+                        fontWeight: _currentMode == ProductionEntryMode.bulk ? FontWeight.bold : FontWeight.w500,
                         color: _currentMode == ProductionEntryMode.bulk
                             ? AppColors.primary
                             : (isDark ? AppColors.textMutedDark : AppColors.textMutedLight),
@@ -446,12 +400,7 @@ class _AddProductionDialogState extends State<AddProductionDialog> {
           child: InkWell(
             borderRadius: BorderRadius.circular(10),
             onTap: () async {
-              final picked = await showDatePicker(
-                context: context,
-                initialDate: _selectedDate,
-                firstDate: DateTime(2020),
-                lastDate: DateTime.now(),
-              );
+              final picked = await showDatePicker(context: context, initialDate: _selectedDate, firstDate: DateTime(2020), lastDate: DateTime.now());
               if (picked != null) {
                 setState(() => _selectedDate = picked);
               }
@@ -459,19 +408,14 @@ class _AddProductionDialogState extends State<AddProductionDialog> {
             child: Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
               decoration: BoxDecoration(
-                border: Border.all(
-                  color: isDark ? AppColors.borderDark : AppColors.borderLight,
-                ),
+                border: Border.all(color: isDark ? AppColors.borderDark : AppColors.borderLight),
                 borderRadius: BorderRadius.circular(10),
               ),
               child: Row(
                 children: [
                   const Icon(PhosphorIconsRegular.calendar, size: 18, color: AppColors.primary),
                   const SizedBox(width: 10),
-                  Text(
-                    DateFormat('dd MMM yyyy').format(_selectedDate),
-                    style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w600),
-                  ),
+                  Text(DateFormat('dd MMM yyyy').format(_selectedDate), style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w600)),
                   const Spacer(),
                   const Icon(Icons.arrow_drop_down, size: 20),
                 ],
@@ -493,13 +437,9 @@ class _AddProductionDialogState extends State<AddProductionDialog> {
                   child: Container(
                     padding: const EdgeInsets.symmetric(vertical: 9),
                     decoration: BoxDecoration(
-                      color: _shift == 'morning'
-                          ? const Color(0xFFE98324).withValues(alpha: 0.15)
-                          : Colors.transparent,
+                      color: _shift == 'morning' ? const Color(0xFFE98324).withValues(alpha: 0.15) : Colors.transparent,
                       border: Border.all(
-                        color: _shift == 'morning'
-                            ? const Color(0xFFE98324)
-                            : (isDark ? AppColors.borderDark : AppColors.borderLight),
+                        color: _shift == 'morning' ? const Color(0xFFE98324) : (isDark ? AppColors.borderDark : AppColors.borderLight),
                         width: _shift == 'morning' ? 1.5 : 1.0,
                       ),
                       borderRadius: BorderRadius.circular(8),
@@ -508,11 +448,7 @@ class _AddProductionDialogState extends State<AddProductionDialog> {
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Icon(
-                          Icons.wb_sunny_rounded,
-                          size: 15,
-                          color: _shift == 'morning' ? const Color(0xFFE98324) : Colors.grey,
-                        ),
+                        Icon(Icons.wb_sunny_rounded, size: 15, color: _shift == 'morning' ? const Color(0xFFE98324) : Colors.grey),
                         const SizedBox(width: 6),
                         Text(
                           'Morning',
@@ -535,13 +471,9 @@ class _AddProductionDialogState extends State<AddProductionDialog> {
                   child: Container(
                     padding: const EdgeInsets.symmetric(vertical: 9),
                     decoration: BoxDecoration(
-                      color: _shift == 'evening'
-                          ? AppColors.primary.withValues(alpha: 0.15)
-                          : Colors.transparent,
+                      color: _shift == 'evening' ? AppColors.primary.withValues(alpha: 0.15) : Colors.transparent,
                       border: Border.all(
-                        color: _shift == 'evening'
-                            ? AppColors.primary
-                            : (isDark ? AppColors.borderDark : AppColors.borderLight),
+                        color: _shift == 'evening' ? AppColors.primary : (isDark ? AppColors.borderDark : AppColors.borderLight),
                         width: _shift == 'evening' ? 1.5 : 1.0,
                       ),
                       borderRadius: BorderRadius.circular(8),
@@ -550,11 +482,7 @@ class _AddProductionDialogState extends State<AddProductionDialog> {
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
-                        Icon(
-                          Icons.nights_stay_rounded,
-                          size: 15,
-                          color: _shift == 'evening' ? AppColors.primary : Colors.grey,
-                        ),
+                        Icon(Icons.nights_stay_rounded, size: 15, color: _shift == 'evening' ? AppColors.primary : Colors.grey),
                         const SizedBox(width: 6),
                         Text(
                           'Evening',
@@ -588,15 +516,14 @@ class _AddProductionDialogState extends State<AddProductionDialog> {
           children: [
             // Cow Dropdown
             CustomDropdownSearch<CowModel>(
+              key: ValueKey('cow_select_$_formResetKey'),
               label: 'Select Cow',
               isRequired: true,
               hint: 'Search cow tag or name...',
               searchable: true,
               items: _controller.activeCows,
               selectedItem: _selectedCow,
-              itemAsString: (c) => c.tagId.isNotEmpty
-                  ? '${c.tagId}${c.calfName != null ? " (${c.calfName})" : ""}'
-                  : c.id,
+              itemAsString: (c) => c.tagId.isNotEmpty ? '${c.tagId}${c.calfName != null ? " (${c.calfName})" : ""}' : c.id,
               onChanged: (c) => setState(() => _selectedCow = c),
               prefixIcon: Icons.pets_rounded,
             ),
@@ -604,6 +531,7 @@ class _AddProductionDialogState extends State<AddProductionDialog> {
 
             // Worker Dropdown
             CustomDropdownSearch<WorkerModel>(
+              key: ValueKey('worker_select_$_formResetKey'),
               label: 'Milking Worker / Reported By',
               isRequired: true,
               hint: 'Select farm worker...',
@@ -622,9 +550,7 @@ class _AddProductionDialogState extends State<AddProductionDialog> {
               hint: 'e.g. 12.5',
               controller: _qtyCtrl,
               keyboardType: const TextInputType.numberWithOptions(decimal: true),
-              inputFormatters: [
-                FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*')),
-              ],
+              inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*'))],
               prefixIcon: const Icon(PhosphorIconsRegular.drop, size: 18),
               validator: (val) {
                 if (val == null || val.trim().isEmpty) return 'Enter milk quantity';
@@ -634,8 +560,6 @@ class _AddProductionDialogState extends State<AddProductionDialog> {
               },
             ),
             const SizedBox(height: 14),
-
-
 
             // Remarks
             CustomTextField(
@@ -670,6 +594,7 @@ class _AddProductionDialogState extends State<AddProductionDialog> {
             Expanded(
               flex: 4,
               child: CustomDropdownSearch<WorkerModel>(
+                key: ValueKey('bulk_worker_$_formResetKey'),
                 label: 'Default Worker (Applies to all cows)',
                 hint: 'Select default worker...',
                 items: _controller.activeWorkers,
@@ -710,10 +635,7 @@ class _AddProductionDialogState extends State<AddProductionDialog> {
               ),
               RichText(
                 text: TextSpan(
-                  style: TextStyle(
-                    fontSize: 13,
-                    color: isDark ? AppColors.textPrimaryDark : AppColors.textPrimaryLight,
-                  ),
+                  style: TextStyle(fontSize: 13, color: isDark ? AppColors.textPrimaryDark : AppColors.textPrimaryLight),
                   children: [
                     const TextSpan(text: 'Entered: '),
                     TextSpan(
@@ -738,29 +660,20 @@ class _AddProductionDialogState extends State<AddProductionDialog> {
           child: filteredCows.isEmpty
               ? Center(
                   child: Text(
-                    _bulkSearchFilter.isEmpty
-                        ? 'No active cows found for this gaushala.'
-                        : 'No cows match "$_bulkSearchFilter".',
-                    style: TextStyle(
-                      color: isDark ? AppColors.textMutedDark : AppColors.textMutedLight,
-                    ),
+                    _bulkSearchFilter.isEmpty ? 'No active cows found for this gaushala.' : 'No cows match "$_bulkSearchFilter".',
+                    style: TextStyle(color: isDark ? AppColors.textMutedDark : AppColors.textMutedLight),
                   ),
                 )
               : ClipRRect(
                   borderRadius: BorderRadius.circular(8),
                   child: Container(
                     decoration: BoxDecoration(
-                      border: Border.all(
-                        color: isDark ? AppColors.borderDark : AppColors.borderLight,
-                      ),
+                      border: Border.all(color: isDark ? AppColors.borderDark : AppColors.borderLight),
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: ListView.separated(
                       itemCount: filteredCows.length,
-                      separatorBuilder: (_, _) => Divider(
-                        height: 1,
-                        color: isDark ? AppColors.borderDark : AppColors.borderLight,
-                      ),
+                      separatorBuilder: (_, _) => Divider(height: 1, color: isDark ? AppColors.borderDark : AppColors.borderLight),
                       itemBuilder: (context, index) {
                         final cow = filteredCows[index];
                         final item = _bulkItems[cow.id]!;
@@ -768,9 +681,7 @@ class _AddProductionDialogState extends State<AddProductionDialog> {
 
                         return Container(
                           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                          color: item.quantity > 0
-                              ? AppColors.primary.withValues(alpha: 0.05)
-                              : Colors.transparent,
+                          color: item.quantity > 0 ? AppColors.primary.withValues(alpha: 0.05) : Colors.transparent,
                           child: Row(
                             children: [
                               // Cow Tag & Name
@@ -780,22 +691,11 @@ class _AddProductionDialogState extends State<AddProductionDialog> {
                                   crossAxisAlignment: CrossAxisAlignment.start,
                                   mainAxisAlignment: MainAxisAlignment.center,
                                   children: [
-                                    Text(
-                                      cow.tagId,
-                                      style: const TextStyle(
-                                        fontSize: 13.5,
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
+                                    Text(cow.tagId, style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.bold)),
                                     if (cow.calfName != null && cow.calfName!.isNotEmpty)
                                       Text(
                                         cow.calfName!,
-                                        style: TextStyle(
-                                          fontSize: 11.5,
-                                          color: isDark
-                                              ? AppColors.textMutedDark
-                                              : AppColors.textMutedLight,
-                                        ),
+                                        style: TextStyle(fontSize: 11.5, color: isDark ? AppColors.textMutedDark : AppColors.textMutedLight),
                                       ),
                                   ],
                                 ),
@@ -806,9 +706,7 @@ class _AddProductionDialogState extends State<AddProductionDialog> {
                                 flex: 3,
                                 child: DropdownButtonHideUnderline(
                                   child: DropdownButton<String>(
-                                    value: item.workerId.isNotEmpty
-                                        ? item.workerId
-                                        : (_bulkDefaultWorker?.id ?? ''),
+                                    value: item.workerId.isNotEmpty ? item.workerId : (_bulkDefaultWorker?.id ?? ''),
                                     isExpanded: true,
                                     hint: const Text('Worker', style: TextStyle(fontSize: 12)),
                                     items: [
@@ -816,10 +714,12 @@ class _AddProductionDialogState extends State<AddProductionDialog> {
                                         value: '',
                                         child: Text('Default Worker', style: TextStyle(fontSize: 12)),
                                       ),
-                                      ..._controller.activeWorkers.map((w) => DropdownMenuItem(
-                                            value: w.id,
-                                            child: Text(w.name, style: const TextStyle(fontSize: 12)),
-                                          )),
+                                      ..._controller.activeWorkers.map(
+                                        (w) => DropdownMenuItem(
+                                          value: w.id,
+                                          child: Text(w.name, style: const TextStyle(fontSize: 12)),
+                                        ),
+                                      ),
                                     ],
                                     onChanged: (val) {
                                       setState(() {
@@ -837,9 +737,7 @@ class _AddProductionDialogState extends State<AddProductionDialog> {
                                 child: TextField(
                                   controller: qtyCtrl,
                                   keyboardType: const TextInputType.numberWithOptions(decimal: true),
-                                  inputFormatters: [
-                                    FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*')),
-                                  ],
+                                  inputFormatters: [FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d*'))],
                                   style: const TextStyle(fontSize: 13),
                                   decoration: InputDecoration(
                                     isDense: true,
@@ -879,20 +777,13 @@ class _AddProductionDialogState extends State<AddProductionDialog> {
         children: [
           Expanded(
             flex: 1,
-            child: CustomButton(
-              text: 'Cancel',
-              variant: ButtonVariant.outlined,
-              height: 42,
-              onPressed: _isSubmitting ? null : () => Get.back(),
-            ),
+            child: CustomButton(text: 'Cancel', variant: ButtonVariant.outlined, height: 42, onPressed: _isSubmitting ? null : () => Get.back()),
           ),
           const SizedBox(width: 10),
           Expanded(
             flex: 2,
             child: CustomButton(
-              text: isBulk
-                  ? 'Save Bulk ($_bulkFilledCowsCount)'
-                  : 'Save Entry',
+              text: isBulk ? 'Save Bulk ($_bulkFilledCowsCount)' : 'Save Entry',
               icon: isBulk ? Icons.cloud_upload_rounded : Icons.check_rounded,
               isLoading: _isSubmitting,
               height: 42,
@@ -906,16 +797,10 @@ class _AddProductionDialogState extends State<AddProductionDialog> {
     return Row(
       mainAxisAlignment: MainAxisAlignment.end,
       children: [
-        CustomButton(
-          text: 'Cancel',
-          variant: ButtonVariant.outlined,
-          onPressed: _isSubmitting ? null : () => Get.back(),
-        ),
+        CustomButton(text: 'Cancel', variant: ButtonVariant.outlined, onPressed: _isSubmitting ? null : () => Get.back()),
         const SizedBox(width: 12),
         CustomButton(
-          text: isBulk
-              ? 'Save Bulk Entries ($_bulkFilledCowsCount)'
-              : 'Save Production Entry',
+          text: isBulk ? 'Save Bulk Entries ($_bulkFilledCowsCount)' : 'Save Production Entry',
           icon: isBulk ? Icons.cloud_upload_rounded : Icons.check_rounded,
           isLoading: _isSubmitting,
           onPressed: isBulk ? _submitBulk : _submitSingle,

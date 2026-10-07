@@ -28,6 +28,7 @@ class ShedController extends GetxController {
 
   final Rxn<UserModel> currentUser = Rxn<UserModel>();
   final RxBool isSidebarCollapsed = false.obs;
+  bool get isSuperAdmin => _gaushalaService.isSuperAdmin;
   final RxBool isLoading = false.obs;
   final RxBool isRefreshing = false.obs;
   final RxBool isSubmitting = false.obs;
@@ -111,6 +112,7 @@ class ShedController extends GetxController {
   }
 
   void setGaushalaFilter(String? gaushalaId) {
+    if (!isSuperAdmin) return;
     final cleanId = (gaushalaId == null || gaushalaId.isEmpty || gaushalaId == 'all')
         ? null
         : gaushalaId;
@@ -123,12 +125,17 @@ class ShedController extends GetxController {
 
   void clearFilters() {
     searchQuery.value = '';
-    final hadGaushalaFilter = selectedGaushalaFilter.value != null;
-    selectedGaushalaFilter.value = null;
-    currentPage.value = 1;
-    mobileLimit.value = 10;
-    if (hadGaushalaFilter) {
-      fetchSheds(gaushalaId: null, showLoading: true);
+    if (isSuperAdmin) {
+      final hadGaushalaFilter = selectedGaushalaFilter.value != null;
+      selectedGaushalaFilter.value = null;
+      currentPage.value = 1;
+      mobileLimit.value = 10;
+      if (hadGaushalaFilter) {
+        fetchSheds(gaushalaId: null, showLoading: true);
+      }
+    } else {
+      currentPage.value = 1;
+      mobileLimit.value = 10;
     }
   }
 
@@ -188,7 +195,9 @@ class ShedController extends GetxController {
       isRefreshing.value = true;
     }
     try {
-      final gId = gaushalaId ?? selectedGaushalaFilter.value;
+      final gId = isSuperAdmin
+          ? (gaushalaId ?? selectedGaushalaFilter.value)
+          : _gaushalaService.selectedGaushalaId;
       final result = await _apiService.getSheds(gaushalaId: gId);
       if (gId == null || gId.isEmpty || gId == 'all') {
         _cachedSheds
@@ -362,11 +371,13 @@ class ShedController extends GetxController {
   Widget _buildGaushalaDropdown({
     required BuildContext context,
     required Rxn<GaushalaModel> selectedGaushala,
+    bool? enabled,
   }) {
     return Obx(() {
       return CustomDropdownSearch<GaushalaModel>(
         label: 'Gaushala',
         isRequired: true,
+        enabled: enabled ?? isSuperAdmin,
         hint: isLoadingGaushalas.value ? 'Loading gaushalas...' : 'Select Gaushala',
         prefixIcon: Icons.storefront_outlined,
         selectedItem: selectedGaushala.value,
@@ -399,10 +410,11 @@ class ShedController extends GetxController {
     }
 
     GaushalaModel? defaultGaushala;
-    final userGId = currentUser.value?.gaushalaId;
+    final userGId = _gaushalaService.getUserDefaultGaushala()?.id ?? currentUser.value?.gaushalaId ?? _gaushalaService.selectedGaushala.value?.id;
     if (userGId != null && userGId.isNotEmpty) {
       defaultGaushala = gaushalas.firstWhereOrNull((g) => g.id == userGId);
     }
+    defaultGaushala ??= _gaushalaService.getUserDefaultGaushala() ?? _gaushalaService.selectedGaushala.value;
     if (defaultGaushala == null && gaushalas.length == 1) {
       defaultGaushala = gaushalas.first;
     }

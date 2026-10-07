@@ -245,6 +245,7 @@ class FeedStockTransactionController extends GetxController {
   }
 
   void setGaushalaFilter(String? gId) {
+    if (!canChangeGaushala) return;
     selectedGaushalaFilter.value = gId;
     currentPage.value = 1;
     loadFeedItems(gId);

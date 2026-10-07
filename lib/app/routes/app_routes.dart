@@ -23,5 +23,8 @@ abstract class AppRoutes {
   static const String milk = '/milk';
   static const String forbidden = '/403-forbidden';
   static const String userPermissions = '/user-permissions';
+  static const String moduleManagement = '/module-management';
+  // ignore: constant_identifier_names
+  static const String MODULE_MANAGEMENT = '/module-management';
 }
 

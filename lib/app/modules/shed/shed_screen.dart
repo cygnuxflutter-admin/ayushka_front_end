@@ -431,8 +431,10 @@ class ShedScreen extends GetView<ShedController> {
                 Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    _buildGaushalaFilterDropdown(context, isDark),
-                    const SizedBox(width: 12),
+                    if (controller.isSuperAdmin) ...[
+                      _buildGaushalaFilterDropdown(context, isDark),
+                      const SizedBox(width: 12),
+                    ],
                     SizedBox(
                       width: 240,
                       child: TextField(
@@ -730,7 +732,6 @@ class ShedScreen extends GetView<ShedController> {
             constraints: const BoxConstraints(maxHeight: 280),
             menuProps: MenuProps(
               backgroundColor: isDark ? AppColors.cardDark : AppColors.surfaceLight,
-              borderRadius: BorderRadius.circular(12),
               elevation: 4,
               shadowColor: Colors.black.withValues(alpha: 0.12),
               shape: RoundedRectangleBorder(
@@ -851,8 +852,10 @@ class ShedScreen extends GetView<ShedController> {
             ),
           ),
         ),
-        const SizedBox(height: 10),
-        _buildGaushalaFilterDropdown(context, isDark, isExpanded: true),
+        if (controller.isSuperAdmin) ...[
+          const SizedBox(height: 10),
+          _buildGaushalaFilterDropdown(context, isDark, isExpanded: true),
+        ],
       ],
     );
   }

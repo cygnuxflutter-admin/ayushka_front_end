@@ -1,4 +1,5 @@
 import 'dart:convert';
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:get/get.dart';
@@ -36,11 +37,12 @@ class FeedStockTransactionController extends GetxController {
   final RxBool isSubmitting = false.obs;
 
   // Data lists
+  final RxList<FeedStockTransactionModel> allTransactions = <FeedStockTransactionModel>[].obs;
   final RxList<FeedStockTransactionModel> transactions = <FeedStockTransactionModel>[].obs;
   final RxList<FeedStockTransactionModel> mobileTransactions = <FeedStockTransactionModel>[].obs;
   final RxInt mobilePage = 1.obs;
   final RxBool isLoadingMoreTransactions = false.obs;
-  bool get hasMoreMobileTransactions => mobileTransactions.length < totalRecords.value;
+  bool get hasMoreMobileTransactions => mobileTransactions.length < filteredTransactions.length;
 
   final RxList<FeedItemModel> feedItems = <FeedItemModel>[].obs;
   final RxList<ShedModel> sheds = <ShedModel>[].obs;
@@ -79,18 +81,18 @@ class FeedStockTransactionController extends GetxController {
         _gaushalaService.findGaushala(idOrName);
   }
 
-  // Summary Metrics computed from loaded transactions
-  int get totalTransactionsCount => totalRecords.value > 0 ? totalRecords.value : transactions.length;
+  // Summary Metrics computed from all loaded transactions
+  int get totalTransactionsCount => allTransactions.isNotEmpty ? allTransactions.length : totalRecords.value;
 
-  int get inwardTransactionsCount => transactions.where((t) => t.isInward).length;
+  int get inwardTransactionsCount => allTransactions.where((t) => t.isInward).length;
   double get totalInwardQuantity =>
-      transactions.where((t) => t.isInward).fold(0.0, (sum, t) => sum + t.quantity);
+      allTransactions.where((t) => t.isInward).fold(0.0, (sum, t) => sum + t.quantity);
 
-  int get outwardTransactionsCount => transactions.where((t) => t.isOutward).length;
+  int get outwardTransactionsCount => allTransactions.where((t) => t.isOutward).length;
   double get totalOutwardQuantity =>
-      transactions.where((t) => t.isOutward).fold(0.0, (sum, t) => sum + t.quantity);
+      allTransactions.where((t) => t.isOutward).fold(0.0, (sum, t) => sum + t.quantity);
 
-  double get totalPurchaseSpend => transactions
+  double get totalPurchaseSpend => allTransactions
       .where((t) => t.isInward && t.totalAmount > 0)
       .fold(0.0, (sum, t) => sum + t.totalAmount);
 
@@ -175,32 +177,137 @@ class FeedStockTransactionController extends GetxController {
     } catch (_) {}
   }
 
+  List<FeedStockTransactionModel> get filteredTransactions {
+    final query = searchQuery.value.trim().toLowerCase();
+    final typeFilter = selectedTypeFilter.value;
+    final reasonFilter = selectedReasonFilter.value;
+    final itemFilter = selectedItemFilter.value;
+    final shedFilter = selectedShedFilter.value;
+    final dateRange = selectedDateRange.value;
+
+    return allTransactions.where((t) {
+      // 1. Movement Type Filter
+      if (typeFilter != 'ALL' && t.type.toUpperCase() != typeFilter.toUpperCase()) {
+        return false;
+      }
+
+      // 2. Reason Filter
+      if (reasonFilter != 'ALL' && t.reason.toUpperCase() != reasonFilter.toUpperCase()) {
+        return false;
+      }
+
+      // 3. Item Filter
+      if (itemFilter != null && itemFilter.isNotEmpty && itemFilter != 'all') {
+        if (t.itemId != itemFilter) {
+          return false;
+        }
+      }
+
+      // 4. Shed Filter
+      if (shedFilter != null && shedFilter.isNotEmpty && shedFilter != 'all') {
+        if (t.shedId != shedFilter) {
+          return false;
+        }
+      }
+
+      // 5. Date Range Filter
+      if (dateRange != null) {
+        final txDate = t.transactionDate ?? t.createdAt;
+        if (txDate != null) {
+          final start = DateTime(dateRange.start.year, dateRange.start.month, dateRange.start.day);
+          final end = DateTime(dateRange.end.year, dateRange.end.month, dateRange.end.day, 23, 59, 59, 999);
+          if (txDate.isBefore(start) || txDate.isAfter(end)) {
+            return false;
+          }
+        }
+      }
+
+      // 6. Search Query Filter (multi-token search across all fields)
+      if (query.isNotEmpty) {
+        final tokens = query.split(RegExp(r'\s+')).where((tok) => tok.isNotEmpty).toList();
+        final searchCorpus = [
+          t.itemName,
+          t.itemCode,
+          t.category,
+          t.categoryEnum.label,
+          t.type,
+          t.typeEnum.label,
+          t.reason,
+          t.reasonEnum.label,
+          t.supplierOrDonorName,
+          t.billOrReceiptNo,
+          t.vehicleNumber,
+          t.notes,
+          t.recordedByName,
+          t.shedName ?? '',
+          t.shedNumber ?? '',
+          t.gaushalaName ?? '',
+          t.unit,
+          t.quantity.toString(),
+          t.quantity.toStringAsFixed(0),
+          if (t.totalAmount > 0) t.totalAmount.toString(),
+        ].join(' ').toLowerCase();
+
+        final matchesAllTokens = tokens.every((token) => searchCorpus.contains(token));
+        if (!matchesAllTokens) {
+          return false;
+        }
+      }
+
+      return true;
+    }).toList();
+  }
+
+  void _applyFiltersAndPagination({bool resetPage = false}) {
+    if (resetPage) {
+      currentPage.value = 1;
+      mobilePage.value = 1;
+    }
+    final filtered = filteredTransactions;
+    totalRecords.value = filtered.length;
+    totalPages.value = filtered.isEmpty ? 1 : (filtered.length / rowsPerPage.value).ceil().clamp(1, 999999);
+
+    if (currentPage.value > totalPages.value) {
+      currentPage.value = totalPages.value;
+    }
+    if (currentPage.value < 1) {
+      currentPage.value = 1;
+    }
+
+    final start = (currentPage.value - 1) * rowsPerPage.value;
+    if (start >= filtered.length) {
+      if (filtered.isEmpty) {
+        transactions.clear();
+      } else {
+        currentPage.value = 1;
+        final end = math.min(rowsPerPage.value, filtered.length);
+        transactions.assignAll(filtered.sublist(0, end));
+      }
+    } else {
+      final end = math.min(start + rowsPerPage.value, filtered.length);
+      transactions.assignAll(filtered.sublist(start, end));
+    }
+
+    final mobileCount = math.min(mobilePage.value * 10, filtered.length);
+    mobileTransactions.assignAll(filtered.sublist(0, mobileCount));
+  }
+
   Future<void> fetchTransactions({bool showRefreshing = false, bool resetMobile = true}) async {
     if (showRefreshing) {
       isRefreshing.value = true;
-    } else if (transactions.isEmpty) {
+    } else if (allTransactions.isEmpty) {
       isLoading.value = true;
     }
 
     try {
       final result = await _apiService.getFeedStockTransactions(
         gaushalaId: selectedGaushalaFilter.value,
-        itemId: selectedItemFilter.value,
-        type: selectedTypeFilter.value == 'ALL' ? null : selectedTypeFilter.value,
-        shedId: selectedShedFilter.value,
-        reason: selectedReasonFilter.value == 'ALL' ? null : selectedReasonFilter.value,
-        page: currentPage.value,
-        limit: rowsPerPage.value,
-        search: searchQuery.value.trim().isEmpty ? null : searchQuery.value.trim(),
+        page: 1,
+        limit: 1000,
       );
 
-      transactions.assignAll(result.items);
-      totalRecords.value = result.total;
-      totalPages.value = result.totalPages;
-      if (resetMobile) {
-        mobilePage.value = currentPage.value;
-        mobileTransactions.assignAll(result.items);
-      }
+      allTransactions.assignAll(result.items);
+      _applyFiltersAndPagination(resetPage: resetMobile);
     } catch (e) {
       CustomSnackbar.showError(
         title: 'Error',
@@ -216,21 +323,8 @@ class FeedStockTransactionController extends GetxController {
     if (isLoadingMoreTransactions.value || !hasMoreMobileTransactions) return;
     isLoadingMoreTransactions.value = true;
     try {
-      final nextPage = mobilePage.value + 1;
-      final result = await _apiService.getFeedStockTransactions(
-        gaushalaId: selectedGaushalaFilter.value,
-        itemId: selectedItemFilter.value,
-        type: selectedTypeFilter.value == 'ALL' ? null : selectedTypeFilter.value,
-        shedId: selectedShedFilter.value,
-        reason: selectedReasonFilter.value == 'ALL' ? null : selectedReasonFilter.value,
-        page: nextPage,
-        limit: rowsPerPage.value,
-        search: searchQuery.value.trim().isEmpty ? null : searchQuery.value.trim(),
-      );
-      mobileTransactions.addAll(result.items);
-      mobilePage.value = nextPage;
-      totalRecords.value = result.total;
-    } catch (_) {
+      mobilePage.value++;
+      _applyFiltersAndPagination(resetPage: false);
     } finally {
       isLoadingMoreTransactions.value = false;
     }
@@ -247,6 +341,7 @@ class FeedStockTransactionController extends GetxController {
   void setGaushalaFilter(String? gId) {
     selectedGaushalaFilter.value = gId;
     currentPage.value = 1;
+    mobilePage.value = 1;
     loadFeedItems(gId);
     loadSheds(gId);
     fetchTransactions();
@@ -254,48 +349,45 @@ class FeedStockTransactionController extends GetxController {
 
   void setTypeFilter(String type) {
     selectedTypeFilter.value = type;
-    currentPage.value = 1;
-    fetchTransactions();
+    _applyFiltersAndPagination(resetPage: true);
   }
 
   void setReasonFilter(String reason) {
     selectedReasonFilter.value = reason;
-    currentPage.value = 1;
-    fetchTransactions();
+    _applyFiltersAndPagination(resetPage: true);
   }
 
   void setItemFilter(String? itemId) {
     selectedItemFilter.value = itemId;
-    currentPage.value = 1;
-    fetchTransactions();
+    _applyFiltersAndPagination(resetPage: true);
   }
 
   void setShedFilter(String? shedId) {
     selectedShedFilter.value = shedId;
-    currentPage.value = 1;
-    fetchTransactions();
+    _applyFiltersAndPagination(resetPage: true);
   }
 
   void setSearchQuery(String query) {
     searchQuery.value = query;
     if (searchController.text != query) {
-      searchController.text = query;
+      searchController.value = TextEditingValue(
+        text: query,
+        selection: TextSelection.collapsed(offset: query.length),
+      );
     }
-    currentPage.value = 1;
-    fetchTransactions();
+    _applyFiltersAndPagination(resetPage: true);
   }
 
   void setPage(int page) {
     if (page >= 1 && page <= totalPages.value) {
       currentPage.value = page;
-      fetchTransactions();
+      _applyFiltersAndPagination(resetPage: false);
     }
   }
 
   void setRowsPerPage(int limit) {
     rowsPerPage.value = limit;
-    currentPage.value = 1;
-    fetchTransactions();
+    _applyFiltersAndPagination(resetPage: true);
   }
 
   void clearFilters() {
@@ -306,8 +398,7 @@ class FeedStockTransactionController extends GetxController {
     selectedItemFilter.value = null;
     selectedShedFilter.value = null;
     selectedDateRange.value = null;
-    currentPage.value = 1;
-    fetchTransactions();
+    _applyFiltersAndPagination(resetPage: true);
   }
 
   /// Unified Date & Time input field matching CustomTextField and CustomDropdownSearch

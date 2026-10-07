@@ -304,4 +304,177 @@ void main() {
       expect(availableStock - enteredQty, 0.0);
     });
   });
+
+  group('Stock Transaction Search & Filtering Logic Tests', () {
+    final sampleTx1 = FeedStockTransactionModel.fromJson({
+      '_id': 'tx_001',
+      'itemId': {
+        '_id': 'item_1',
+        'itemName': 'Green Hybrid Fodder (9977)',
+        'itemCode': 'FOD-9977',
+        'category': 'GREEN_FODDER',
+        'unit': 'KG',
+      },
+      'type': 'INWARD',
+      'reason': 'PURCHASE',
+      'quantity': 300,
+      'unit': 'KG',
+      'ratePerUnit': 0,
+      'totalAmount': 0,
+      'supplierOrDonorName': 'Kisan Fodder Mart',
+      'billOrReceiptNo': 'INV-9977',
+      'vehicleNumber': 'GJ-21-AA-1122',
+      'notes': 'Fresh green harvest batch',
+      'stockBefore': 235,
+      'stockAfter': 535,
+      'recordedBy': {'_id': 'u1', 'name': 'Ayushka Admin'},
+    });
+
+    final sampleTx2 = FeedStockTransactionModel.fromJson({
+      '_id': 'tx_002',
+      'itemId': {
+        '_id': 'item_2',
+        'itemName': 'High-Protein Cattle Feed (3967)',
+        'itemCode': 'FEED-3967',
+        'category': 'DRY_FODDER',
+        'unit': 'KG',
+      },
+      'type': 'INWARD',
+      'reason': 'PURCHASE',
+      'quantity': 500,
+      'unit': 'KG',
+      'ratePerUnit': 32.5,
+      'totalAmount': 16250,
+      'supplierOrDonorName': 'Amul Feeds',
+      'billOrReceiptNo': 'BILL-3967',
+      'vehicleNumber': 'GJ-05-XY-9999',
+      'notes': 'Protein rich concentrate bags',
+      'stockBefore': 0,
+      'stockAfter': 500,
+      'recordedBy': {'_id': 'u1', 'name': 'Ayushka Admin'},
+    });
+
+    final sampleTx3 = FeedStockTransactionModel.fromJson({
+      '_id': 'tx_003',
+      'itemId': {
+        '_id': 'item_1',
+        'itemName': 'Green Hybrid Fodder (9977)',
+        'itemCode': 'FOD-9977',
+        'category': 'GREEN_FODDER',
+        'unit': 'KG',
+      },
+      'type': 'OUTWARD',
+      'reason': 'DAILY_FEEDING',
+      'quantity': 150,
+      'unit': 'KG',
+      'shedId': {'_id': 'shed_1', 'shedName': 'Shed 01', 'shedNumber': 'SH-01'},
+      'notes': 'Afternoon feeding to milch cows',
+      'stockBefore': 535,
+      'stockAfter': 385,
+      'recordedBy': {'_id': 'u2', 'name': 'Ramesh Bhai'},
+    });
+
+    final allItems = [sampleTx1, sampleTx2, sampleTx3];
+
+    List<FeedStockTransactionModel> filterTransactions({
+      required List<FeedStockTransactionModel> transactions,
+      String query = '',
+      String type = 'ALL',
+      String reason = 'ALL',
+      String? itemId,
+    }) {
+      final cleanQuery = query.trim().toLowerCase();
+      return transactions.where((t) {
+        if (type != 'ALL' && t.type.toUpperCase() != type.toUpperCase()) return false;
+        if (reason != 'ALL' && t.reason.toUpperCase() != reason.toUpperCase()) return false;
+        if (itemId != null && t.itemId != itemId) return false;
+
+        if (cleanQuery.isNotEmpty) {
+          final tokens = cleanQuery.split(RegExp(r'\s+')).where((k) => k.isNotEmpty).toList();
+          final corpus = [
+            t.itemName,
+            t.itemCode,
+            t.category,
+            t.categoryEnum.label,
+            t.type,
+            t.typeEnum.label,
+            t.reason,
+            t.reasonEnum.label,
+            t.supplierOrDonorName,
+            t.billOrReceiptNo,
+            t.vehicleNumber,
+            t.notes,
+            t.recordedByName,
+            t.shedName ?? '',
+            t.shedNumber ?? '',
+            t.unit,
+            t.quantity.toString(),
+            t.quantity.toStringAsFixed(0),
+            if (t.totalAmount > 0) t.totalAmount.toString(),
+          ].join(' ').toLowerCase();
+
+          return tokens.every((token) => corpus.contains(token));
+        }
+        return true;
+      }).toList();
+    }
+
+    test('Searches by item code or numeric suffix (9977)', () {
+      final results = filterTransactions(transactions: allItems, query: '9977');
+      expect(results.length, 2);
+      expect(results.every((r) => r.itemName.contains('9977')), isTrue);
+    });
+
+    test('Searches by partial item name (High-Protein)', () {
+      final results = filterTransactions(transactions: allItems, query: 'High-Protein');
+      expect(results.length, 1);
+      expect(results.first.id, 'tx_002');
+    });
+
+    test('Searches across supplier name and bill number', () {
+      final bySupplier = filterTransactions(transactions: allItems, query: 'Amul');
+      expect(bySupplier.length, 1);
+      expect(bySupplier.first.supplierOrDonorName, 'Amul Feeds');
+
+      final byBill = filterTransactions(transactions: allItems, query: 'INV-9977');
+      expect(byBill.length, 1);
+      expect(byBill.first.billOrReceiptNo, 'INV-9977');
+    });
+
+    test('Searches across vehicle number and notes', () {
+      final byVehicle = filterTransactions(transactions: allItems, query: 'GJ-21');
+      expect(byVehicle.length, 1);
+      expect(byVehicle.first.vehicleNumber, 'GJ-21-AA-1122');
+
+      final byNotes = filterTransactions(transactions: allItems, query: 'milch cows');
+      expect(byNotes.length, 1);
+      expect(byNotes.first.id, 'tx_003');
+    });
+
+    test('Multi-token search works correctly (green outward)', () {
+      final results = filterTransactions(transactions: allItems, query: 'green outward');
+      expect(results.length, 1);
+      expect(results.first.id, 'tx_003');
+    });
+
+    test('Filters by type and reason combined with search', () {
+      final inwardOnly = filterTransactions(transactions: allItems, query: '9977', type: 'INWARD');
+      expect(inwardOnly.length, 1);
+      expect(inwardOnly.first.id, 'tx_001');
+
+      final outwardOnly = filterTransactions(transactions: allItems, query: '9977', type: 'OUTWARD');
+      expect(outwardOnly.length, 1);
+      expect(outwardOnly.first.id, 'tx_003');
+    });
+
+    test('Empty query returns all records', () {
+      final results = filterTransactions(transactions: allItems, query: '');
+      expect(results.length, 3);
+    });
+
+    test('Non-matching query returns empty list', () {
+      final results = filterTransactions(transactions: allItems, query: 'xyznotfound999');
+      expect(results.isEmpty, isTrue);
+    });
+  });
 }

@@ -1121,6 +1121,70 @@ class FeedStockTransactionScreen extends GetView<FeedStockTransactionController>
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
 
+    final query = controller.searchQuery.value.trim();
+    final hasActiveFilter = query.isNotEmpty ||
+        controller.selectedTypeFilter.value != 'ALL' ||
+        controller.selectedReasonFilter.value != 'ALL' ||
+        controller.selectedItemFilter.value != null ||
+        controller.selectedShedFilter.value != null;
+
+    if (hasActiveFilter) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 48, horizontal: 20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withValues(alpha: 0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  PhosphorIconsRegular.magnifyingGlass,
+                  size: 48,
+                  color: AppColors.primary,
+                ),
+              ),
+              const SizedBox(height: 18),
+              Text(
+                query.isNotEmpty
+                    ? 'No Transactions Match "$query"'
+                    : 'No Matching Stock Transactions',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: isDark ? AppColors.textPrimaryDark : AppColors.textPrimaryLight,
+                ),
+              ),
+              const SizedBox(height: 6),
+              ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 420),
+                child: Text(
+                  'No stock transactions match your current search criteria. Try modifying your search or clear all filters.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: isDark ? AppColors.textSecondaryDark : AppColors.textSecondaryLight,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 20),
+              CustomButton(
+                text: 'Clear Filters',
+                icon: Icons.filter_alt_off_rounded,
+                height: 42,
+                padding: const EdgeInsets.symmetric(horizontal: 18),
+                onPressed: controller.clearFilters,
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
     return Center(
       child: Padding(
         padding: const EdgeInsets.symmetric(vertical: 48, horizontal: 20),

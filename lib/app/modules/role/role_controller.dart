@@ -178,7 +178,7 @@ class RoleController extends GetxController {
     }
   }
 
-  /// Updates an existing role via PUT /api/v1/roles/:id
+  /// Updates an existing role via POST /api/v1/roles/:id/update
   Future<bool> updateRole(String id, String roleName) async {
     if (roleName.trim().isEmpty) {
       CustomSnackbar.showError(

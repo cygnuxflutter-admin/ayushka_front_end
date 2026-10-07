@@ -228,7 +228,7 @@ class ApiService extends getx.GetxService {
     Map<String, dynamic>? queryParameters,
     Options? options,
   }) async {
-    return await _dio.put<T>(path, data: data, queryParameters: queryParameters, options: options);
+    return await _dio.post<T>(path, data: data, queryParameters: queryParameters, options: options);
   }
 
   Future<Response<T>> delete<T>(
@@ -403,14 +403,32 @@ class ApiService extends getx.GetxService {
   }
 
   Future<RoleModel> updateRole(String id, String roleName) async {
-    final response = await _dio.put(
-      '/roles/$id',
-      data: {
-        'roleName': roleName.trim(),
-      },
-    );
+    Response response;
+    try {
+      response = await _dio.post(
+        '/roles/$id/update',
+        data: {
+          'roleName': roleName.trim(),
+        },
+      );
+    } on DioException catch (e) {
+      if (e.response?.statusCode == 404 || e.response?.statusCode == 405) {
+        try {
+          response = await _dio.post(
+            '/roles/$id',
+            data: {
+              'roleName': roleName.trim(),
+            },
+          );
+        } catch (_) {
+          rethrow;
+        }
+      } else {
+        rethrow;
+      }
+    }
 
-    if (response.statusCode == 200) {
+    if (response.statusCode == 200 || response.statusCode == 201) {
       if (response.data != null) {
         final Map<String, dynamic> responseData = response.data is Map<String, dynamic>
             ? response.data as Map<String, dynamic>
@@ -418,6 +436,8 @@ class ApiService extends getx.GetxService {
 
         if (responseData['data'] is Map) {
           return RoleModel.fromJson(Map<String, dynamic>.from(responseData['data'] as Map));
+        } else if (responseData['_id'] != null || responseData['roleName'] != null) {
+          return RoleModel.fromJson(responseData);
         }
       }
     }
@@ -588,12 +608,28 @@ class ApiService extends getx.GetxService {
       data['gaushala'] = gaushalaId.trim();
     }
 
-    final response = await _dio.put(
-      '/sheds/$id',
-      data: data,
-    );
+    Response response;
+    try {
+      response = await _dio.post(
+        '/sheds/$id/update',
+        data: data,
+      );
+    } on DioException catch (e) {
+      if (e.response?.statusCode == 404 || e.response?.statusCode == 405) {
+        try {
+          response = await _dio.post(
+            '/sheds/$id',
+            data: data,
+          );
+        } catch (_) {
+          rethrow;
+        }
+      } else {
+        rethrow;
+      }
+    }
 
-    if (response.statusCode == 200) {
+    if (response.statusCode == 200 || response.statusCode == 201) {
       if (response.data != null) {
         final Map<String, dynamic> responseData = response.data is Map<String, dynamic>
             ? response.data as Map<String, dynamic>
@@ -601,6 +637,8 @@ class ApiService extends getx.GetxService {
 
         if (responseData['data'] is Map) {
           return ShedModel.fromJson(Map<String, dynamic>.from(responseData['data'] as Map));
+        } else if (responseData['_id'] != null || responseData['shedName'] != null) {
+          return ShedModel.fromJson(responseData);
         }
       }
     }
@@ -672,14 +710,32 @@ class ApiService extends getx.GetxService {
   }
 
   Future<BreedModel> updateBreedType(String id, String breedName) async {
-    final response = await _dio.put(
-      '/breed-types/$id',
-      data: {
-        'breedName': breedName.trim(),
-      },
-    );
+    Response response;
+    try {
+      response = await _dio.post(
+        '/breed-types/$id/update',
+        data: {
+          'breedName': breedName.trim(),
+        },
+      );
+    } on DioException catch (e) {
+      if (e.response?.statusCode == 404 || e.response?.statusCode == 405) {
+        try {
+          response = await _dio.post(
+            '/breed-types/$id',
+            data: {
+              'breedName': breedName.trim(),
+            },
+          );
+        } catch (_) {
+          rethrow;
+        }
+      } else {
+        rethrow;
+      }
+    }
 
-    if (response.statusCode == 200) {
+    if (response.statusCode == 200 || response.statusCode == 201) {
       if (response.data != null) {
         final Map<String, dynamic> responseData = response.data is Map<String, dynamic>
             ? response.data as Map<String, dynamic>
@@ -687,6 +743,8 @@ class ApiService extends getx.GetxService {
 
         if (responseData['data'] is Map) {
           return BreedModel.fromJson(Map<String, dynamic>.from(responseData['data'] as Map));
+        } else if (responseData['_id'] != null || responseData['breedName'] != null) {
+          return BreedModel.fromJson(responseData);
         }
       }
     }
@@ -787,12 +845,28 @@ class ApiService extends getx.GetxService {
       data['gaushala_id'] = gaushalaId.trim();
     }
 
-    final response = await _dio.put(
-      '/types/$id',
-      data: data,
-    );
+    Response response;
+    try {
+      response = await _dio.post(
+        '/types/$id/update',
+        data: data,
+      );
+    } on DioException catch (e) {
+      if (e.response?.statusCode == 404 || e.response?.statusCode == 405) {
+        try {
+          response = await _dio.post(
+            '/types/$id',
+            data: data,
+          );
+        } catch (_) {
+          rethrow;
+        }
+      } else {
+        rethrow;
+      }
+    }
 
-    if (response.statusCode == 200) {
+    if (response.statusCode == 200 || response.statusCode == 201) {
       if (response.data != null) {
         final Map<String, dynamic> responseData = response.data is Map<String, dynamic>
             ? response.data as Map<String, dynamic>
@@ -939,8 +1013,8 @@ class ApiService extends getx.GetxService {
         data: data,
       );
     } on DioException catch (e) {
-      if (e.response?.statusCode == 404) {
-        response = await _dio.put(
+      if (e.response?.statusCode == 404 || e.response?.statusCode == 405) {
+        response = await _dio.post(
           '/feed-stock/items/$id',
           data: data,
         );
@@ -1213,19 +1287,19 @@ class ApiService extends getx.GetxService {
     return const CowListResponse();
   }
 
-  /// Updates a cow by ID. PUT /cows/:id (with fallback to POST /cows/:id/update)
+  /// Updates a cow by ID. POST /cows/:id/update (with fallback to POST /cows/:id)
   Future<CowModel> updateCow(String id, AddCowRequestModel request) async {
     Response response;
     try {
-      response = await _dio.put(
-        '/cows/$id',
+      response = await _dio.post(
+        '/cows/$id/update',
         data: request.toJson(),
       );
     } on DioException catch (e) {
-      if (e.response?.statusCode == 404) {
+      if (e.response?.statusCode == 404 || e.response?.statusCode == 405) {
         try {
           response = await _dio.post(
-            '/cows/$id/update',
+            '/cows/$id',
             data: request.toJson(),
           );
         } catch (_) {
@@ -1244,10 +1318,13 @@ class ApiService extends getx.GetxService {
 
         if (responseData['data'] is Map) {
           return CowModel.fromJson(Map<String, dynamic>.from(responseData['data'] as Map));
-        } else if (responseData['data'] == null && responseData['_id'] != null) {
+        } else if (responseData['_id'] != null || responseData['id'] != null) {
+          return CowModel.fromJson(responseData);
+        } else {
           return CowModel.fromJson(responseData);
         }
       }
+      return CowModel.fromJson({});
     }
 
     throw DioException(
@@ -1903,18 +1980,18 @@ class ApiService extends getx.GetxService {
   }
 
   /// Updates an existing Medical Item SKU
-  /// PUT /medical-stock/items/:id or POST /medical-stock/items/:id/update
+  /// POST /medical-stock/items/:id/update (with fallback to POST /medical-stock/items/:id)
   Future<MedicalItemModel> updateMedicalItem(String id, Map<String, dynamic> data) async {
     Response response;
     try {
-      response = await _dio.put(
-        '/medical-stock/items/$id',
+      response = await _dio.post(
+        '/medical-stock/items/$id/update',
         data: data,
       );
     } on DioException catch (e) {
       if (e.response?.statusCode == 404 || e.response?.statusCode == 405) {
         response = await _dio.post(
-          '/medical-stock/items/$id/update',
+          '/medical-stock/items/$id',
           data: data,
         );
       } else {

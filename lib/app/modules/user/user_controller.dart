@@ -343,7 +343,7 @@ class UserController extends GetxController {
     }
   }
 
-  /// Updates an existing user via PUT /api/v1/users/:id
+  /// Updates an existing user via POST /api/v1/users/:id/update
   Future<bool> updateUser({
     required String id,
     required String name,

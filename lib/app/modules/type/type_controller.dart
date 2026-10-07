@@ -324,7 +324,7 @@ class TypeController extends GetxController {
     }
   }
 
-  /// Updates an existing type via PUT /api/v1/types/:id
+  /// Updates an existing type via POST /api/v1/types/:id/update
   Future<bool> updateType(String id, String typeName, {String? gaushalaId}) async {
     final trimmed = typeName.trim();
     if (trimmed.isEmpty) {

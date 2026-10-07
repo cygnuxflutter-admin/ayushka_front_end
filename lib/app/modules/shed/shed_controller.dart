@@ -284,7 +284,7 @@ class ShedController extends GetxController {
     }
   }
 
-  /// Updates an existing shed via PUT /api/v1/sheds/:id
+  /// Updates an existing shed via POST /api/v1/sheds/:id/update
   Future<bool> updateShed(
     String id, {
     required String shedName,

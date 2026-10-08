@@ -98,10 +98,11 @@ class TypeScreen extends GetView<TypeController> {
               onPressed: isBusy ? null : controller.refreshTypes,
             );
           }),
-          IconButton(
-            icon: const Icon(Icons.add_rounded),
-            onPressed: () => controller.openAddTypeDialog(context),
-          ),
+          if (controller.canAddType)
+            IconButton(
+              icon: const Icon(Icons.add_rounded),
+              onPressed: () => controller.openAddTypeDialog(context),
+            ),
         ],
       ),
       drawer: Obx(
@@ -150,12 +151,14 @@ class TypeScreen extends GetView<TypeController> {
           onLogout: controller.logout,
         ),
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        backgroundColor: AppColors.primary,
-        icon: const Icon(Icons.add_rounded, color: Colors.white),
-        label: const Text('Add Type', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-        onPressed: () => controller.openAddTypeDialog(context),
-      ),
+      floatingActionButton: controller.canAddType
+          ? FloatingActionButton.extended(
+              backgroundColor: AppColors.primary,
+              icon: const Icon(Icons.add_rounded, color: Colors.white),
+              label: const Text('Add Type', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+              onPressed: () => controller.openAddTypeDialog(context),
+            )
+          : null,
       body: NotificationListener<ScrollNotification>(
         onNotification: (scrollInfo) {
           if (scrollInfo.metrics.extentAfter < 300 && controller.hasMoreMobile) {
@@ -328,13 +331,14 @@ class TypeScreen extends GetView<TypeController> {
         ),
         Row(
           children: [
-            CustomButton(
-              text: 'Add Type',
-              icon: Icons.add_rounded,
-              width: 140,
-              height: 44,
-              onPressed: () => controller.openAddTypeDialog(context),
-            ),
+            if (controller.canAddType)
+              CustomButton(
+                text: 'Add Type',
+                icon: Icons.add_rounded,
+                width: 140,
+                height: 44,
+                onPressed: () => controller.openAddTypeDialog(context),
+              ),
           ],
         ),
       ],
@@ -503,7 +507,7 @@ class TypeScreen extends GetView<TypeController> {
                           height: 40,
                           onPressed: controller.clearFilters,
                         )
-                      else
+                      else if (controller.canAddType)
                         CustomButton(
                           text: 'Add First Type',
                           icon: Icons.add_rounded,
@@ -963,39 +967,43 @@ class TypeScreen extends GetView<TypeController> {
                       ),
                     ],
                   ),
-                  trailing: PopupMenuButton<String>(
-                    icon: const Icon(Icons.more_vert_rounded, size: 20),
-                    padding: EdgeInsets.zero,
-                    onSelected: (val) {
-                      if (val == 'edit') {
-                        controller.openEditTypeDialog(context, type);
-                      } else if (val == 'delete') {
-                        controller.confirmDeleteType(context, type);
-                      }
-                    },
-                    itemBuilder: (ctx) => [
-                      const PopupMenuItem(
-                        value: 'edit',
-                        child: Row(
-                          children: [
-                            Icon(Icons.edit_outlined, size: 18, color: AppColors.info),
-                            SizedBox(width: 8),
-                            Text('Edit Type'),
+                  trailing: (!controller.canEditType && !controller.canDeleteType)
+                      ? null
+                      : PopupMenuButton<String>(
+                          icon: const Icon(Icons.more_vert_rounded, size: 20),
+                          padding: EdgeInsets.zero,
+                          onSelected: (val) {
+                            if (val == 'edit') {
+                              controller.openEditTypeDialog(context, type);
+                            } else if (val == 'delete') {
+                              controller.confirmDeleteType(context, type);
+                            }
+                          },
+                          itemBuilder: (ctx) => [
+                            if (controller.canEditType)
+                              const PopupMenuItem(
+                                value: 'edit',
+                                child: Row(
+                                  children: [
+                                    Icon(Icons.edit_outlined, size: 18, color: AppColors.info),
+                                    SizedBox(width: 8),
+                                    Text('Edit Type'),
+                                  ],
+                                ),
+                              ),
+                            if (controller.canDeleteType)
+                              const PopupMenuItem(
+                                value: 'delete',
+                                child: Row(
+                                  children: [
+                                    Icon(Icons.delete_outline_rounded, size: 18, color: AppColors.error),
+                                    SizedBox(width: 8),
+                                    Text('Delete Type'),
+                                  ],
+                                ),
+                              ),
                           ],
                         ),
-                      ),
-                      const PopupMenuItem(
-                        value: 'delete',
-                        child: Row(
-                          children: [
-                            Icon(Icons.delete_outline_rounded, size: 18, color: AppColors.error),
-                            SizedBox(width: 8),
-                            Text('Delete Type'),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
                 ),
               );
             },

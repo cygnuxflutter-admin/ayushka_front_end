@@ -12,8 +12,10 @@ import '../../core/widgets/custom_text_field.dart';
 import '../../data/models/feed_item_model.dart';
 import '../../data/models/gaushala_model.dart';
 import '../../data/models/user_model.dart';
+import '../../core/values/permission_constants.dart';
 import '../../data/services/api_service.dart';
 import '../../data/services/gaushala_session_service.dart';
+import '../../data/services/permission_service.dart';
 import '../../data/services/storage_service.dart';
 import '../../routes/app_routes.dart';
 import 'views/edit_feed_item_screen.dart';
@@ -23,6 +25,20 @@ class FeedItemController extends GetxController {
   final ApiService _apiService = Get.find<ApiService>();
   final StorageService _storageService = Get.find<StorageService>();
   final GaushalaSessionService _gaushalaService = Get.find<GaushalaSessionService>();
+  final PermissionService? _permissionService =
+      Get.isRegistered<PermissionService>() ? Get.find<PermissionService>() : null;
+
+  bool get canAddFeedItem =>
+      _permissionService?.canAdd(PermissionModules.feedStock, PermissionSubModules.feedItems) ??
+      (currentUser.value?.isAdmin ?? false);
+
+  bool get canEditFeedItem =>
+      _permissionService?.canEdit(PermissionModules.feedStock, PermissionSubModules.feedItems) ??
+      (currentUser.value?.isAdmin ?? false);
+
+  bool get canDeleteFeedItem =>
+      _permissionService?.canDelete(PermissionModules.feedStock, PermissionSubModules.feedItems) ??
+      (currentUser.value?.isAdmin ?? false);
 
   // Static in-memory cache to prevent flickering on repeated navigation
   static final List<FeedItemModel> _cachedFeedItems = [];
@@ -522,6 +538,13 @@ class FeedItemController extends GetxController {
 
   /// Deletes a feed item via DELETE /api/v1/feed-stock/items/:id
   Future<void> deleteFeedItem(String id) async {
+    if (!canDeleteFeedItem) {
+      CustomSnackbar.showError(
+        title: 'Access Denied',
+        message: 'You do not have permission to delete feed items.',
+      );
+      return;
+    }
     isLoading.value = true;
     try {
       final success = await _apiService.deleteFeedItem(id);
@@ -546,6 +569,13 @@ class FeedItemController extends GetxController {
 
   /// Opens the Add Feed Item modal dialog
   void openAddFeedItemDialog(BuildContext context) {
+    if (!canAddFeedItem) {
+      CustomSnackbar.showError(
+        title: 'Access Denied',
+        message: 'You do not have permission to add feed items.',
+      );
+      return;
+    }
     final formKey = GlobalKey<FormState>();
     final nameController = TextEditingController();
     final codeController = TextEditingController();
@@ -838,6 +868,13 @@ class FeedItemController extends GetxController {
 
   /// Opens the Edit Feed Item modal dialog
   void openEditFeedItemDialog(BuildContext context, FeedItemModel item) {
+    if (!canEditFeedItem) {
+      CustomSnackbar.showError(
+        title: 'Access Denied',
+        message: 'You do not have permission to edit feed items.',
+      );
+      return;
+    }
     if (ResponsiveLayout.isMobile(context)) {
       Get.to(() => EditFeedItemScreen(item: item));
       return;
@@ -1101,6 +1138,13 @@ class FeedItemController extends GetxController {
 
   /// Confirmation dialog before deleting a feed item
   void confirmDeleteFeedItem(BuildContext context, FeedItemModel item) {
+    if (!canDeleteFeedItem) {
+      CustomSnackbar.showError(
+        title: 'Access Denied',
+        message: 'You do not have permission to delete feed items.',
+      );
+      return;
+    }
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     Get.dialog(

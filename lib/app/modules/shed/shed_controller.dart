@@ -6,11 +6,13 @@ import '../../core/widgets/custom_button.dart';
 import '../../core/widgets/custom_dropdown_search.dart';
 import '../../core/widgets/custom_snackbar.dart';
 import '../../core/widgets/custom_text_field.dart';
+import '../../core/values/permission_constants.dart';
 import '../../data/models/gaushala_model.dart';
 import '../../data/models/shed_model.dart';
 import '../../data/models/user_model.dart';
 import '../../data/services/api_service.dart';
 import '../../data/services/gaushala_session_service.dart';
+import '../../data/services/permission_service.dart';
 import '../../data/services/storage_service.dart';
 import '../../routes/app_routes.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
@@ -22,6 +24,20 @@ class ShedController extends GetxController {
   final ApiService _apiService = Get.find<ApiService>();
   final StorageService _storageService = Get.find<StorageService>();
   final GaushalaSessionService _gaushalaService = Get.find<GaushalaSessionService>();
+  final PermissionService? _permissionService =
+      Get.isRegistered<PermissionService>() ? Get.find<PermissionService>() : null;
+
+  bool get canAddShed =>
+      _permissionService?.canAdd(PermissionModules.shed, PermissionSubModules.shedList) ??
+      (currentUser.value?.isAdmin ?? false);
+
+  bool get canEditShed =>
+      _permissionService?.canEdit(PermissionModules.shed, PermissionSubModules.shedList) ??
+      (currentUser.value?.isAdmin ?? false);
+
+  bool get canDeleteShed =>
+      _permissionService?.canDelete(PermissionModules.shed, PermissionSubModules.shedList) ??
+      (currentUser.value?.isAdmin ?? false);
 
   // Static in-memory cache to prevent flickering / repeated loading animations on navigation
   static final List<ShedModel> _cachedSheds = [];
@@ -293,7 +309,7 @@ class ShedController extends GetxController {
     }
   }
 
-  /// Updates an existing shed via PUT /api/v1/sheds/:id
+  /// Updates an existing shed via POST /api/v1/sheds/:id/update
   Future<bool> updateShed(
     String id, {
     required String shedName,
@@ -401,6 +417,13 @@ class ShedController extends GetxController {
 
   /// Open Dialog to Add a New Shed
   void openAddShedDialog(BuildContext context) {
+    if (!canAddShed) {
+      CustomSnackbar.showWarning(
+        title: 'Access Denied',
+        message: 'You do not have permission to add sheds.',
+      );
+      return;
+    }
     final formKey = GlobalKey<FormState>();
     final nameController = TextEditingController();
     final numberController = TextEditingController();
@@ -574,6 +597,13 @@ class ShedController extends GetxController {
 
   /// Open Dialog to Edit Shed
   void openEditShedDialog(BuildContext context, ShedModel shed) {
+    if (!canEditShed) {
+      CustomSnackbar.showWarning(
+        title: 'Access Denied',
+        message: 'You do not have permission to edit sheds.',
+      );
+      return;
+    }
     if (ResponsiveLayout.isMobile(context)) {
       Navigator.of(context).push(
         MaterialPageRoute(builder: (_) => EditShedScreen(shed: shed)),
@@ -753,6 +783,13 @@ class ShedController extends GetxController {
 
   /// Confirm Delete Shed
   void confirmDeleteShed(BuildContext context, ShedModel shed) {
+    if (!canDeleteShed) {
+      CustomSnackbar.showWarning(
+        title: 'Access Denied',
+        message: 'You do not have permission to delete sheds.',
+      );
+      return;
+    }
     Get.dialog(
       AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),

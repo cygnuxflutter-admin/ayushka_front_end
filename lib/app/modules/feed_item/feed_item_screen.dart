@@ -103,11 +103,12 @@ class FeedItemScreen extends GetView<FeedItemController> {
               onPressed: isBusy ? null : controller.refreshFeedItems,
             );
           }),
-          IconButton(
-            icon: const Icon(Icons.add_rounded),
-            tooltip: 'Add Feed Item',
-            onPressed: () => controller.openAddFeedItemDialog(context),
-          ),
+          if (controller.canAddFeedItem)
+            IconButton(
+              icon: const Icon(Icons.add_rounded),
+              tooltip: 'Add Feed Item',
+              onPressed: () => controller.openAddFeedItemDialog(context),
+            ),
         ],
       ),
       drawer: Obx(
@@ -174,13 +175,15 @@ class FeedItemScreen extends GetView<FeedItemController> {
           ),
         ),
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        onPressed: () => controller.openAddFeedItemDialog(context),
-        backgroundColor: AppColors.primary,
-        foregroundColor: Colors.white,
-        icon: const Icon(Icons.add_rounded),
-        label: const Text('Add Item'),
-      ),
+      floatingActionButton: controller.canAddFeedItem
+          ? FloatingActionButton.extended(
+              onPressed: () => controller.openAddFeedItemDialog(context),
+              backgroundColor: AppColors.primary,
+              foregroundColor: Colors.white,
+              icon: const Icon(Icons.add_rounded),
+              label: const Text('Add Item'),
+            )
+          : null,
     );
   }
 
@@ -343,12 +346,14 @@ class FeedItemScreen extends GetView<FeedItemController> {
               ),
               onPressed: () => Get.toNamed(AppRoutes.feedTransactions),
             ),
-            const SizedBox(width: 10),
-            CustomButton(
-              text: 'Add Feed Item',
-              icon: Icons.add_rounded,
-              onPressed: () => controller.openAddFeedItemDialog(context),
-            ),
+            if (controller.canAddFeedItem) ...[
+              const SizedBox(width: 10),
+              CustomButton(
+                text: 'Add Feed Item',
+                icon: Icons.add_rounded,
+                onPressed: () => controller.openAddFeedItemDialog(context),
+              ),
+            ],
           ],
         ),
       ],
@@ -984,12 +989,21 @@ class FeedItemScreen extends GetView<FeedItemController> {
                             tooltip: 'View Details',
                             onPressed: () => controller.showFeedItemDetailsDialog(context, item),
                           ),
-                          IconButton(
-                            visualDensity: VisualDensity.compact,
-                            icon: const Icon(Icons.edit_outlined, size: 18),
-                            tooltip: 'Edit Item',
-                            onPressed: () => controller.openEditFeedItemDialog(context, item),
-                          ),
+                          if (controller.canEditFeedItem)
+                            IconButton(
+                              visualDensity: VisualDensity.compact,
+                              icon: const Icon(Icons.edit_outlined, size: 18),
+                              tooltip: 'Edit Item',
+                              onPressed: () => controller.openEditFeedItemDialog(context, item),
+                            ),
+                          if (controller.canDeleteFeedItem)
+                            IconButton(
+                              visualDensity: VisualDensity.compact,
+                              icon: const Icon(Icons.delete_outline_rounded, size: 18),
+                              color: AppColors.error,
+                              tooltip: 'Delete Item',
+                              onPressed: () => controller.confirmDeleteFeedItem(context, item),
+                            ),
                         ],
                       ),
                     ],
@@ -1080,7 +1094,7 @@ class FeedItemScreen extends GetView<FeedItemController> {
                 icon: Icons.filter_alt_off_rounded,
                 onPressed: controller.clearFilters,
               )
-            else
+            else if (controller.canAddFeedItem)
               CustomButton(
                 text: 'Add Feed Item',
                 icon: Icons.add_rounded,
@@ -1420,9 +1434,9 @@ class _HoverableFeedItemTableRowState extends State<_HoverableFeedItemTableRow> 
               ),
             ),
 
-            // Actions (View & Edit)
+            // Actions (View, Edit & Delete)
             SizedBox(
-              width: 90,
+              width: 110,
               child: Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 8),
                 child: Row(
@@ -1438,17 +1452,32 @@ class _HoverableFeedItemTableRowState extends State<_HoverableFeedItemTableRow> 
                       color: isDark ? AppColors.textSecondaryDark : AppColors.textSecondaryLight,
                       onPressed: () => controller.showFeedItemDetailsDialog(context, item),
                     ),
-                    const SizedBox(width: 2),
-                    IconButton(
-                      visualDensity: VisualDensity.compact,
-                      constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
-                      padding: const EdgeInsets.all(4),
-                      icon: const Icon(Icons.edit_outlined, size: 17),
-                      tooltip: 'Edit Item',
-                      hoverColor: AppColors.primary.withValues(alpha: 0.1),
-                      color: isDark ? AppColors.textSecondaryDark : AppColors.textSecondaryLight,
-                      onPressed: () => controller.openEditFeedItemDialog(context, item),
-                    ),
+                    if (controller.canEditFeedItem) ...[
+                      const SizedBox(width: 2),
+                      IconButton(
+                        visualDensity: VisualDensity.compact,
+                        constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                        padding: const EdgeInsets.all(4),
+                        icon: const Icon(Icons.edit_outlined, size: 17),
+                        tooltip: 'Edit Item',
+                        hoverColor: AppColors.primary.withValues(alpha: 0.1),
+                        color: isDark ? AppColors.textSecondaryDark : AppColors.textSecondaryLight,
+                        onPressed: () => controller.openEditFeedItemDialog(context, item),
+                      ),
+                    ],
+                    if (controller.canDeleteFeedItem) ...[
+                      const SizedBox(width: 2),
+                      IconButton(
+                        visualDensity: VisualDensity.compact,
+                        constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                        padding: const EdgeInsets.all(4),
+                        icon: const Icon(Icons.delete_outline_rounded, size: 17),
+                        tooltip: 'Delete Item',
+                        hoverColor: AppColors.error.withValues(alpha: 0.1),
+                        color: AppColors.error,
+                        onPressed: () => controller.confirmDeleteFeedItem(context, item),
+                      ),
+                    ],
                   ],
                 ),
               ),

@@ -12,6 +12,7 @@ abstract class PermissionModules {
   static const String treatment = 'TREATMENT';
   static const String workerMgmt = 'WORKER_MGMT';
   static const String milkMgmt = 'MILK_MGMT';
+  static const String donation = 'DONATION';
 
   /// List of all system modules
   static const List<String> all = [
@@ -27,6 +28,7 @@ abstract class PermissionModules {
     treatment,
     workerMgmt,
     milkMgmt,
+    donation,
   ];
 
   /// Human-readable display label for each module code
@@ -56,6 +58,8 @@ abstract class PermissionModules {
         return 'Worker & Department';
       case milkMgmt:
         return 'Milk Management';
+      case donation:
+        return 'Donation Management';
       default:
         return moduleCode;
     }
@@ -81,6 +85,8 @@ abstract class PermissionSubModules {
   static const String workerList = 'WORKER_LIST';
   static const String milkProduction = 'MILK_PRODUCTION';
   static const String milkDistribution = 'MILK_DISTRIBUTION';
+  static const String donationList = 'DONATION_LIST';
+  static const String donationReceipt = 'DONATION_RECEIPT';
 
   /// Human-readable display label for each sub-module code
   static String getLabel(String subModuleCode) {
@@ -119,6 +125,10 @@ abstract class PermissionSubModules {
         return 'Milk Production';
       case milkDistribution:
         return 'Milk Distribution';
+      case donationList:
+        return 'Donation Records';
+      case donationReceipt:
+        return 'Donation Receipts';
       default:
         return subModuleCode;
     }
@@ -156,6 +166,9 @@ abstract class PermissionSubModules {
       case milkProduction:
       case milkDistribution:
         return PermissionModules.milkMgmt;
+      case donationList:
+      case donationReceipt:
+        return PermissionModules.donation;
       default:
         return '';
     }

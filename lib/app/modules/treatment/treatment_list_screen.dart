@@ -134,12 +134,14 @@ class TreatmentListScreen extends GetView<TreatmentController> {
           ],
         ),
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        backgroundColor: AppColors.primary,
-        icon: const Icon(Icons.add_rounded, color: Colors.white),
-        label: const Text('New Case', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-        onPressed: () => controller.openAddTreatmentDialog(context),
-      ),
+      floatingActionButton: controller.canAddTreatment
+          ? FloatingActionButton.extended(
+              backgroundColor: AppColors.primary,
+              icon: const Icon(Icons.add_rounded, color: Colors.white),
+              label: const Text('New Case', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+              onPressed: () => controller.openAddTreatmentDialog(context),
+            )
+          : null,
     );
   }
 
@@ -191,12 +193,14 @@ class TreatmentListScreen extends GetView<TreatmentController> {
           ),
         ),
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        backgroundColor: AppColors.primary,
-        icon: const Icon(Icons.add_rounded, color: Colors.white),
-        label: const Text('Add Case', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-        onPressed: () => controller.openAddTreatmentDialog(context),
-      ),
+      floatingActionButton: controller.canAddTreatment
+          ? FloatingActionButton.extended(
+              backgroundColor: AppColors.primary,
+              icon: const Icon(Icons.add_rounded, color: Colors.white),
+              label: const Text('Add Case', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+              onPressed: () => controller.openAddTreatmentDialog(context),
+            )
+          : null,
     );
   }
 
@@ -375,13 +379,14 @@ class TreatmentListScreen extends GetView<TreatmentController> {
                 onPressed: () => controller.toggleDueTodayFilter(),
               ),
             ),
-            CustomButton(
-              text: 'Add Treatment Case',
-              icon: Icons.add_rounded,
-              height: 42,
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              onPressed: () => controller.openAddTreatmentDialog(context),
-            ),
+            if (controller.canAddTreatment)
+              CustomButton(
+                text: 'Add Treatment Case',
+                icon: Icons.add_rounded,
+                height: 42,
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                onPressed: () => controller.openAddTreatmentDialog(context),
+              ),
           ],
         );
 
@@ -929,6 +934,7 @@ class TreatmentListScreen extends GetView<TreatmentController> {
                                 index: index,
                                 treatment: t,
                                 isDark: isDark,
+                                canDelete: controller.canDeleteTreatment,
                                 onView: () => controller.goToTreatmentDetails(t, context),
                                 onAdministerDose: () => controller.openAdministerDoseDialog(context, t),
                                 onChangeStatus: () => controller.openChangeStatusDialog(context, t),
@@ -1395,7 +1401,7 @@ class TreatmentListScreen extends GetView<TreatmentController> {
                 height: 40,
                 onPressed: controller.clearFilters,
               )
-            else
+            else if (controller.canAddTreatment)
               CustomButton(
                 text: 'Add Treatment Case',
                 icon: Icons.add_rounded,
@@ -1451,6 +1457,7 @@ class TreatmentListScreen extends GetView<TreatmentController> {
                 key: ValueKey(t.id),
                 treatment: t,
                 isDark: isDark,
+                canDelete: controller.canDeleteTreatment,
                 onView: () => controller.goToTreatmentDetails(t, context),
                 onAdministerDose: () => controller.openAdministerDoseDialog(context, t),
                 onChangeStatus: () => controller.openChangeStatusDialog(context, t),
@@ -1498,6 +1505,7 @@ class _HoverableTreatmentTableRow extends StatefulWidget {
   final VoidCallback onAdministerDose;
   final VoidCallback onChangeStatus;
   final VoidCallback onDelete;
+  final bool canDelete;
 
   const _HoverableTreatmentTableRow({
     super.key,
@@ -1508,6 +1516,7 @@ class _HoverableTreatmentTableRow extends StatefulWidget {
     required this.onAdministerDose,
     required this.onChangeStatus,
     required this.onDelete,
+    this.canDelete = true,
   });
 
   @override
@@ -1947,15 +1956,16 @@ class _HoverableTreatmentTableRowState extends State<_HoverableTreatmentTableRow
                         const SizedBox(width: 4),
 
                         // Delete
-                        _buildRowActionIcon(
-                          tooltip: 'Delete Record',
-                          icon: PhosphorIconsRegular.trash,
-                          color: _isHovered
-                              ? AppColors.error
-                              : (isDark ? AppColors.textSecondaryDark : AppColors.textSecondaryLight),
-                          hoverColor: AppColors.error,
-                          onTap: widget.onDelete,
-                        ),
+                        if (widget.canDelete)
+                          _buildRowActionIcon(
+                            tooltip: 'Delete Record',
+                            icon: PhosphorIconsRegular.trash,
+                            color: _isHovered
+                                ? AppColors.error
+                                : (isDark ? AppColors.textSecondaryDark : AppColors.textSecondaryLight),
+                            hoverColor: AppColors.error,
+                            onTap: widget.onDelete,
+                          ),
                       ],
                     ),
                   ),
@@ -2002,6 +2012,7 @@ class _HoverableTreatmentMobileCard extends StatefulWidget {
   final VoidCallback onAdministerDose;
   final VoidCallback onChangeStatus;
   final VoidCallback onDelete;
+  final bool canDelete;
 
   const _HoverableTreatmentMobileCard({
     super.key,
@@ -2011,6 +2022,7 @@ class _HoverableTreatmentMobileCard extends StatefulWidget {
     required this.onAdministerDose,
     required this.onChangeStatus,
     required this.onDelete,
+    this.canDelete = true,
   });
 
   @override
@@ -2225,11 +2237,12 @@ class _HoverableTreatmentMobileCardState extends State<_HoverableTreatmentMobile
                     tooltip: 'Change Status',
                     onPressed: widget.onChangeStatus,
                   ),
-                  IconButton(
-                    icon: const Icon(PhosphorIconsRegular.trash, size: 16, color: AppColors.error),
-                    tooltip: 'Delete',
-                    onPressed: widget.onDelete,
-                  ),
+                  if (widget.canDelete)
+                    IconButton(
+                      icon: const Icon(PhosphorIconsRegular.trash, size: 16, color: AppColors.error),
+                      tooltip: 'Delete',
+                      onPressed: widget.onDelete,
+                    ),
                 ],
               ),
             ],

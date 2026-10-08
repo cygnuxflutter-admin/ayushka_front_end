@@ -92,8 +92,8 @@ class StorageService extends GetxService {
     try {
       final List<dynamic> list = jsonDecode(permsJson) as List<dynamic>;
       return list
-          .whereType<Map<String, dynamic>>()
-          .map((m) => PermissionItemModel.fromJson(m))
+          .whereType<Map>()
+          .map((m) => PermissionItemModel.fromJson(Map<String, dynamic>.from(m)))
           .toList();
     } catch (_) {
       return null;

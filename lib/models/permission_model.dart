@@ -118,26 +118,31 @@ class PermissionItemModel {
     );
   }
 
+  static bool _parseBool(dynamic val) {
+    if (val == true || val == 1 || val == 'true' || val == '1') return true;
+    return false;
+  }
+
   factory PermissionItemModel.fromJson(Map<String, dynamic> json) {
-    final subCode = (json['subModuleCode'] ?? json['sub_module_code'] ?? '').toString().toUpperCase();
-    String modCode = (json['moduleCode'] ?? json['module_code'] ?? '').toString().toUpperCase();
+    final subCode = (json['subModuleCode'] ?? json['sub_module_code'] ?? '').toString().trim().toUpperCase();
+    String modCode = (json['moduleCode'] ?? json['module_code'] ?? '').toString().trim().toUpperCase();
     if (modCode.isEmpty && subCode.isNotEmpty) {
       modCode = PermissionSubModules.getParentModule(subCode);
     }
 
-    final modName = (json['moduleName'] ?? json['module_name'] ?? '').toString();
-    final subName = (json['subModuleName'] ?? json['sub_module_name'] ?? '').toString();
+    final modName = (json['moduleName'] ?? json['module_name'] ?? '').toString().trim();
+    final subName = (json['subModuleName'] ?? json['sub_module_name'] ?? '').toString().trim();
 
     return PermissionItemModel(
-      moduleId: (json['moduleId'] ?? json['module_id'] ?? json['_id'] ?? json['id'] ?? '').toString(),
+      moduleId: (json['moduleId'] ?? json['module_id'] ?? json['_id'] ?? json['id'] ?? '').toString().trim(),
       moduleCode: modCode,
       moduleName: modName.isNotEmpty ? modName : PermissionModules.getLabel(modCode),
       subModuleCode: subCode,
       subModuleName: subName.isNotEmpty ? subName : PermissionSubModules.getLabel(subCode),
-      canView: json['canView'] == true || json['can_view'] == true,
-      canAdd: json['canAdd'] == true || json['can_add'] == true,
-      canEdit: json['canEdit'] == true || json['can_edit'] == true,
-      canDelete: json['canDelete'] == true || json['can_delete'] == true,
+      canView: _parseBool(json['canView'] ?? json['can_view']),
+      canAdd: _parseBool(json['canAdd'] ?? json['can_add']),
+      canEdit: _parseBool(json['canEdit'] ?? json['can_edit']),
+      canDelete: _parseBool(json['canDelete'] ?? json['can_delete']),
     );
   }
 
@@ -188,27 +193,37 @@ class UserPermissionsResponse {
   });
 
   factory UserPermissionsResponse.fromJson(Map<String, dynamic> json) {
-    final dataMap = json['data'] is Map<String, dynamic> ? json['data'] as Map<String, dynamic> : json;
+    final dataMap = json['data'] is Map ? Map<String, dynamic>.from(json['data'] as Map) : json;
 
     final rawList = dataMap['permissions'] ?? json['permissions'];
     List<PermissionItemModel> list = [];
     if (rawList is List) {
       list = rawList
-          .whereType<Map<String, dynamic>>()
-          .map((e) => PermissionItemModel.fromJson(e))
+          .whereType<Map>()
+          .map((e) => PermissionItemModel.fromJson(Map<String, dynamic>.from(e)))
           .toList();
+    } else if (rawList is Map) {
+      list = [PermissionItemModel.fromJson(Map<String, dynamic>.from(rawList))];
     }
 
-    final roleVal = (dataMap['role'] ?? json['role'] ?? '').toString();
-    final bool rawIsAdmin = dataMap['isAdmin'] == true ||
-        dataMap['is_admin'] == true ||
-        json['isAdmin'] == true ||
-        json['is_admin'] == true ||
-        roleVal.toLowerCase() == 'admin' ||
-        roleVal.toLowerCase() == 'superadmin';
+    final roleVal = (dataMap['role'] ?? json['role'] ?? '').toString().trim();
+    final String roleLower = roleVal.toLowerCase();
+
+    bool rawIsAdmin;
+    if (dataMap['isAdmin'] is bool) {
+      rawIsAdmin = dataMap['isAdmin'] as bool;
+    } else if (dataMap['is_admin'] is bool) {
+      rawIsAdmin = dataMap['is_admin'] as bool;
+    } else if (json['isAdmin'] is bool) {
+      rawIsAdmin = json['isAdmin'] as bool;
+    } else if (json['is_admin'] is bool) {
+      rawIsAdmin = json['is_admin'] as bool;
+    } else {
+      rawIsAdmin = roleLower == 'admin' || roleLower == 'superadmin' || roleLower == 'super admin';
+    }
 
     return UserPermissionsResponse(
-      userId: (dataMap['userId'] ?? dataMap['user_id'] ?? dataMap['id'] ?? dataMap['_id'] ?? '').toString(),
+      userId: (dataMap['userId'] ?? dataMap['user_id'] ?? dataMap['id'] ?? dataMap['_id'] ?? '').toString().trim(),
       role: roleVal,
       isAdmin: rawIsAdmin,
       permissions: list,
@@ -239,20 +254,22 @@ class UserPermissionMatrixResponse {
   });
 
   factory UserPermissionMatrixResponse.fromJson(Map<String, dynamic> json) {
-    final dataMap = json['data'] is Map<String, dynamic> ? json['data'] as Map<String, dynamic> : json;
+    final dataMap = json['data'] is Map ? Map<String, dynamic>.from(json['data'] as Map) : json;
 
     final rawMatrix = dataMap['permissionMatrix'] ?? dataMap['permissions'] ?? [];
     List<PermissionItemModel> matrix = [];
     if (rawMatrix is List) {
       matrix = rawMatrix
-          .whereType<Map<String, dynamic>>()
-          .map((e) => PermissionItemModel.fromJson(e))
+          .whereType<Map>()
+          .map((e) => PermissionItemModel.fromJson(Map<String, dynamic>.from(e)))
           .toList();
+    } else if (rawMatrix is Map) {
+      matrix = [PermissionItemModel.fromJson(Map<String, dynamic>.from(rawMatrix))];
     }
 
-    final userMap = dataMap['user'] is Map<String, dynamic>
-        ? dataMap['user'] as Map<String, dynamic>
-        : (dataMap['targetUser'] is Map<String, dynamic> ? dataMap['targetUser'] as Map<String, dynamic> : null);
+    final userMap = dataMap['user'] is Map
+        ? Map<String, dynamic>.from(dataMap['user'] as Map)
+        : (dataMap['targetUser'] is Map ? Map<String, dynamic>.from(dataMap['targetUser'] as Map) : null);
 
     return UserPermissionMatrixResponse(
       targetUser: userMap,

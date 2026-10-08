@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../../core/utils/responsive_layout.dart';
 import '../../core/values/app_colors.dart';
+import '../../core/values/permission_constants.dart';
 import '../../core/widgets/custom_button.dart';
 import '../../core/widgets/custom_dropdown_search.dart';
 import '../../core/widgets/custom_snackbar.dart';
@@ -11,6 +12,7 @@ import '../../data/models/type_model.dart';
 import '../../data/models/user_model.dart';
 import '../../data/services/api_service.dart';
 import '../../data/services/gaushala_session_service.dart';
+import '../../data/services/permission_service.dart';
 import '../../data/services/storage_service.dart';
 import '../../routes/app_routes.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
@@ -21,6 +23,20 @@ class TypeController extends GetxController {
   final ApiService _apiService = Get.find<ApiService>();
   final StorageService _storageService = Get.find<StorageService>();
   final GaushalaSessionService _gaushalaService = Get.find<GaushalaSessionService>();
+  final PermissionService? _permissionService =
+      Get.isRegistered<PermissionService>() ? Get.find<PermissionService>() : null;
+
+  bool get canAddType =>
+      _permissionService?.canAdd(PermissionModules.type, PermissionSubModules.typeList) ??
+      (currentUser.value?.isAdmin ?? false);
+
+  bool get canEditType =>
+      _permissionService?.canEdit(PermissionModules.type, PermissionSubModules.typeList) ??
+      (currentUser.value?.isAdmin ?? false);
+
+  bool get canDeleteType =>
+      _permissionService?.canDelete(PermissionModules.type, PermissionSubModules.typeList) ??
+      (currentUser.value?.isAdmin ?? false);
 
   // Static in-memory cache to prevent flickering / repeated loading animations on navigation
   static final List<TypeModel> _cachedTypes = [];
@@ -328,7 +344,7 @@ class TypeController extends GetxController {
     }
   }
 
-  /// Updates an existing type via PUT /api/v1/types/:id
+  /// Updates an existing type via POST /api/v1/types/:id/update
   Future<bool> updateType(String id, String typeName, {String? gaushalaId}) async {
     final trimmed = typeName.trim();
     if (trimmed.isEmpty) {
@@ -416,6 +432,13 @@ class TypeController extends GetxController {
 
   /// Open Dialog to Add a New Type
   void openAddTypeDialog(BuildContext context) {
+    if (!canAddType) {
+      CustomSnackbar.showWarning(
+        title: 'Access Denied',
+        message: 'You do not have permission to add cattle types.',
+      );
+      return;
+    }
     final formKey = GlobalKey<FormState>();
     final nameController = TextEditingController();
 
@@ -575,6 +598,13 @@ class TypeController extends GetxController {
 
   /// Open Dialog to Edit Type
   void openEditTypeDialog(BuildContext context, TypeModel type) {
+    if (!canEditType) {
+      CustomSnackbar.showWarning(
+        title: 'Access Denied',
+        message: 'You do not have permission to edit cattle types.',
+      );
+      return;
+    }
     if (ResponsiveLayout.isMobile(context)) {
       Navigator.of(context).push(
         MaterialPageRoute(builder: (_) => EditTypeScreen(type: type)),
@@ -729,6 +759,13 @@ class TypeController extends GetxController {
 
   /// Confirm Delete Type Dialog
   void confirmDeleteType(BuildContext context, TypeModel type) {
+    if (!canDeleteType) {
+      CustomSnackbar.showWarning(
+        title: 'Access Denied',
+        message: 'You do not have permission to delete cattle types.',
+      );
+      return;
+    }
     Get.dialog(
       AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),

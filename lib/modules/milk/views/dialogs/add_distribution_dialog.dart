@@ -31,6 +31,16 @@ class AddDistributionDialog extends StatefulWidget {
     DateTime? milkDate,
     String? shift,
   }) async {
+    if (Get.isRegistered<MilkController>()) {
+      final controller = Get.find<MilkController>();
+      if (!controller.canAddDistribution) {
+        CustomSnackbar.showError(
+          title: 'Access Denied',
+          message: 'You do not have permission to add milk distribution.',
+        );
+        return;
+      }
+    }
     await Get.dialog(
       AddDistributionDialog(
         initialMilkDate: milkDate,

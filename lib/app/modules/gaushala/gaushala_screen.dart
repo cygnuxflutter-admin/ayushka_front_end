@@ -97,10 +97,11 @@ class GaushalaScreen extends GetView<GaushalaController> {
               onPressed: isBusy ? null : controller.refreshGaushalas,
             );
           }),
-          IconButton(
-            icon: const Icon(Icons.add_rounded),
-            onPressed: () => controller.openAddGaushalaDialog(context),
-          ),
+          if (controller.canAddGaushala)
+            IconButton(
+              icon: const Icon(Icons.add_rounded),
+              onPressed: () => controller.openAddGaushalaDialog(context),
+            ),
         ],
       ),
       drawer: Obx(
@@ -149,12 +150,14 @@ class GaushalaScreen extends GetView<GaushalaController> {
           onLogout: controller.logout,
         ),
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        backgroundColor: AppColors.primary,
-        icon: const Icon(Icons.add_rounded, color: Colors.white),
-        label: const Text('Add Gaushala', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-        onPressed: () => controller.openAddGaushalaDialog(context),
-      ),
+      floatingActionButton: controller.canAddGaushala
+          ? FloatingActionButton.extended(
+              backgroundColor: AppColors.primary,
+              icon: const Icon(Icons.add_rounded, color: Colors.white),
+              label: const Text('Add Gaushala', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+              onPressed: () => controller.openAddGaushalaDialog(context),
+            )
+          : null,
       body: RefreshIndicator(
         onRefresh: controller.refreshGaushalas,
         child: NotificationListener<ScrollNotification>(
@@ -325,13 +328,14 @@ class GaushalaScreen extends GetView<GaushalaController> {
         ),
         Row(
           children: [
-            CustomButton(
-              text: 'Add Gaushala',
-              icon: Icons.add_rounded,
-              width: 160,
-              height: 42,
-              onPressed: () => controller.openAddGaushalaDialog(context),
-            ),
+            if (controller.canAddGaushala)
+              CustomButton(
+                text: 'Add Gaushala',
+                icon: Icons.add_rounded,
+                width: 160,
+                height: 42,
+                onPressed: () => controller.openAddGaushalaDialog(context),
+              ),
           ],
         ),
       ],
@@ -475,14 +479,16 @@ class GaushalaScreen extends GetView<GaushalaController> {
                       'Click below to register a new cattle farm unit.',
                       style: TextStyle(fontSize: 13, color: AppColors.textSecondaryLight),
                     ),
-                    const SizedBox(height: 18),
-                    CustomButton(
-                      text: 'Add First Gaushala',
-                      icon: Icons.add_rounded,
-                      width: 190,
-                      height: 40,
-                      onPressed: () => controller.openAddGaushalaDialog(context),
-                    ),
+                    if (controller.canAddGaushala) ...[
+                      const SizedBox(height: 18),
+                      CustomButton(
+                        text: 'Add First Gaushala',
+                        icon: Icons.add_rounded,
+                        width: 190,
+                        height: 40,
+                        onPressed: () => controller.openAddGaushalaDialog(context),
+                      ),
+                    ],
                   ],
                 ),
               );

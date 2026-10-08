@@ -150,47 +150,52 @@ class MilkMainView extends GetView<MilkController> {
               }
             },
             itemBuilder: (ctx) => [
-              PopupMenuItem(
-                value: 'single_prod',
-                child: Row(
-                  children: [
-                    const Icon(PhosphorIconsRegular.drop, size: 18, color: AppColors.primary),
-                    const SizedBox(width: 10),
-                    const Text('Single Cow Yield'),
-                  ],
+              if (controller.canAddProduction) ...[
+                PopupMenuItem(
+                  value: 'single_prod',
+                  child: Row(
+                    children: [
+                      const Icon(PhosphorIconsRegular.drop, size: 18, color: AppColors.primary),
+                      const SizedBox(width: 10),
+                      const Text('Single Cow Yield'),
+                    ],
+                  ),
                 ),
-              ),
-              PopupMenuItem(
-                value: 'bulk_prod',
-                child: Row(
-                  children: [
-                    const Icon(Icons.groups_rounded, size: 18, color: AppColors.primary),
-                    const SizedBox(width: 10),
-                    const Text('Bulk Shift Entry'),
-                  ],
+                PopupMenuItem(
+                  value: 'bulk_prod',
+                  child: Row(
+                    children: [
+                      const Icon(Icons.groups_rounded, size: 18, color: AppColors.primary),
+                      const SizedBox(width: 10),
+                      const Text('Bulk Shift Entry'),
+                    ],
+                  ),
                 ),
-              ),
-              PopupMenuItem(
-                value: 'distribute',
-                child: Row(
-                  children: [
-                    const Icon(PhosphorIconsRegular.truck, size: 18, color: Color(0xFFE98324)),
-                    const SizedBox(width: 10),
-                    const Text('Distribute Milk'),
-                  ],
+              ],
+              if (controller.canAddDistribution)
+                PopupMenuItem(
+                  value: 'distribute',
+                  child: Row(
+                    children: [
+                      const Icon(PhosphorIconsRegular.truck, size: 18, color: Color(0xFFE98324)),
+                      const SizedBox(width: 10),
+                      const Text('Distribute Milk'),
+                    ],
+                  ),
                 ),
-              ),
-              PopupMenuItem(
-                value: 'dispose',
-                child: Row(
-                  children: [
-                    const Icon(Icons.delete_sweep_rounded, size: 18, color: AppColors.error),
-                    const SizedBox(width: 10),
-                    const Text('Dispose Spoilage'),
-                  ],
+              if (controller.canDeleteProduction)
+                PopupMenuItem(
+                  value: 'dispose',
+                  child: Row(
+                    children: [
+                      const Icon(Icons.delete_sweep_rounded, size: 18, color: AppColors.error),
+                      const SizedBox(width: 10),
+                      const Text('Dispose Spoilage'),
+                    ],
+                  ),
                 ),
-              ),
-              const PopupMenuDivider(),
+              if (controller.canAddProduction || controller.canAddDistribution || controller.canDeleteProduction)
+                const PopupMenuDivider(),
               PopupMenuItem(
                 value: 'analysis',
                 child: Row(
@@ -284,47 +289,52 @@ class MilkMainView extends GetView<MilkController> {
                 }
               },
               itemBuilder: (ctx) => [
-                PopupMenuItem(
-                  value: 'single_prod',
-                  child: Row(
-                    children: [
-                      const Icon(PhosphorIconsRegular.drop, size: 18, color: AppColors.primary),
-                      const SizedBox(width: 10),
-                      const Text('Single Cow Yield'),
-                    ],
+                if (controller.canAddProduction) ...[
+                  PopupMenuItem(
+                    value: 'single_prod',
+                    child: Row(
+                      children: [
+                        const Icon(PhosphorIconsRegular.drop, size: 18, color: AppColors.primary),
+                        const SizedBox(width: 10),
+                        const Text('Single Cow Yield'),
+                      ],
+                    ),
                   ),
-                ),
-                PopupMenuItem(
-                  value: 'bulk_prod',
-                  child: Row(
-                    children: [
-                      const Icon(Icons.groups_rounded, size: 18, color: AppColors.primary),
-                      const SizedBox(width: 10),
-                      const Text('Bulk Shift Entry'),
-                    ],
+                  PopupMenuItem(
+                    value: 'bulk_prod',
+                    child: Row(
+                      children: [
+                        const Icon(Icons.groups_rounded, size: 18, color: AppColors.primary),
+                        const SizedBox(width: 10),
+                        const Text('Bulk Shift Entry'),
+                      ],
+                    ),
                   ),
-                ),
-                PopupMenuItem(
-                  value: 'distribute',
-                  child: Row(
-                    children: [
-                      const Icon(PhosphorIconsRegular.truck, size: 18, color: Color(0xFFE98324)),
-                      const SizedBox(width: 10),
-                      const Text('Distribute Milk'),
-                    ],
+                ],
+                if (controller.canAddDistribution)
+                  PopupMenuItem(
+                    value: 'distribute',
+                    child: Row(
+                      children: [
+                        const Icon(PhosphorIconsRegular.truck, size: 18, color: Color(0xFFE98324)),
+                        const SizedBox(width: 10),
+                        const Text('Distribute Milk'),
+                      ],
+                    ),
                   ),
-                ),
-                PopupMenuItem(
-                  value: 'dispose',
-                  child: Row(
-                    children: [
-                      const Icon(Icons.delete_sweep_rounded, size: 18, color: AppColors.error),
-                      const SizedBox(width: 10),
-                      const Text('Dispose Spoilage'),
-                    ],
+                if (controller.canDeleteProduction)
+                  PopupMenuItem(
+                    value: 'dispose',
+                    child: Row(
+                      children: [
+                        const Icon(Icons.delete_sweep_rounded, size: 18, color: AppColors.error),
+                        const SizedBox(width: 10),
+                        const Text('Dispose Spoilage'),
+                      ],
+                    ),
                   ),
-                ),
-                const PopupMenuDivider(),
+                if (controller.canAddProduction || controller.canAddDistribution || controller.canDeleteProduction)
+                  const PopupMenuDivider(),
                 PopupMenuItem(
                   value: 'analysis',
                   child: Row(
@@ -347,6 +357,7 @@ class MilkMainView extends GetView<MilkController> {
           final tab = controller.selectedTab.value;
           switch (tab) {
             case 1:
+              if (!controller.canAddProduction) return const SizedBox.shrink();
               return FloatingActionButton.extended(
                 backgroundColor: AppColors.primary,
                 icon: const Icon(Icons.add_rounded, color: Colors.white),
@@ -358,6 +369,7 @@ class MilkMainView extends GetView<MilkController> {
                 ),
               );
             case 2:
+              if (!controller.canAddDistribution) return const SizedBox.shrink();
               return FloatingActionButton.extended(
                 backgroundColor: const Color(0xFFE98324),
                 icon: const Icon(PhosphorIconsRegular.truck, color: Colors.white),
@@ -368,6 +380,7 @@ class MilkMainView extends GetView<MilkController> {
                 ),
               );
             case 3:
+              if (!controller.canDeleteProduction) return const SizedBox.shrink();
               return FloatingActionButton.extended(
                 backgroundColor: AppColors.error,
                 icon: const Icon(Icons.delete_sweep_rounded, color: Colors.white),
@@ -378,6 +391,9 @@ class MilkMainView extends GetView<MilkController> {
                 ),
               );
             default:
+              if (!controller.canAddProduction && !controller.canAddDistribution && !controller.canDeleteProduction) {
+                return const SizedBox.shrink();
+              }
               return FloatingActionButton.extended(
                 backgroundColor: AppColors.primary,
                 icon: const Icon(Icons.add_rounded, color: Colors.white),
@@ -598,40 +614,47 @@ class MilkMainView extends GetView<MilkController> {
           const SizedBox(height: 10),
           Row(
             children: [
-              Expanded(
-                child: CustomButton(
-                  text: '+ Yield',
-                  icon: PhosphorIconsRegular.drop,
-                  height: 38,
-                  onPressed: () => AddProductionDialog.show(context, mode: ProductionEntryMode.single),
-                ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: CustomButton(
-                  text: '+ Distribute',
-                  icon: PhosphorIconsRegular.truck,
-                  variant: ButtonVariant.secondary,
-                  height: 38,
-                  onPressed: () => AddDistributionDialog.show(
-                    context,
-                    milkDate: controller.selectedDate.value,
+              if (controller.canAddProduction) ...[
+                Expanded(
+                  child: CustomButton(
+                    text: '+ Yield',
+                    icon: PhosphorIconsRegular.drop,
+                    height: 38,
+                    onPressed: () => AddProductionDialog.show(context, mode: ProductionEntryMode.single),
                   ),
                 ),
-              ),
-              const SizedBox(width: 8),
-              Expanded(
-                child: CustomButton(
-                  text: '+ Waste',
-                  icon: Icons.delete_sweep_rounded,
-                  variant: ButtonVariant.outlined,
-                  height: 38,
-                  onPressed: () => DisposeMilkDialog.show(
-                    context,
-                    milkDate: controller.selectedDateFormatted,
+                if (controller.canAddDistribution || controller.canDeleteProduction)
+                  const SizedBox(width: 8),
+              ],
+              if (controller.canAddDistribution) ...[
+                Expanded(
+                  child: CustomButton(
+                    text: '+ Distribute',
+                    icon: PhosphorIconsRegular.truck,
+                    variant: ButtonVariant.secondary,
+                    height: 38,
+                    onPressed: () => AddDistributionDialog.show(
+                      context,
+                      milkDate: controller.selectedDate.value,
+                    ),
                   ),
                 ),
-              ),
+                if (controller.canDeleteProduction)
+                  const SizedBox(width: 8),
+              ],
+              if (controller.canDeleteProduction)
+                Expanded(
+                  child: CustomButton(
+                    text: '+ Waste',
+                    icon: Icons.delete_sweep_rounded,
+                    variant: ButtonVariant.outlined,
+                    height: 38,
+                    onPressed: () => DisposeMilkDialog.show(
+                      context,
+                      milkDate: controller.selectedDateFormatted,
+                    ),
+                  ),
+                ),
             ],
           ),
         ],
@@ -642,29 +665,32 @@ class MilkMainView extends GetView<MilkController> {
       spacing: 10,
       runSpacing: 10,
       children: [
-        CustomButton(
-          text: '+ Add Production',
-          icon: PhosphorIconsRegular.drop,
-          onPressed: () => AddProductionDialog.show(context, mode: ProductionEntryMode.single),
-        ),
-        CustomButton(
-          text: '+ Distribute Milk',
-          icon: PhosphorIconsRegular.truck,
-          variant: ButtonVariant.secondary,
-          onPressed: () => AddDistributionDialog.show(
-            context,
-            milkDate: controller.selectedDate.value,
+        if (controller.canAddProduction)
+          CustomButton(
+            text: '+ Add Production',
+            icon: PhosphorIconsRegular.drop,
+            onPressed: () => AddProductionDialog.show(context, mode: ProductionEntryMode.single),
           ),
-        ),
-        CustomButton(
-          text: '+ Dispose Waste',
-          icon: Icons.delete_sweep_rounded,
-          variant: ButtonVariant.outlined,
-          onPressed: () => DisposeMilkDialog.show(
-            context,
-            milkDate: controller.selectedDateFormatted,
+        if (controller.canAddDistribution)
+          CustomButton(
+            text: '+ Distribute Milk',
+            icon: PhosphorIconsRegular.truck,
+            variant: ButtonVariant.secondary,
+            onPressed: () => AddDistributionDialog.show(
+              context,
+              milkDate: controller.selectedDate.value,
+            ),
           ),
-        ),
+        if (controller.canDeleteProduction)
+          CustomButton(
+            text: '+ Dispose Waste',
+            icon: Icons.delete_sweep_rounded,
+            variant: ButtonVariant.outlined,
+            onPressed: () => DisposeMilkDialog.show(
+              context,
+              milkDate: controller.selectedDateFormatted,
+            ),
+          ),
       ],
     );
 
@@ -1663,33 +1689,35 @@ class MilkMainView extends GetView<MilkController> {
                 final isMobile = constraints.maxWidth < 620;
 
                 final shiftTabs = _buildProductionShiftTabs(context, isDark);
-                final actionButtons = Wrap(
-                  spacing: 10,
-                  runSpacing: 8,
-                  children: [
-                    CustomButton(
-                      text: '+ Bulk Entry (Shift)',
-                      icon: Icons.groups_rounded,
-                      variant: ButtonVariant.outlined,
-                      height: 40,
-                      onPressed: () => AddProductionDialog.show(
-                        context,
-                        mode: ProductionEntryMode.bulk,
-                        shift: controller.productionShift.value,
-                      ),
-                    ),
-                    CustomButton(
-                      text: '+ Single Cow Entry',
-                      icon: Icons.add_rounded,
-                      height: 40,
-                      onPressed: () => AddProductionDialog.show(
-                        context,
-                        mode: ProductionEntryMode.single,
-                        shift: controller.productionShift.value,
-                      ),
-                    ),
-                  ],
-                );
+                final actionButtons = controller.canAddProduction
+                    ? Wrap(
+                        spacing: 10,
+                        runSpacing: 8,
+                        children: [
+                          CustomButton(
+                            text: '+ Bulk Entry (Shift)',
+                            icon: Icons.groups_rounded,
+                            variant: ButtonVariant.outlined,
+                            height: 40,
+                            onPressed: () => AddProductionDialog.show(
+                              context,
+                              mode: ProductionEntryMode.bulk,
+                              shift: controller.productionShift.value,
+                            ),
+                          ),
+                          CustomButton(
+                            text: '+ Single Cow Entry',
+                            icon: Icons.add_rounded,
+                            height: 40,
+                            onPressed: () => AddProductionDialog.show(
+                              context,
+                              mode: ProductionEntryMode.single,
+                              shift: controller.productionShift.value,
+                            ),
+                          ),
+                        ],
+                      )
+                    : const SizedBox.shrink();
 
                 if (isMobile) {
                   return Column(
@@ -1699,37 +1727,39 @@ class MilkMainView extends GetView<MilkController> {
                         scrollDirection: Axis.horizontal,
                         child: shiftTabs,
                       ),
-                      const SizedBox(height: 12),
-                      Row(
-                        children: [
-                          Expanded(
-                            child: CustomButton(
-                              text: '+ Bulk Entry',
-                              icon: Icons.groups_rounded,
-                              variant: ButtonVariant.outlined,
-                              height: 38,
-                              onPressed: () => AddProductionDialog.show(
-                                context,
-                                mode: ProductionEntryMode.bulk,
-                                shift: controller.productionShift.value,
+                      if (controller.canAddProduction) ...[
+                        const SizedBox(height: 12),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: CustomButton(
+                                text: '+ Bulk Entry',
+                                icon: Icons.groups_rounded,
+                                variant: ButtonVariant.outlined,
+                                height: 38,
+                                onPressed: () => AddProductionDialog.show(
+                                  context,
+                                  mode: ProductionEntryMode.bulk,
+                                  shift: controller.productionShift.value,
+                                ),
                               ),
                             ),
-                          ),
-                          const SizedBox(width: 8),
-                          Expanded(
-                            child: CustomButton(
-                              text: '+ Single Cow',
-                              icon: Icons.add_rounded,
-                              height: 38,
-                              onPressed: () => AddProductionDialog.show(
-                                context,
-                                mode: ProductionEntryMode.single,
-                                shift: controller.productionShift.value,
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: CustomButton(
+                                text: '+ Single Cow',
+                                icon: Icons.add_rounded,
+                                height: 38,
+                                onPressed: () => AddProductionDialog.show(
+                                  context,
+                                  mode: ProductionEntryMode.single,
+                                  shift: controller.productionShift.value,
+                                ),
                               ),
                             ),
-                          ),
-                        ],
-                      ),
+                          ],
+                        ),
+                      ],
                     ],
                   );
                 }
@@ -1813,34 +1843,36 @@ class MilkMainView extends GetView<MilkController> {
                             'Use "+ Single Cow" or "+ Bulk Entry" to record milk yields.',
                             style: TextStyle(fontSize: 13, color: AppColors.textSecondaryLight),
                           ),
-                          const SizedBox(height: 18),
-                          Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              CustomButton(
-                                text: '+ Bulk Entry',
-                                icon: Icons.groups_rounded,
-                                variant: ButtonVariant.outlined,
-                                height: 38,
-                                onPressed: () => AddProductionDialog.show(
-                                  context,
-                                  mode: ProductionEntryMode.bulk,
-                                  shift: controller.productionShift.value,
+                          if (controller.canAddProduction) ...[
+                            const SizedBox(height: 18),
+                            Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                CustomButton(
+                                  text: '+ Bulk Entry',
+                                  icon: Icons.groups_rounded,
+                                  variant: ButtonVariant.outlined,
+                                  height: 38,
+                                  onPressed: () => AddProductionDialog.show(
+                                    context,
+                                    mode: ProductionEntryMode.bulk,
+                                    shift: controller.productionShift.value,
+                                  ),
                                 ),
-                              ),
-                              const SizedBox(width: 8),
-                              CustomButton(
-                                text: '+ Single Cow',
-                                icon: Icons.add_rounded,
-                                height: 38,
-                                onPressed: () => AddProductionDialog.show(
-                                  context,
-                                  mode: ProductionEntryMode.single,
-                                  shift: controller.productionShift.value,
+                                const SizedBox(width: 8),
+                                CustomButton(
+                                  text: '+ Single Cow',
+                                  icon: Icons.add_rounded,
+                                  height: 38,
+                                  onPressed: () => AddProductionDialog.show(
+                                    context,
+                                    mode: ProductionEntryMode.single,
+                                    shift: controller.productionShift.value,
+                                  ),
                                 ),
-                              ),
-                            ],
-                          ),
+                              ],
+                            ),
+                          ],
                         ],
                       ),
                     ),
@@ -1960,14 +1992,16 @@ class MilkMainView extends GetView<MilkController> {
               builder: (context, constraints) {
                 final isMobile = constraints.maxWidth < 620;
                 final shiftTabs = _buildDistributionShiftTabs(context, isDark);
-                final actionBtn = CustomButton(
-                  text: '+ Record Distribution',
-                  icon: PhosphorIconsRegular.truck,
-                  onPressed: () => AddDistributionDialog.show(
-                    context,
-                    milkDate: controller.selectedDate.value,
-                  ),
-                );
+                final actionBtn = controller.canAddDistribution
+                    ? CustomButton(
+                        text: '+ Record Distribution',
+                        icon: PhosphorIconsRegular.truck,
+                        onPressed: () => AddDistributionDialog.show(
+                          context,
+                          milkDate: controller.selectedDate.value,
+                        ),
+                      )
+                    : const SizedBox.shrink();
 
                 if (isMobile) {
                   return Column(
@@ -1977,8 +2011,10 @@ class MilkMainView extends GetView<MilkController> {
                         scrollDirection: Axis.horizontal,
                         child: shiftTabs,
                       ),
-                      const SizedBox(height: 12),
-                      actionBtn,
+                      if (controller.canAddDistribution) ...[
+                        const SizedBox(height: 12),
+                        actionBtn,
+                      ],
                     ],
                   );
                 }
@@ -2064,17 +2100,19 @@ class MilkMainView extends GetView<MilkController> {
                             style: TextStyle(fontSize: 13, color: AppColors.textSecondaryLight),
                             textAlign: TextAlign.center,
                           ),
-                          const SizedBox(height: 18),
-                          CustomButton(
-                            text: '+ Record Distribution',
-                            icon: PhosphorIconsRegular.truck,
-                            width: 200,
-                            height: 40,
-                            onPressed: () => AddDistributionDialog.show(
-                              context,
-                              milkDate: controller.selectedDate.value,
+                          if (controller.canAddDistribution) ...[
+                            const SizedBox(height: 18),
+                            CustomButton(
+                              text: '+ Record Distribution',
+                              icon: PhosphorIconsRegular.truck,
+                              width: 200,
+                              height: 40,
+                              onPressed: () => AddDistributionDialog.show(
+                                context,
+                                milkDate: controller.selectedDate.value,
+                              ),
                             ),
-                          ),
+                          ],
                         ],
                       ),
                     ),
@@ -2199,20 +2237,24 @@ class MilkMainView extends GetView<MilkController> {
                     ],
                   );
 
-                  final actionBtn = CustomButton(
-                    text: '+ Record Waste Disposal',
-                    icon: Icons.delete_sweep_rounded,
-                    variant: ButtonVariant.danger,
-                    onPressed: () => DisposeMilkDialog.show(context),
-                  );
+                  final actionBtn = controller.canDeleteProduction
+                      ? CustomButton(
+                          text: '+ Record Waste Disposal',
+                          icon: Icons.delete_sweep_rounded,
+                          variant: ButtonVariant.danger,
+                          onPressed: () => DisposeMilkDialog.show(context),
+                        )
+                      : const SizedBox.shrink();
 
                   if (isMobile) {
                     return Column(
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
                         titleWidget,
-                        const SizedBox(height: 12),
-                        actionBtn,
+                        if (controller.canDeleteProduction) ...[
+                          const SizedBox(height: 12),
+                          actionBtn,
+                        ],
                       ],
                     );
                   }
@@ -3471,31 +3513,32 @@ class MilkMainView extends GetView<MilkController> {
                     ],
                   ),
                 ),
-                const SizedBox(height: 12),
-
-                // Action button: Dispose Milk
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton.icon(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.errorBg,
-                      foregroundColor: AppColors.error,
-                      elevation: 0,
-                      padding: const EdgeInsets.symmetric(vertical: 8),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
-                      side: BorderSide(color: AppColors.error.withValues(alpha: 0.3), width: 0.8),
+                if (controller.canDeleteProduction) ...[
+                  const SizedBox(height: 12),
+                  // Action button: Dispose Milk
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton.icon(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppColors.errorBg,
+                        foregroundColor: AppColors.error,
+                        elevation: 0,
+                        padding: const EdgeInsets.symmetric(vertical: 8),
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                        side: BorderSide(color: AppColors.error.withValues(alpha: 0.3), width: 0.8),
+                      ),
+                      icon: const Icon(Icons.delete_outline_rounded, size: 16),
+                      label: const Text('Dispose Spoiled Milk', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
+                      onPressed: () {
+                        DisposeMilkDialog.show(
+                          context,
+                          milkDate: item.milkDate,
+                          maxQuantity: item.remainingFridgeMilk,
+                        );
+                      },
                     ),
-                    icon: const Icon(Icons.delete_outline_rounded, size: 16),
-                    label: const Text('Dispose Spoiled Milk', style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold)),
-                    onPressed: () {
-                      DisposeMilkDialog.show(
-                        context,
-                        milkDate: item.milkDate,
-                        maxQuantity: item.remainingFridgeMilk,
-                      );
-                    },
                   ),
-                ),
+                ],
               ],
             ),
           ),
@@ -3641,85 +3684,89 @@ class MilkMainView extends GetView<MilkController> {
                   ],
                 ),
                 const SizedBox(height: 12),
-                ListTile(
-                  leading: Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: AppColors.primary.withValues(alpha: 0.12),
-                      shape: BoxShape.circle,
+                if (controller.canAddProduction) ...[
+                  ListTile(
+                    leading: Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: AppColors.primary.withValues(alpha: 0.12),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(Icons.add_rounded, color: AppColors.primary, size: 20),
                     ),
-                    child: const Icon(Icons.add_rounded, color: AppColors.primary, size: 20),
+                    title: const Text('Record Single Cow Yield', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
+                    subtitle: const Text('Add yield for an individual cow', style: TextStyle(fontSize: 12)),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    onTap: () {
+                      Navigator.of(ctx).pop();
+                      AddProductionDialog.show(
+                        context,
+                        mode: ProductionEntryMode.single,
+                        shift: controller.productionShift.value,
+                      );
+                    },
                   ),
-                  title: const Text('Record Single Cow Yield', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
-                  subtitle: const Text('Add yield for an individual cow', style: TextStyle(fontSize: 12)),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                  onTap: () {
-                    Navigator.of(ctx).pop();
-                    AddProductionDialog.show(
-                      context,
-                      mode: ProductionEntryMode.single,
-                      shift: controller.productionShift.value,
-                    );
-                  },
-                ),
-                ListTile(
-                  leading: Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF4F46E5).withValues(alpha: 0.12),
-                      shape: BoxShape.circle,
+                  ListTile(
+                    leading: Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF4F46E5).withValues(alpha: 0.12),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(Icons.groups_rounded, color: Color(0xFF4F46E5), size: 20),
                     ),
-                    child: const Icon(Icons.groups_rounded, color: Color(0xFF4F46E5), size: 20),
+                    title: const Text('Bulk Production Entry', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
+                    subtitle: const Text('Enter milk for all cows in shed at once', style: TextStyle(fontSize: 12)),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    onTap: () {
+                      Navigator.of(ctx).pop();
+                      AddProductionDialog.show(
+                        context,
+                        mode: ProductionEntryMode.bulk,
+                        shift: controller.productionShift.value,
+                      );
+                    },
                   ),
-                  title: const Text('Bulk Production Entry', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
-                  subtitle: const Text('Enter milk for all cows in shed at once', style: TextStyle(fontSize: 12)),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                  onTap: () {
-                    Navigator.of(ctx).pop();
-                    AddProductionDialog.show(
-                      context,
-                      mode: ProductionEntryMode.bulk,
-                      shift: controller.productionShift.value,
-                    );
-                  },
-                ),
-                ListTile(
-                  leading: Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFE98324).withValues(alpha: 0.12),
-                      shape: BoxShape.circle,
+                ],
+                if (controller.canAddDistribution)
+                  ListTile(
+                    leading: Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFE98324).withValues(alpha: 0.12),
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(PhosphorIconsRegular.truck, color: Color(0xFFE98324), size: 20),
                     ),
-                    child: const Icon(PhosphorIconsRegular.truck, color: Color(0xFFE98324), size: 20),
+                    title: const Text('Record Milk Distribution', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
+                    subtitle: const Text('Log sales, staff distribution, or calf feeding', style: TextStyle(fontSize: 12)),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    onTap: () {
+                      Navigator.of(ctx).pop();
+                      AddDistributionDialog.show(
+                        context,
+                        milkDate: controller.selectedDate.value,
+                      );
+                    },
                   ),
-                  title: const Text('Record Milk Distribution', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
-                  subtitle: const Text('Log sales, staff distribution, or calf feeding', style: TextStyle(fontSize: 12)),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                  onTap: () {
-                    Navigator.of(ctx).pop();
-                    AddDistributionDialog.show(
-                      context,
-                      milkDate: controller.selectedDate.value,
-                    );
-                  },
-                ),
-                ListTile(
-                  leading: Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: AppColors.errorBg,
-                      shape: BoxShape.circle,
+                if (controller.canDeleteProduction)
+                  ListTile(
+                    leading: Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: AppColors.errorBg,
+                        shape: BoxShape.circle,
+                      ),
+                      child: const Icon(Icons.delete_sweep_rounded, color: AppColors.error, size: 20),
                     ),
-                    child: const Icon(Icons.delete_sweep_rounded, color: AppColors.error, size: 20),
+                    title: const Text('Record Waste Disposal', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
+                    subtitle: const Text('Log curdled, spoiled, or wasted milk', style: TextStyle(fontSize: 12)),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+                    onTap: () {
+                      Navigator.of(ctx).pop();
+                      DisposeMilkDialog.show(context);
+                    },
                   ),
-                  title: const Text('Record Waste Disposal', style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14)),
-                  subtitle: const Text('Log curdled, spoiled, or wasted milk', style: TextStyle(fontSize: 12)),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                  onTap: () {
-                    Navigator.of(ctx).pop();
-                    DisposeMilkDialog.show(context);
-                  },
-                ),
                 const SizedBox(height: 8),
               ],
             ),
@@ -4717,6 +4764,7 @@ class _HoverableFridgeStockTableRowState extends State<_HoverableFridgeStockTabl
   Widget build(BuildContext context) {
     final item = widget.item;
     final isDark = widget.isDark;
+    final controller = Get.find<MilkController>();
 
     return MouseRegion(
       cursor: SystemMouseCursors.click,
@@ -4870,24 +4918,26 @@ class _HoverableFridgeStockTableRowState extends State<_HoverableFridgeStockTabl
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
                 child: Align(
                   alignment: Alignment.centerLeft,
-                  child: ElevatedButton.icon(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: AppColors.errorBg,
-                      foregroundColor: AppColors.error,
-                      elevation: 0,
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
-                    ),
-                    icon: const Icon(Icons.delete_outline_rounded, size: 15),
-                    label: const Text('Dispose Milk', style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.bold)),
-                    onPressed: () {
-                      DisposeMilkDialog.show(
-                        context,
-                        milkDate: item.milkDate,
-                        maxQuantity: item.remainingFridgeMilk,
-                      );
-                    },
-                  ),
+                  child: controller.canDeleteProduction
+                      ? ElevatedButton.icon(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppColors.errorBg,
+                            foregroundColor: AppColors.error,
+                            elevation: 0,
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+                          ),
+                          icon: const Icon(Icons.delete_outline_rounded, size: 15),
+                          label: const Text('Dispose Milk', style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.bold)),
+                          onPressed: () {
+                            DisposeMilkDialog.show(
+                              context,
+                              milkDate: item.milkDate,
+                              maxQuantity: item.remainingFridgeMilk,
+                            );
+                          },
+                        )
+                      : const SizedBox.shrink(),
                 ),
               ),
             ),

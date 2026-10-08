@@ -469,13 +469,22 @@ class MobileDashboardView extends StatelessWidget {
   // -------------------------------------------------------------
   Widget _buildDailyOperationsMenu(BuildContext context, bool isDark) {
     final perm = Get.isRegistered<PermissionService>() ? Get.find<PermissionService>() : null;
-    bool canView(String m, String s) => perm?.canView(m, s) ?? true;
-    bool isModuleVisible(String m) => perm?.isModuleVisible(m) ?? true;
+    final bool isAdminUser = perm?.isAdmin == true;
+    bool hasAccess(String m, String s) =>
+        isAdminUser || (perm != null && perm.hasMenuAccess(m, s));
+    bool hasAnyAccess(String m, List<String> subs) =>
+        isAdminUser || (perm != null && perm.hasAnyMenuAccess(m, subs));
+    bool isModVisible(String m) =>
+        isAdminUser || (perm != null && perm.isModuleVisible(m));
 
     final List<_MobileMenuItemData> menuItems = [];
 
     // 1. Cattle Herd
-    if (isModuleVisible(PermissionModules.cow) && canView(PermissionModules.cow, PermissionSubModules.cowList)) {
+    if (isModVisible(PermissionModules.cow) &&
+        hasAnyAccess(PermissionModules.cow, [
+          PermissionSubModules.cowList,
+          PermissionSubModules.shedTransfer,
+        ])) {
       menuItems.add(
         _MobileMenuItemData(
           title: 'Cattle Herd',
@@ -492,9 +501,11 @@ class MobileDashboardView extends StatelessWidget {
     }
 
     // 2. Milk Production & Dispatch
-    if (isModuleVisible(PermissionModules.milkMgmt) &&
-        (canView(PermissionModules.milkMgmt, PermissionSubModules.milkProduction) ||
-            canView(PermissionModules.milkMgmt, PermissionSubModules.milkDistribution))) {
+    if (isModVisible(PermissionModules.milkMgmt) &&
+        hasAnyAccess(PermissionModules.milkMgmt, [
+          PermissionSubModules.milkProduction,
+          PermissionSubModules.milkDistribution,
+        ])) {
       menuItems.add(
         _MobileMenuItemData(
           title: 'Milk Production',
@@ -511,7 +522,11 @@ class MobileDashboardView extends StatelessWidget {
     }
 
     // 3. Treatments & Health
-    if (isModuleVisible(PermissionModules.treatment) && canView(PermissionModules.treatment, PermissionSubModules.treatmentList)) {
+    if (isModVisible(PermissionModules.treatment) &&
+        hasAnyAccess(PermissionModules.treatment, [
+          PermissionSubModules.treatmentList,
+          PermissionSubModules.doseSchedule,
+        ])) {
       menuItems.add(
         _MobileMenuItemData(
           title: 'Cow Treatments',
@@ -531,7 +546,11 @@ class MobileDashboardView extends StatelessWidget {
     }
 
     // 4. Pharmacy & Medical Stock
-    if (isModuleVisible(PermissionModules.medicalStock) && canView(PermissionModules.medicalStock, PermissionSubModules.medicalItems)) {
+    if (isModVisible(PermissionModules.medicalStock) &&
+        hasAnyAccess(PermissionModules.medicalStock, [
+          PermissionSubModules.medicalItems,
+          PermissionSubModules.stockTransaction,
+        ])) {
       menuItems.add(
         _MobileMenuItemData(
           title: 'Medical Stock',
@@ -550,7 +569,8 @@ class MobileDashboardView extends StatelessWidget {
     }
 
     // 5. Feed Stock Transactions
-    if (isModuleVisible(PermissionModules.feedStock) && canView(PermissionModules.feedStock, PermissionSubModules.stockTransaction)) {
+    if (isModVisible(PermissionModules.feedStock) &&
+        hasAccess(PermissionModules.feedStock, PermissionSubModules.stockTransaction)) {
       menuItems.add(
         _MobileMenuItemData(
           title: 'Feed Transactions',
@@ -567,8 +587,11 @@ class MobileDashboardView extends StatelessWidget {
     }
 
     // 6. Barn Sheds & Transfers
-    if (isModuleVisible(PermissionModules.shed) &&
-        (canView(PermissionModules.shed, PermissionSubModules.shedList) || canView(PermissionModules.shed, PermissionSubModules.shedTransfer))) {
+    if (isModVisible(PermissionModules.shed) &&
+        hasAnyAccess(PermissionModules.shed, [
+          PermissionSubModules.shedList,
+          PermissionSubModules.shedTransfer,
+        ])) {
       menuItems.add(
         _MobileMenuItemData(
           title: 'Barn Sheds',
@@ -580,6 +603,8 @@ class MobileDashboardView extends StatelessWidget {
         ),
       );
     }
+
+    if (menuItems.isEmpty) return const SizedBox.shrink();
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,

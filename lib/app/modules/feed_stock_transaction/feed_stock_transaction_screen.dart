@@ -105,16 +105,18 @@ class FeedStockTransactionScreen extends GetView<FeedStockTransactionController>
               onPressed: isBusy ? null : controller.refreshTransactions,
             );
           }),
-          IconButton(
-            icon: const Icon(PhosphorIconsRegular.arrowDownLeft, color: Color(0xFF10B981)),
-            tooltip: 'Record Inward Stock',
-            onPressed: () => controller.openInwardDialog(context),
-          ),
-          IconButton(
-            icon: const Icon(PhosphorIconsRegular.arrowUpRight, color: Color(0xFFF59E0B)),
-            tooltip: 'Record Outward Stock',
-            onPressed: () => controller.openOutwardDialog(context),
-          ),
+          if (controller.canAddTransaction) ...[
+            IconButton(
+              icon: const Icon(PhosphorIconsRegular.arrowDownLeft, color: Color(0xFF10B981)),
+              tooltip: 'Record Inward Stock',
+              onPressed: () => controller.openInwardDialog(context),
+            ),
+            IconButton(
+              icon: const Icon(PhosphorIconsRegular.arrowUpRight, color: Color(0xFFF59E0B)),
+              tooltip: 'Record Outward Stock',
+              onPressed: () => controller.openOutwardDialog(context),
+            ),
+          ],
         ],
       ),
       drawer: Obx(
@@ -164,26 +166,28 @@ class FeedStockTransactionScreen extends GetView<FeedStockTransactionController>
           onLogout: controller.logout,
         ),
       ),
-      floatingActionButton: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          FloatingActionButton.small(
-            heroTag: 'fab_inward',
-            backgroundColor: const Color(0xFF10B981),
-            onPressed: () => controller.openInwardDialog(context),
-            tooltip: 'Inward (+)',
-            child: const Icon(PhosphorIconsRegular.arrowDownLeft, color: Colors.white),
-          ),
-          const SizedBox(height: 10),
-          FloatingActionButton(
-            heroTag: 'fab_outward',
-            backgroundColor: const Color(0xFFF59E0B),
-            onPressed: () => controller.openOutwardDialog(context),
-            tooltip: 'Outward (-)',
-            child: const Icon(PhosphorIconsRegular.arrowUpRight, color: Colors.white),
-          ),
-        ],
-      ),
+      floatingActionButton: controller.canAddTransaction
+          ? Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                FloatingActionButton.small(
+                  heroTag: 'fab_inward',
+                  backgroundColor: const Color(0xFF10B981),
+                  onPressed: () => controller.openInwardDialog(context),
+                  tooltip: 'Inward (+)',
+                  child: const Icon(PhosphorIconsRegular.arrowDownLeft, color: Colors.white),
+                ),
+                const SizedBox(height: 10),
+                FloatingActionButton(
+                  heroTag: 'fab_outward',
+                  backgroundColor: const Color(0xFFF59E0B),
+                  onPressed: () => controller.openOutwardDialog(context),
+                  tooltip: 'Outward (-)',
+                  child: const Icon(PhosphorIconsRegular.arrowUpRight, color: Colors.white),
+                ),
+              ],
+            )
+          : null,
       body: NotificationListener<ScrollNotification>(
         onNotification: (ScrollNotification scrollInfo) {
           if (scrollInfo.metrics.pixels >= scrollInfo.metrics.maxScrollExtent - 200) {
@@ -373,27 +377,29 @@ class FeedStockTransactionScreen extends GetView<FeedStockTransactionController>
               padding: const EdgeInsets.symmetric(horizontal: 14),
               onPressed: controller.exportToCsv,
             ),
-            const SizedBox(width: 10),
+            if (controller.canAddTransaction) ...[
+              const SizedBox(width: 10),
 
-            // Record Outward Button
-            CustomButton(
-              text: 'Record Outward',
-              icon: PhosphorIconsRegular.arrowUpRight,
-              backgroundColor: const Color(0xFFF59E0B),
-              height: 42,
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              onPressed: () => controller.openOutwardDialog(context),
-            ),
-            const SizedBox(width: 10),
+              // Record Outward Button
+              CustomButton(
+                text: 'Record Outward',
+                icon: PhosphorIconsRegular.arrowUpRight,
+                backgroundColor: const Color(0xFFF59E0B),
+                height: 42,
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                onPressed: () => controller.openOutwardDialog(context),
+              ),
+              const SizedBox(width: 10),
 
-            // Record Inward Button
-            CustomButton(
-              text: 'Record Inward',
-              icon: PhosphorIconsRegular.arrowDownLeft,
-              height: 42,
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              onPressed: () => controller.openInwardDialog(context),
-            ),
+              // Record Inward Button
+              CustomButton(
+                text: 'Record Inward',
+                icon: PhosphorIconsRegular.arrowDownLeft,
+                height: 42,
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                onPressed: () => controller.openInwardDialog(context),
+              ),
+            ],
           ],
         ),
       ],
@@ -604,19 +610,21 @@ class FeedStockTransactionScreen extends GetView<FeedStockTransactionController>
                 ],
               ),
             ),
-            const SizedBox(width: 12),
-            ElevatedButton.icon(
-              onPressed: () => controller.openInwardDialog(context),
-              icon: const Icon(PhosphorIconsRegular.arrowDownLeft, size: 14),
-              label: const Text('Restock Now'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: color,
-                foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-                textStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+            if (controller.canAddTransaction) ...[
+              const SizedBox(width: 12),
+              ElevatedButton.icon(
+                onPressed: () => controller.openInwardDialog(context),
+                icon: const Icon(PhosphorIconsRegular.arrowDownLeft, size: 14),
+                label: const Text('Restock Now'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: color,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                  textStyle: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+                ),
               ),
-            ),
+            ],
           ],
         ),
       );
@@ -931,23 +939,7 @@ class FeedStockTransactionScreen extends GetView<FeedStockTransactionController>
 
               return Obx(() {
                 if (controller.isLoading.value) {
-                  return const CustomTableShimmer(
-                    rowCount: 6,
-                    columnFlexes: [1, 3, 4, 2, 2, 2, 3, 3, 3, 3, 2],
-                    headers: [
-                      '#',
-                      'DATE & TIME',
-                      'FEED ITEM',
-                      'TYPE',
-                      'REASON',
-                      'QUANTITY',
-                      'FINANCIALS',
-                      'DEST / SOURCE',
-                      'STOCK AUDIT',
-                      'RECORDED BY',
-                      'ACTIONS',
-                    ],
-                  );
+                  return _buildTransactionsTableShimmer(tableWidth, isDark);
                 }
 
                 final list = controller.transactions;
@@ -1056,6 +1048,205 @@ class FeedStockTransactionScreen extends GetView<FeedStockTransactionController>
     );
   }
 
+  Widget _buildTransactionsTableShimmer(double tableWidth, bool isDark) {
+    return SingleChildScrollView(
+      scrollDirection: Axis.horizontal,
+      child: SizedBox(
+        width: tableWidth,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            // Shimmer Header Row (matches exact column widths)
+            Container(
+              decoration: BoxDecoration(
+                color: isDark
+                    ? AppColors.surfaceDark.withValues(alpha: 0.6)
+                    : const Color(0xFFF9FAFB),
+                border: Border(
+                  left: const BorderSide(color: Colors.transparent, width: 3.5),
+                  bottom: BorderSide(
+                    color: isDark ? AppColors.borderDark : AppColors.borderLight,
+                    width: 1.0,
+                  ),
+                ),
+              ),
+              child: Row(
+                children: [
+                  SizedBox(width: 50, child: _buildTableHeaderCell('#')),
+                  SizedBox(width: 130, child: _buildTableHeaderCell('DATE & TIME')),
+                  Expanded(flex: 4, child: _buildTableHeaderCell('FEED ITEM')),
+                  SizedBox(width: 105, child: _buildTableHeaderCell('TYPE')),
+                  SizedBox(width: 115, child: _buildTableHeaderCell('REASON')),
+                  SizedBox(width: 115, child: _buildTableHeaderCell('QUANTITY')),
+                  Expanded(flex: 3, child: _buildTableHeaderCell('FINANCIALS')),
+                  Expanded(flex: 3, child: _buildTableHeaderCell('DEST / SOURCE')),
+                  SizedBox(width: 175, child: _buildTableHeaderCell('STOCK AUDIT')),
+                  Expanded(flex: 3, child: _buildTableHeaderCell('RECORDED BY')),
+                  SizedBox(width: 100, child: _buildTableHeaderCell('ACTIONS', alignRight: true)),
+                ],
+              ),
+            ),
+
+            // Shimmer Rows
+            CustomShimmer(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: List.generate(6, (index) {
+                  return Container(
+                    decoration: BoxDecoration(
+                      border: Border(
+                        top: BorderSide(
+                          color: isDark ? AppColors.borderDark : AppColors.borderLight,
+                          width: 0.6,
+                        ),
+                        left: const BorderSide(color: Colors.transparent, width: 3.5),
+                      ),
+                    ),
+                    padding: const EdgeInsets.symmetric(vertical: 2),
+                    child: Row(
+                      children: [
+                        SizedBox(
+                          width: 50,
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 14),
+                            child: Align(
+                              alignment: Alignment.centerLeft,
+                              child: ShimmerPlaceholder(width: index > 8 ? 20 : 14, height: 14, borderRadius: 3),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(
+                          width: 130,
+                          child: Padding(
+                            padding: EdgeInsets.symmetric(horizontal: 10, vertical: 14),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                ShimmerPlaceholder(width: 85, height: 13, borderRadius: 4),
+                                SizedBox(height: 5),
+                                ShimmerPlaceholder(width: 55, height: 11, borderRadius: 3),
+                              ],
+                            ),
+                          ),
+                        ),
+                        const Expanded(
+                          flex: 4,
+                          child: Padding(
+                            padding: EdgeInsets.symmetric(horizontal: 10, vertical: 14),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                ShimmerPlaceholder(width: 120, height: 13, borderRadius: 4),
+                                SizedBox(height: 5),
+                                ShimmerPlaceholder(width: 70, height: 11, borderRadius: 3),
+                              ],
+                            ),
+                          ),
+                        ),
+                        const SizedBox(
+                          width: 105,
+                          child: Padding(
+                            padding: EdgeInsets.symmetric(horizontal: 10, vertical: 14),
+                            child: Align(
+                              alignment: Alignment.centerLeft,
+                              child: ShimmerPlaceholder(width: 65, height: 22, borderRadius: 6),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(
+                          width: 115,
+                          child: Padding(
+                            padding: EdgeInsets.symmetric(horizontal: 10, vertical: 14),
+                            child: Align(
+                              alignment: Alignment.centerLeft,
+                              child: ShimmerPlaceholder(width: 75, height: 13, borderRadius: 4),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(
+                          width: 115,
+                          child: Padding(
+                            padding: EdgeInsets.symmetric(horizontal: 10, vertical: 14),
+                            child: Align(
+                              alignment: Alignment.centerLeft,
+                              child: ShimmerPlaceholder(width: 80, height: 13, borderRadius: 4),
+                            ),
+                          ),
+                        ),
+                        const Expanded(
+                          flex: 3,
+                          child: Padding(
+                            padding: EdgeInsets.symmetric(horizontal: 10, vertical: 14),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                ShimmerPlaceholder(width: 80, height: 13, borderRadius: 4),
+                                SizedBox(height: 5),
+                                ShimmerPlaceholder(width: 50, height: 11, borderRadius: 3),
+                              ],
+                            ),
+                          ),
+                        ),
+                        const Expanded(
+                          flex: 3,
+                          child: Padding(
+                            padding: EdgeInsets.symmetric(horizontal: 10, vertical: 14),
+                            child: Align(
+                              alignment: Alignment.centerLeft,
+                              child: ShimmerPlaceholder(width: 85, height: 13, borderRadius: 4),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(
+                          width: 175,
+                          child: Padding(
+                            padding: EdgeInsets.symmetric(horizontal: 10, vertical: 14),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                ShimmerPlaceholder(width: 110, height: 13, borderRadius: 4),
+                                SizedBox(height: 5),
+                                ShimmerPlaceholder(width: 75, height: 11, borderRadius: 3),
+                              ],
+                            ),
+                          ),
+                        ),
+                        const Expanded(
+                          flex: 3,
+                          child: Padding(
+                            padding: EdgeInsets.symmetric(horizontal: 10, vertical: 14),
+                            child: Align(
+                              alignment: Alignment.centerLeft,
+                              child: ShimmerPlaceholder(width: 80, height: 13, borderRadius: 4),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(
+                          width: 100,
+                          child: Padding(
+                            padding: EdgeInsets.symmetric(horizontal: 10, vertical: 14),
+                            child: Align(
+                              alignment: Alignment.centerRight,
+                              child: ShimmerPlaceholder(width: 32, height: 32, borderRadius: 8),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                }),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   // -------------------------------------------------------------
   // MOBILE / TABLET LIST CARDS
   // -------------------------------------------------------------
@@ -1121,6 +1312,70 @@ class FeedStockTransactionScreen extends GetView<FeedStockTransactionController>
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
 
+    final query = controller.searchQuery.value.trim();
+    final hasActiveFilter = query.isNotEmpty ||
+        controller.selectedTypeFilter.value != 'ALL' ||
+        controller.selectedReasonFilter.value != 'ALL' ||
+        controller.selectedItemFilter.value != null ||
+        controller.selectedShedFilter.value != null;
+
+    if (hasActiveFilter) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: 48, horizontal: 20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(20),
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withValues(alpha: 0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  PhosphorIconsRegular.magnifyingGlass,
+                  size: 48,
+                  color: AppColors.primary,
+                ),
+              ),
+              const SizedBox(height: 18),
+              Text(
+                query.isNotEmpty
+                    ? 'No Transactions Match "$query"'
+                    : 'No Matching Stock Transactions',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: isDark ? AppColors.textPrimaryDark : AppColors.textPrimaryLight,
+                ),
+              ),
+              const SizedBox(height: 6),
+              ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 420),
+                child: Text(
+                  'No stock transactions match your current search criteria. Try modifying your search or clear all filters.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: isDark ? AppColors.textSecondaryDark : AppColors.textSecondaryLight,
+                  ),
+                ),
+              ),
+              const SizedBox(height: 20),
+              CustomButton(
+                text: 'Clear Filters',
+                icon: Icons.filter_alt_off_rounded,
+                height: 42,
+                padding: const EdgeInsets.symmetric(horizontal: 18),
+                onPressed: controller.clearFilters,
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
     return Center(
       child: Padding(
         padding: const EdgeInsets.symmetric(vertical: 48, horizontal: 20),
@@ -1160,29 +1415,31 @@ class FeedStockTransactionScreen extends GetView<FeedStockTransactionController>
                 ),
               ),
             ),
-            const SizedBox(height: 20),
-            Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                CustomButton(
-                  text: 'Record Outward',
-                  icon: PhosphorIconsRegular.arrowUpRight,
-                  variant: ButtonVariant.outlined,
-                  textColor: const Color(0xFFF59E0B),
-                  height: 42,
-                  padding: const EdgeInsets.symmetric(horizontal: 14),
-                  onPressed: () => controller.openOutwardDialog(context),
-                ),
-                const SizedBox(width: 12),
-                CustomButton(
-                  text: 'Record Inward Stock',
-                  icon: PhosphorIconsRegular.arrowDownLeft,
-                  height: 42,
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  onPressed: () => controller.openInwardDialog(context),
-                ),
-              ],
-            ),
+            if (controller.canAddTransaction) ...[
+              const SizedBox(height: 20),
+              Row(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  CustomButton(
+                    text: 'Record Outward',
+                    icon: PhosphorIconsRegular.arrowUpRight,
+                    variant: ButtonVariant.outlined,
+                    textColor: const Color(0xFFF59E0B),
+                    height: 42,
+                    padding: const EdgeInsets.symmetric(horizontal: 14),
+                    onPressed: () => controller.openOutwardDialog(context),
+                  ),
+                  const SizedBox(width: 12),
+                  CustomButton(
+                    text: 'Record Inward Stock',
+                    icon: PhosphorIconsRegular.arrowDownLeft,
+                    height: 42,
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    onPressed: () => controller.openInwardDialog(context),
+                  ),
+                ],
+              ),
+            ],
           ],
         ),
       ),

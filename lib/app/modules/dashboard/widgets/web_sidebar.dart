@@ -247,13 +247,19 @@ class WebSidebar extends StatelessWidget {
                         : null;
 
                     Widget buildNavItems() {
-                      bool canView(String m, String s) => perm?.canView(m, s) ?? true;
-                      bool isModuleVisible(String m) => perm?.isModuleVisible(m) ?? true;
-                      final bool isSuperAdmin = perm?.isSuperAdmin ?? (currentUser?.isSuperAdmin ?? false);
+                      final bool isAdminUser = perm != null
+                          ? perm.isAdmin
+                          : (currentUser == null || currentUser!.isAdmin);
+                      bool hasAccess(String m, String s) =>
+                          isAdminUser || (perm != null && perm.hasMenuAccess(m, s));
+                      bool hasAnyAccess(String m, List<String> subs) =>
+                          isAdminUser || (perm != null && perm.hasAnyMenuAccess(m, subs));
+                      bool isModVisible(String m) =>
+                          isAdminUser || (perm != null && perm.isModuleVisible(m));
 
                   // Evaluate visible master sub-items
                   final List<_SidebarSubNavItem> masterItems = [];
-                  if (isSuperAdmin && canView(PermissionModules.role, PermissionSubModules.roleList)) {
+                  if (hasAccess(PermissionModules.role, PermissionSubModules.roleList)) {
                     masterItems.add(
                       _SidebarSubNavItem(
                         icon: PhosphorIconsRegular.shieldCheck,
@@ -267,22 +273,7 @@ class WebSidebar extends StatelessWidget {
                       ),
                     );
                   }
-                  final bool isAdmin = perm?.isAdmin ?? (currentUser?.isAdmin ?? false);
-                  if (isAdmin) {
-                    masterItems.add(
-                      _SidebarSubNavItem(
-                        icon: PhosphorIconsRegular.squaresFour,
-                        label: 'Modules',
-                        isSelected: currentRoute == AppRoutes.moduleManagement,
-                        onTap: () {
-                          if (currentRoute != AppRoutes.moduleManagement) {
-                            Get.offNamed(AppRoutes.moduleManagement);
-                          }
-                        },
-                      ),
-                    );
-                  }
-                  if (canView(PermissionModules.user, PermissionSubModules.userList)) {
+                  if (hasAccess(PermissionModules.user, PermissionSubModules.userList)) {
                     masterItems.add(
                       _SidebarSubNavItem(
                         icon: PhosphorIconsRegular.users,
@@ -296,8 +287,10 @@ class WebSidebar extends StatelessWidget {
                       ),
                     );
                   }
-                  if (canView(PermissionModules.workerMgmt, PermissionSubModules.workerList) ||
-                      canView(PermissionModules.workerMgmt, PermissionSubModules.departmentList)) {
+                  if (hasAnyAccess(PermissionModules.workerMgmt, [
+                    PermissionSubModules.workerList,
+                    PermissionSubModules.departmentList,
+                  ])) {
                     masterItems.add(
                       _SidebarSubNavItem(
                         icon: PhosphorIconsRegular.identificationCard,
@@ -311,7 +304,7 @@ class WebSidebar extends StatelessWidget {
                       ),
                     );
                   }
-                  if (isSuperAdmin && canView(PermissionModules.gaushala, PermissionSubModules.gaushalaList)) {
+                  if (hasAccess(PermissionModules.gaushala, PermissionSubModules.gaushalaList)) {
                     masterItems.add(
                       _SidebarSubNavItem(
                         icon: PhosphorIconsRegular.barn,
@@ -325,8 +318,10 @@ class WebSidebar extends StatelessWidget {
                       ),
                     );
                   }
-                  if (canView(PermissionModules.shed, PermissionSubModules.shedList) ||
-                      canView(PermissionModules.shed, PermissionSubModules.shedTransfer)) {
+                  if (hasAnyAccess(PermissionModules.shed, [
+                    PermissionSubModules.shedList,
+                    PermissionSubModules.shedTransfer,
+                  ])) {
                     masterItems.add(
                       _SidebarSubNavItem(
                         icon: PhosphorIconsRegular.warehouse,
@@ -340,7 +335,7 @@ class WebSidebar extends StatelessWidget {
                       ),
                     );
                   }
-                  if (isSuperAdmin && canView(PermissionModules.breedType, PermissionSubModules.breedTypeList)) {
+                  if (hasAccess(PermissionModules.breedType, PermissionSubModules.breedTypeList)) {
                     masterItems.add(
                       _SidebarSubNavItem(
                         icon: PhosphorIconsRegular.dna,
@@ -354,7 +349,7 @@ class WebSidebar extends StatelessWidget {
                       ),
                     );
                   }
-                  if (canView(PermissionModules.type, PermissionSubModules.typeList)) {
+                  if (hasAccess(PermissionModules.type, PermissionSubModules.typeList)) {
                     masterItems.add(
                       _SidebarSubNavItem(
                         icon: PhosphorIconsRegular.tag,
@@ -368,7 +363,7 @@ class WebSidebar extends StatelessWidget {
                       ),
                     );
                   }
-                  if (canView(PermissionModules.feedStock, PermissionSubModules.feedItems)) {
+                  if (hasAccess(PermissionModules.feedStock, PermissionSubModules.feedItems)) {
                     masterItems.add(
                       _SidebarSubNavItem(
                         icon: PhosphorIconsRegular.grains,
@@ -399,8 +394,11 @@ class WebSidebar extends StatelessWidget {
                           }
                         },
                       ),
-                      if (isModuleVisible(PermissionModules.cow) &&
-                          canView(PermissionModules.cow, PermissionSubModules.cowList)) ...[
+                      if (isModVisible(PermissionModules.cow) &&
+                          hasAnyAccess(PermissionModules.cow, [
+                            PermissionSubModules.cowList,
+                            PermissionSubModules.shedTransfer,
+                          ])) ...[
                         const SizedBox(height: 3),
                         _SidebarNavItem(
                           icon: PhosphorIconsRegular.cow,
@@ -414,8 +412,8 @@ class WebSidebar extends StatelessWidget {
                           },
                         ),
                       ],
-                      if (isModuleVisible(PermissionModules.feedStock) &&
-                          canView(PermissionModules.feedStock, PermissionSubModules.stockTransaction)) ...[
+                      if (isModVisible(PermissionModules.feedStock) &&
+                          hasAccess(PermissionModules.feedStock, PermissionSubModules.stockTransaction)) ...[
                         const SizedBox(height: 3),
                         _SidebarNavItem(
                           icon: PhosphorIconsRegular.arrowsLeftRight,
@@ -429,8 +427,11 @@ class WebSidebar extends StatelessWidget {
                           },
                         ),
                       ],
-                      if (isModuleVisible(PermissionModules.medicalStock) &&
-                          canView(PermissionModules.medicalStock, PermissionSubModules.medicalItems)) ...[
+                      if (isModVisible(PermissionModules.medicalStock) &&
+                          hasAnyAccess(PermissionModules.medicalStock, [
+                            PermissionSubModules.medicalItems,
+                            PermissionSubModules.stockTransaction,
+                          ])) ...[
                         const SizedBox(height: 3),
                         _SidebarNavItem(
                           icon: PhosphorIconsRegular.firstAidKit,
@@ -446,8 +447,11 @@ class WebSidebar extends StatelessWidget {
                           },
                         ),
                       ],
-                      if (isModuleVisible(PermissionModules.treatment) &&
-                          canView(PermissionModules.treatment, PermissionSubModules.treatmentList)) ...[
+                      if (isModVisible(PermissionModules.treatment) &&
+                          hasAnyAccess(PermissionModules.treatment, [
+                            PermissionSubModules.treatmentList,
+                            PermissionSubModules.doseSchedule,
+                          ])) ...[
                         const SizedBox(height: 3),
                         _SidebarNavItem(
                           icon: PhosphorIconsRegular.firstAid,
@@ -463,9 +467,11 @@ class WebSidebar extends StatelessWidget {
                           },
                         ),
                       ],
-                      if (isModuleVisible(PermissionModules.milkMgmt) &&
-                          (canView(PermissionModules.milkMgmt, PermissionSubModules.milkProduction) ||
-                              canView(PermissionModules.milkMgmt, PermissionSubModules.milkDistribution))) ...[
+                      if (isModVisible(PermissionModules.milkMgmt) &&
+                          hasAnyAccess(PermissionModules.milkMgmt, [
+                            PermissionSubModules.milkProduction,
+                            PermissionSubModules.milkDistribution,
+                          ])) ...[
                         const SizedBox(height: 3),
                         _SidebarNavItem(
                           icon: PhosphorIconsRegular.drop,
@@ -481,23 +487,27 @@ class WebSidebar extends StatelessWidget {
                           },
                         ),
                       ],
-                      const SizedBox(height: 3),
-                      _SidebarNavItem(
-                        icon: PhosphorIconsRegular.heartbeat,
-                        label: 'Breeding & Health',
-                        isSelected: false,
-                        isCollapsed: collapsed,
-                        onTap: () {
-                          Get.snackbar(
-                            'Health Records',
-                            'Vaccination schedules and breeding cycles.',
-                            maxWidth: 400,
-                          );
-                        },
-                      ),
+                      if (isAdminUser ||
+                          (isModVisible(PermissionModules.treatment) &&
+                              hasAccess(PermissionModules.treatment, PermissionSubModules.treatmentList))) ...[
+                        const SizedBox(height: 3),
+                        _SidebarNavItem(
+                          icon: PhosphorIconsRegular.heartbeat,
+                          label: 'Breeding & Health',
+                          isSelected: false,
+                          isCollapsed: collapsed,
+                          onTap: () {
+                            Get.snackbar(
+                              'Health Records',
+                              'Vaccination schedules and breeding cycles.',
+                              maxWidth: 400,
+                            );
+                          },
+                        ),
+                      ],
 
-                      // Section 2: Masters (Expandable on hover)
-                      if (masterItems.isNotEmpty) ...[
+                      // Section 2: Masters (Expandable on hover - Admin & Super Admin only)
+                      if (isAdminUser && masterItems.isNotEmpty) ...[
                         const SizedBox(height: 10),
                         _SectionHeader(title: 'MASTERS', isCollapsed: collapsed),
                         _SidebarExpandableGroup(
@@ -518,22 +528,24 @@ class WebSidebar extends StatelessWidget {
                         ),
                       ],
 
-                      // Section 3: Preferences
-                      const SizedBox(height: 10),
-                      _SectionHeader(title: 'PREFERENCES', isCollapsed: collapsed),
-                      _SidebarNavItem(
-                        icon: PhosphorIconsRegular.slidersHorizontal,
-                        label: 'Farm Settings',
-                        isSelected: false,
-                        isCollapsed: collapsed,
-                        onTap: () {
-                          Get.snackbar(
-                            'Settings',
-                            'Farm parameters and user permissions.',
-                            maxWidth: 400,
-                          );
-                        },
-                      ),
+                      // Section 3: Preferences (Admin Only)
+                      if (isAdminUser) ...[
+                        const SizedBox(height: 10),
+                        _SectionHeader(title: 'PREFERENCES', isCollapsed: collapsed),
+                        _SidebarNavItem(
+                          icon: PhosphorIconsRegular.slidersHorizontal,
+                          label: 'Farm Settings',
+                          isSelected: false,
+                          isCollapsed: collapsed,
+                          onTap: () {
+                            Get.snackbar(
+                              'Settings',
+                              'Farm parameters and user permissions.',
+                              maxWidth: 400,
+                            );
+                          },
+                        ),
+                      ],
                     ],
                   );
                 }
@@ -542,7 +554,10 @@ class WebSidebar extends StatelessWidget {
                     return buildNavItems();
                   }
                   return Obx(() {
-                    final _ = perm.permissions.length;
+                    perm.rxPermissions.length;
+                    perm.rxIsAdmin.value;
+                    perm.rxIsLoading.value;
+                    perm.rxVersion.value;
                     return buildNavItems();
                   });
                 },

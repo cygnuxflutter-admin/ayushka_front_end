@@ -10,7 +10,7 @@ abstract class AppConstants {
   static const String logoIconPath = 'assets/images/logo_icon.png';
 
   // Network & API Config
-  static const String baseUrl = 'http://192.168.0.207:7070/api/v1';
+  static const String baseUrl = 'https://ayushkaapi.cygnux.in/api/v1';
   static const Duration connectTimeout = Duration(seconds: 15);
   static const Duration receiveTimeout = Duration(seconds: 15);
   static const Duration sendTimeout = Duration(seconds: 15);
@@ -40,8 +40,4 @@ abstract class AppConstants {
   static const Duration animationFast = Duration(milliseconds: 150);
   static const Duration animationMedium = Duration(milliseconds: 300);
   static const Duration animationSlow = Duration(milliseconds: 500);
-
-  // Default Autofill Credentials
-  static const String defaultUsername = 'ayushka@yopmail.com';
-  static const String defaultPassword = 'Admin@123';
 }

@@ -37,15 +37,16 @@ enum MedicalItemUnit {
   vial('VIAL', 'Vial', 'VIAL'),
   strip('STRIP', 'Strip', 'STP'),
   bottle('BOTTLE', 'Bottle', 'BTL'),
-  ampul('AMPUL', 'Ampul', 'AMP'),
+  ampul('AMPOULE', 'Ampoule', 'AMP'),
   tube('TUBE', 'Tube', 'TUB'),
   box('BOX', 'Box', 'BOX'),
-  pack('PACK', 'Pack', 'PCK'),
+  sachet('SACHET', 'Sachet', 'SCH'),
   ml('ML', 'Milliliter (ML)', 'ML'),
+  liter('LITER', 'Liter (L)', 'LTR'),
   gm('GM', 'Gram (GM)', 'GM'),
   kg('KG', 'Kilogram (KG)', 'KG'),
   tablet('TABLET', 'Tablet', 'TAB'),
-  piece('PIECE', 'Piece', 'PCS'),
+  piece('PCS', 'Piece', 'PCS'),
   bolus('BOLUS', 'Bolus', 'BLS'),
   other('OTHER', 'Other', 'UNIT');
 
@@ -58,6 +59,8 @@ enum MedicalItemUnit {
   static MedicalItemUnit fromCode(String? code) {
     if (code == null) return MedicalItemUnit.piece;
     final upper = code.trim().toUpperCase();
+    if (upper == 'PIECE') return MedicalItemUnit.piece;
+    if (upper == 'AMPUL') return MedicalItemUnit.ampul;
     return MedicalItemUnit.values.firstWhere(
       (u) => u.code == upper,
       orElse: () => MedicalItemUnit.other,

@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
-import '../../core/values/app_constants.dart';
 import '../../core/widgets/custom_snackbar.dart';
 import '../../data/services/api_service.dart';
 import '../../data/services/gaushala_session_service.dart';
@@ -16,10 +15,10 @@ class AuthController extends GetxController {
 
   final GlobalKey<FormState> formKey = GlobalKey<FormState>();
   final TextEditingController userIdController =
-      TextEditingController(text: AppConstants.defaultUsername);
-  TextEditingController get emailController => userIdController; // Alias for backward compatibility
+      TextEditingController();
+  TextEditingController get emailController => userIdController;
   final TextEditingController passwordController =
-      TextEditingController(text: AppConstants.defaultPassword);
+      TextEditingController();
 
   final RxBool isLoading = false.obs;
   final RxBool rememberMe = true.obs;
@@ -37,15 +36,7 @@ class AuthController extends GetxController {
       final savedUser = _storageService.getSavedUserId();
       if (savedUser != null && savedUser.isNotEmpty && savedUser.toLowerCase() != 'admin') {
         userIdController.text = savedUser;
-      } else {
-        userIdController.text = AppConstants.defaultUsername;
       }
-    } else {
-      userIdController.text = AppConstants.defaultUsername;
-    }
-
-    if (passwordController.text.isEmpty) {
-      passwordController.text = AppConstants.defaultPassword;
     }
   }
 

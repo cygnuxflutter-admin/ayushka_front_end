@@ -109,11 +109,12 @@ class CowScreen extends GetView<CowController> {
               onPressed: isBusy ? null : controller.refreshCows,
             );
           }),
-          IconButton(
-            icon: const Icon(PhosphorIconsRegular.arrowsLeftRight),
-            tooltip: 'Transfer Shed',
-            onPressed: () => controller.openShedTransferDialog(context),
-          ),
+          if (controller.canTransferShed)
+            IconButton(
+              icon: const Icon(PhosphorIconsRegular.arrowsLeftRight),
+              tooltip: 'Transfer Shed',
+              onPressed: () => controller.openShedTransferDialog(context),
+            ),
           IconButton(
             icon: const Icon(PhosphorIconsRegular.fileArrowUp),
             tooltip: 'Import Excel (.xlsx)',
@@ -142,23 +143,25 @@ class CowScreen extends GetView<CowController> {
                   ],
                 ),
               ),
-              PopupMenuItem(
-                value: 'transfer_history',
-                child: Row(
-                  children: [
-                    const Icon(PhosphorIconsRegular.clockCounterClockwise, size: 18),
-                    const SizedBox(width: 10),
-                    const Text('Transfer History'),
-                  ],
+              if (controller.canViewShedTransferHistory)
+                PopupMenuItem(
+                  value: 'transfer_history',
+                  child: Row(
+                    children: [
+                      const Icon(PhosphorIconsRegular.clockCounterClockwise, size: 18),
+                      const SizedBox(width: 10),
+                      const Text('Transfer History'),
+                    ],
+                  ),
                 ),
-              ),
             ],
           ),
-          IconButton(
-            icon: const Icon(Icons.add_rounded),
-            tooltip: 'Register Cow',
-            onPressed: controller.goToAddCow,
-          ),
+          if (controller.canAddCow)
+            IconButton(
+              icon: const Icon(Icons.add_rounded),
+              tooltip: 'Register Cow',
+              onPressed: controller.goToAddCow,
+            ),
         ],
       ),
       drawer: Obx(
@@ -232,16 +235,17 @@ class CowScreen extends GetView<CowController> {
                 }
               },
               itemBuilder: (ctx) => [
-                PopupMenuItem(
-                  value: 'transfer_shed',
-                  child: Row(
-                    children: [
-                      const Icon(PhosphorIconsRegular.arrowsLeftRight, size: 18, color: AppColors.primary),
-                      const SizedBox(width: 10),
-                      const Text('Transfer Shed'),
-                    ],
+                if (controller.canTransferShed)
+                  PopupMenuItem(
+                    value: 'transfer_shed',
+                    child: Row(
+                      children: [
+                        const Icon(PhosphorIconsRegular.arrowsLeftRight, size: 18, color: AppColors.primary),
+                        const SizedBox(width: 10),
+                        const Text('Transfer Shed'),
+                      ],
+                    ),
                   ),
-                ),
                 PopupMenuItem(
                   value: 'import_excel',
                   child: Row(
@@ -262,16 +266,17 @@ class CowScreen extends GetView<CowController> {
                     ],
                   ),
                 ),
-                PopupMenuItem(
-                  value: 'transfer_history',
-                  child: Row(
-                    children: [
-                      const Icon(PhosphorIconsRegular.clockCounterClockwise, size: 18),
-                      const SizedBox(width: 10),
-                      const Text('Transfer History'),
-                    ],
+                if (controller.canViewShedTransferHistory)
+                  PopupMenuItem(
+                    value: 'transfer_history',
+                    child: Row(
+                      children: [
+                        const Icon(PhosphorIconsRegular.clockCounterClockwise, size: 18),
+                        const SizedBox(width: 10),
+                        const Text('Transfer History'),
+                      ],
+                    ),
                   ),
-                ),
               ],
             ),
           ],
@@ -282,12 +287,14 @@ class CowScreen extends GetView<CowController> {
             onLogout: controller.logout,
           ),
         ),
-      floatingActionButton: FloatingActionButton.extended(
-        backgroundColor: AppColors.primary,
-        icon: const Icon(Icons.add_rounded, color: Colors.white),
-        label: const Text('Register Cow', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-        onPressed: controller.goToAddCow,
-      ),
+      floatingActionButton: controller.canAddCow
+          ? FloatingActionButton.extended(
+              backgroundColor: AppColors.primary,
+              icon: const Icon(Icons.add_rounded, color: Colors.white),
+              label: const Text('Register Cow', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+              onPressed: controller.goToAddCow,
+            )
+          : null,
       body: Stack(
         children: [
           RefreshIndicator(
@@ -487,14 +494,15 @@ class CowScreen extends GetView<CowController> {
           runSpacing: 10,
           crossAxisAlignment: WrapCrossAlignment.center,
           children: [
-            CustomButton(
-              text: 'Transfer Shed',
-              icon: PhosphorIconsRegular.arrowsLeftRight,
-              variant: ButtonVariant.outlined,
-              height: 42,
-              padding: const EdgeInsets.symmetric(horizontal: 14),
-              onPressed: () => controller.openShedTransferDialog(context),
-            ),
+            if (controller.canTransferShed)
+              CustomButton(
+                text: 'Transfer Shed',
+                icon: PhosphorIconsRegular.arrowsLeftRight,
+                variant: ButtonVariant.outlined,
+                height: 42,
+                padding: const EdgeInsets.symmetric(horizontal: 14),
+                onPressed: () => controller.openShedTransferDialog(context),
+              ),
             CustomButton(
               text: 'Import Excel',
               icon: PhosphorIconsRegular.fileArrowUp,
@@ -507,13 +515,14 @@ class CowScreen extends GetView<CowController> {
               controller: controller,
               isDark: isDark,
             ),
-            CustomButton(
-              text: 'Register New Cow',
-              icon: Icons.add_rounded,
-              height: 42,
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              onPressed: controller.goToAddCow,
-            ),
+            if (controller.canAddCow)
+              CustomButton(
+                text: 'Register New Cow',
+                icon: Icons.add_rounded,
+                height: 42,
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                onPressed: controller.goToAddCow,
+              ),
           ],
         );
 
@@ -993,7 +1002,7 @@ class CowScreen extends GetView<CowController> {
                             height: 40,
                             onPressed: controller.clearFilters,
                           )
-                        else
+                        else if (controller.canAddCow)
                           CustomButton(
                             text: 'Register First Cow',
                             icon: Icons.add_rounded,
@@ -1051,6 +1060,10 @@ class CowScreen extends GetView<CowController> {
                                 index: index,
                                 cow: cow,
                                 isDark: isDark,
+                                canEdit: controller.canEditCow,
+                                canDelete: controller.canDeleteCow,
+                                canTransferShed: controller.canTransferShed,
+                                canViewShedTransferHistory: controller.canViewShedTransferHistory,
                                 isUpdatingStatus: controller.updatingStatusCowIds.contains(cow.id),
                                 isUpdatingDied: controller.updatingDiedCowIds.contains(cow.id),
                                 onView: () => controller.openCowDetailsDialog(context, cow),
@@ -1503,6 +1516,7 @@ class CowScreen extends GetView<CowController> {
                           isUpdatingDied: controller.updatingDiedCowIds.contains(cow.id),
                           onToggleStatus: () => controller.toggleCowStatus(cow),
                           onMarkDied: () => controller.showMarkDiedDialog(context, cow),
+                          canEdit: cow.canEdit && controller.canEditCow,
                           isMobile: true,
                         ),
                         Container(
@@ -1579,7 +1593,7 @@ class CowScreen extends GetView<CowController> {
                           tooltip: 'View Details',
                           onPressed: () => controller.openCowDetailsDialog(context, cow),
                         ),
-                        if (cow.canEdit)
+                        if (cow.canEdit && controller.canEditCow)
                           IconButton(
                             icon: const Icon(PhosphorIconsRegular.pencilSimple, size: 18),
                             tooltip: 'Edit Cattle',
@@ -1590,6 +1604,10 @@ class CowScreen extends GetView<CowController> {
                           cow: cow,
                           isDark: isDark,
                           isRowHovered: false,
+                          canEdit: cow.canEdit && controller.canEditCow,
+                          canDelete: controller.canDeleteCow,
+                          canTransferShed: controller.canTransferShed,
+                          canViewShedTransferHistory: controller.canViewShedTransferHistory,
                           onTransferShed: () => controller.openShedTransferDialog(context, cow: cow),
                           onViewHistory: () => controller.openShedTransferHistoryDialog(context, cow: cow),
                           onToggleStatus: () => controller.toggleCowStatus(cow),
@@ -1640,6 +1658,7 @@ Widget _buildCowStatusBadge({
   required bool isUpdatingDied,
   required VoidCallback onToggleStatus,
   required VoidCallback onMarkDied,
+  bool canEdit = true,
   bool isMobile = false,
 }) {
   // Hierarchy check:
@@ -1692,11 +1711,11 @@ Widget _buildCowStatusBadge({
   if (cow.isDied || cow.isDead) {
     final dateStr = cow.sendDiedDate?.isNotEmpty == true ? ' on ${cow.sendDiedDate}' : '';
     return Tooltip(
-      message: 'Died$dateStr (Click to edit)',
+      message: canEdit ? 'Died$dateStr (Click to edit)' : 'Died$dateStr',
       child: InkWell(
         borderRadius: BorderRadius.circular(isMobile ? 10 : 16),
-        mouseCursor: SystemMouseCursors.click,
-        onTap: isUpdatingDied ? null : onMarkDied,
+        mouseCursor: canEdit ? SystemMouseCursors.click : SystemMouseCursors.basic,
+        onTap: (isUpdatingDied || !canEdit) ? null : onMarkDied,
         child: Container(
           padding: EdgeInsets.symmetric(
             horizontal: isMobile ? 7 : 8,
@@ -1737,11 +1756,13 @@ Widget _buildCowStatusBadge({
   // 3. Third check: If not died, is cattle active or inactive?
   final bool isActive = cow.isActive;
   return Tooltip(
-    message: isActive ? 'Active (Click to Deactivate)' : 'InActive (Click to Activate)',
+    message: canEdit
+        ? (isActive ? 'Active (Click to Deactivate)' : 'InActive (Click to Activate)')
+        : (isActive ? 'Active' : 'InActive'),
     child: InkWell(
       borderRadius: BorderRadius.circular(isMobile ? 10 : 16),
-      mouseCursor: SystemMouseCursors.click,
-      onTap: isUpdatingStatus ? null : onToggleStatus,
+      mouseCursor: canEdit ? SystemMouseCursors.click : SystemMouseCursors.basic,
+      onTap: (isUpdatingStatus || !canEdit) ? null : onToggleStatus,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 180),
         padding: EdgeInsets.symmetric(
@@ -1812,6 +1833,10 @@ class _HoverableCowTableRow extends StatefulWidget {
   final VoidCallback onDelete;
   final bool isUpdatingStatus;
   final bool isUpdatingDied;
+  final bool canEdit;
+  final bool canDelete;
+  final bool canTransferShed;
+  final bool canViewShedTransferHistory;
 
   const _HoverableCowTableRow({
     super.key,
@@ -1827,6 +1852,10 @@ class _HoverableCowTableRow extends StatefulWidget {
     required this.onDelete,
     this.isUpdatingStatus = false,
     this.isUpdatingDied = false,
+    this.canEdit = true,
+    this.canDelete = true,
+    this.canTransferShed = true,
+    this.canViewShedTransferHistory = true,
   });
 
   @override
@@ -2225,7 +2254,7 @@ class _HoverableCowTableRowState extends State<_HoverableCowTableRow> {
                             ),
                           ),
                         ),
-                        if (cow.canEdit) ...[
+                        if (cow.canEdit && widget.canEdit) ...[
                           const SizedBox(width: 3),
                           Tooltip(
                             message: 'Edit Cattle',
@@ -2252,6 +2281,10 @@ class _HoverableCowTableRowState extends State<_HoverableCowTableRow> {
                           cow: cow,
                           isDark: isDark,
                           isRowHovered: _isHovered,
+                          canEdit: cow.canEdit && widget.canEdit,
+                          canDelete: widget.canDelete,
+                          canTransferShed: widget.canTransferShed,
+                          canViewShedTransferHistory: widget.canViewShedTransferHistory,
                           onTransferShed: widget.onTransferShed,
                           onViewHistory: widget.onViewHistory,
                           onToggleStatus: widget.onToggleStatus,
@@ -2549,22 +2582,24 @@ class _HeaderMoreMenuState extends State<_HeaderMoreMenu> {
                                 },
                               );
                             }),
-                            Divider(
-                              height: 8,
-                              thickness: 0.8,
-                              color: isDark ? AppColors.borderDark : AppColors.borderLight,
-                            ),
-                            _HoverMenuItem(
-                              isDark: isDark,
-                              icon: PhosphorIconsRegular.clockCounterClockwise,
-                              iconColor: AppColors.secondary,
-                              title: 'Transfer History',
-                              subtitle: 'Past shed movements log',
-                              onTap: () {
-                                _hideMenuImmediately();
-                                widget.controller.openShedTransferHistoryDialog(context);
-                              },
-                            ),
+                            if (widget.controller.canViewShedTransferHistory) ...[
+                              Divider(
+                                height: 8,
+                                thickness: 0.8,
+                                color: isDark ? AppColors.borderDark : AppColors.borderLight,
+                              ),
+                              _HoverMenuItem(
+                                isDark: isDark,
+                                icon: PhosphorIconsRegular.clockCounterClockwise,
+                                iconColor: AppColors.secondary,
+                                title: 'Transfer History',
+                                subtitle: 'Past shed movements log',
+                                onTap: () {
+                                  _hideMenuImmediately();
+                                  widget.controller.openShedTransferHistoryDialog(context);
+                                },
+                              ),
+                            ],
                           ],
                         ),
                       ),
@@ -2770,6 +2805,10 @@ class _CowActionHoverMenu extends StatefulWidget {
   final VoidCallback onToggleStatus;
   final VoidCallback onMarkDied;
   final VoidCallback onDelete;
+  final bool canEdit;
+  final bool canDelete;
+  final bool canTransferShed;
+  final bool canViewShedTransferHistory;
 
   const _CowActionHoverMenu({
     required this.cow,
@@ -2780,6 +2819,10 @@ class _CowActionHoverMenu extends StatefulWidget {
     required this.onToggleStatus,
     required this.onMarkDied,
     required this.onDelete,
+    this.canEdit = true,
+    this.canDelete = true,
+    this.canTransferShed = true,
+    this.canViewShedTransferHistory = true,
   });
 
   @override
@@ -2874,11 +2917,13 @@ class _CowActionHoverMenuState extends State<_CowActionHoverMenu> {
   Widget build(BuildContext context) {
     final cow = widget.cow;
     final isDark = widget.isDark;
-    final hasTransfer = cow.canTransferShed;
-    final canMarkDied = !cow.isDeleted && !cow.isDelete;
-    final canDelete = !cow.isDeleted && !cow.isDelete;
+    final hasTransfer = cow.canTransferShed && widget.canTransferShed;
+    final hasViewHistory = widget.canViewShedTransferHistory;
+    final canToggleStatus = cow.canEdit && widget.canEdit;
+    final canMarkDied = !cow.isDeleted && !cow.isDelete && cow.canEdit && widget.canEdit;
+    final canDelete = !cow.isDeleted && !cow.isDelete && widget.canDelete;
 
-    if (!hasTransfer && !canMarkDied && !canDelete) {
+    if (!hasTransfer && !hasViewHistory && !canToggleStatus && !canMarkDied && !canDelete) {
       return const SizedBox.shrink();
     }
 
@@ -2930,7 +2975,7 @@ class _CowActionHoverMenuState extends State<_CowActionHoverMenu> {
                           mainAxisSize: MainAxisSize.min,
                           crossAxisAlignment: CrossAxisAlignment.stretch,
                           children: [
-                            if (hasTransfer) ...[
+                            if (hasTransfer)
                               _CowRowHoverMenuItem(
                                 isDark: isDark,
                                 icon: PhosphorIconsRegular.arrowsLeftRight,
@@ -2941,6 +2986,7 @@ class _CowActionHoverMenuState extends State<_CowActionHoverMenu> {
                                   widget.onTransferShed();
                                 },
                               ),
+                            if (hasViewHistory)
                               _CowRowHoverMenuItem(
                                 isDark: isDark,
                                 icon: PhosphorIconsRegular.clockCounterClockwise,
@@ -2951,6 +2997,7 @@ class _CowActionHoverMenuState extends State<_CowActionHoverMenu> {
                                   widget.onViewHistory();
                                 },
                               ),
+                            if (canToggleStatus)
                               _CowRowHoverMenuItem(
                                 isDark: isDark,
                                 icon: cow.isActive
@@ -2963,9 +3010,8 @@ class _CowActionHoverMenuState extends State<_CowActionHoverMenu> {
                                   widget.onToggleStatus();
                                 },
                               ),
-                            ],
                             if (canMarkDied) ...[
-                              if (hasTransfer)
+                              if (hasTransfer || hasViewHistory || canToggleStatus)
                                 Divider(
                                   height: 6,
                                   thickness: 0.8,
@@ -2986,11 +3032,12 @@ class _CowActionHoverMenuState extends State<_CowActionHoverMenu> {
                               ),
                             ],
                             if (canDelete) ...[
-                              Divider(
-                                height: 6,
-                                thickness: 0.8,
-                                color: isDark ? AppColors.borderDark : AppColors.borderLight,
-                              ),
+                              if (hasTransfer || hasViewHistory || canToggleStatus || canMarkDied)
+                                Divider(
+                                  height: 6,
+                                  thickness: 0.8,
+                                  color: isDark ? AppColors.borderDark : AppColors.borderLight,
+                                ),
                               _CowRowHoverMenuItem(
                                 isDark: isDark,
                                 icon: PhosphorIconsRegular.trash,

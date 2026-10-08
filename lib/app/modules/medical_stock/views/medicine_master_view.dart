@@ -178,14 +178,15 @@ class MedicineMasterView extends StatelessWidget {
                 onPressed: isBusy ? null : controller.refreshAllData,
               );
             }),
-            CustomButton(
-              text: 'Add Medicine',
-              icon: PhosphorIconsRegular.plus,
-              variant: ButtonVariant.primary,
-              height: 42,
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              onPressed: () => AddEditMedicineDialog.show(context),
-            ),
+            if (controller.canAddMedicine)
+              CustomButton(
+                text: 'Add Medicine',
+                icon: PhosphorIconsRegular.plus,
+                variant: ButtonVariant.primary,
+                height: 42,
+                padding: const EdgeInsets.symmetric(horizontal: 16),
+                onPressed: () => AddEditMedicineDialog.show(context),
+              ),
           ],
         );
 
@@ -629,6 +630,8 @@ class MedicineMasterView extends StatelessWidget {
                                 index: index,
                                 item: item,
                                 isDark: isDark,
+                                canEdit: controller.canEditMedicine,
+                                canDelete: controller.canDeleteMedicine,
                                 onView: () => MedicineDetailsDialog.show(context, item: item),
                                 onInward: () {
                                   controller.inwardSelectedItem.value = item;
@@ -847,16 +850,18 @@ class MedicineMasterView extends StatelessWidget {
                             tooltip: 'View Batches',
                             onPressed: () => ViewBatchesDialog.show(context, item: item),
                           ),
-                          IconButton(
-                            icon: const Icon(PhosphorIconsRegular.pencilSimple, size: 18),
-                            tooltip: 'Edit Medicine',
-                            onPressed: () => AddEditMedicineDialog.show(context, existingItem: item),
-                          ),
-                          IconButton(
-                            icon: const Icon(PhosphorIconsRegular.trash, size: 18, color: AppColors.error),
-                            tooltip: 'Delete Medicine',
-                            onPressed: () => _confirmDelete(context, controller, item),
-                          ),
+                          if (controller.canEditMedicine)
+                            IconButton(
+                              icon: const Icon(PhosphorIconsRegular.pencilSimple, size: 18),
+                              tooltip: 'Edit Medicine',
+                              onPressed: () => AddEditMedicineDialog.show(context, existingItem: item),
+                            ),
+                          if (controller.canDeleteMedicine)
+                            IconButton(
+                              icon: const Icon(PhosphorIconsRegular.trash, size: 18, color: AppColors.error),
+                              tooltip: 'Delete Medicine',
+                              onPressed: () => _confirmDelete(context, controller, item),
+                            ),
                         ],
                       ),
                     ],
@@ -1259,7 +1264,7 @@ class MedicineMasterView extends StatelessWidget {
                 height: 40,
                 onPressed: controller.clearMedicineFilters,
               )
-            else
+            else if (controller.canAddMedicine)
               CustomButton(
                 text: 'Add First Medicine',
                 icon: Icons.add_rounded,
@@ -1379,6 +1384,8 @@ class _HoverableMedicineTableRow extends StatefulWidget {
   final VoidCallback onViewBatches;
   final VoidCallback onEdit;
   final VoidCallback onDelete;
+  final bool canEdit;
+  final bool canDelete;
 
   const _HoverableMedicineTableRow({
     super.key,
@@ -1390,6 +1397,8 @@ class _HoverableMedicineTableRow extends StatefulWidget {
     required this.onViewBatches,
     required this.onEdit,
     required this.onDelete,
+    this.canEdit = true,
+    this.canDelete = true,
   });
 
   @override
@@ -1700,20 +1709,24 @@ class _HoverableMedicineTableRowState extends State<_HoverableMedicineTableRow> 
                       color: AppColors.primary,
                       onTap: widget.onViewBatches,
                     ),
-                    const SizedBox(width: 2),
-                    _buildRowActionIcon(
-                      tooltip: 'Edit Medicine Details',
-                      icon: PhosphorIconsRegular.pencilSimple,
-                      color: AppColors.textSecondaryLight,
-                      onTap: widget.onEdit,
-                    ),
-                    const SizedBox(width: 2),
-                    _buildRowActionIcon(
-                      tooltip: 'Delete Medicine SKU',
-                      icon: PhosphorIconsRegular.trash,
-                      color: AppColors.error,
-                      onTap: widget.onDelete,
-                    ),
+                    if (widget.canEdit) ...[
+                      const SizedBox(width: 2),
+                      _buildRowActionIcon(
+                        tooltip: 'Edit Medicine Details',
+                        icon: PhosphorIconsRegular.pencilSimple,
+                        color: AppColors.textSecondaryLight,
+                        onTap: widget.onEdit,
+                      ),
+                    ],
+                    if (widget.canDelete) ...[
+                      const SizedBox(width: 2),
+                      _buildRowActionIcon(
+                        tooltip: 'Delete Medicine SKU',
+                        icon: PhosphorIconsRegular.trash,
+                        color: AppColors.error,
+                        onTap: widget.onDelete,
+                      ),
+                    ],
                   ],
                 ),
               ),

@@ -2,12 +2,14 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../../core/utils/responsive_layout.dart';
 import '../../core/values/app_colors.dart';
+import '../../core/values/permission_constants.dart';
 import '../../core/widgets/custom_button.dart';
 import '../../core/widgets/custom_snackbar.dart';
 import '../../core/widgets/custom_text_field.dart';
 import '../../data/models/role_model.dart';
 import '../../data/models/user_model.dart';
 import '../../data/services/api_service.dart';
+import '../../data/services/permission_service.dart';
 import '../../data/services/storage_service.dart';
 import '../../routes/app_routes.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
@@ -17,6 +19,20 @@ import 'views/edit_role_screen.dart';
 class RoleController extends GetxController {
   final ApiService _apiService = Get.find<ApiService>();
   final StorageService _storageService = Get.find<StorageService>();
+  final PermissionService? _permissionService =
+      Get.isRegistered<PermissionService>() ? Get.find<PermissionService>() : null;
+
+  bool get canAddRole =>
+      _permissionService?.canAdd(PermissionModules.role, PermissionSubModules.roleList) ??
+      (currentUser.value?.isAdmin ?? false);
+
+  bool get canEditRole =>
+      _permissionService?.canEdit(PermissionModules.role, PermissionSubModules.roleList) ??
+      (currentUser.value?.isAdmin ?? false);
+
+  bool get canDeleteRole =>
+      _permissionService?.canDelete(PermissionModules.role, PermissionSubModules.roleList) ??
+      (currentUser.value?.isAdmin ?? false);
 
   // Static in-memory cache to prevent flickering / repeated loading animations on navigation
   static final List<RoleModel> _cachedRoles = [];
@@ -224,6 +240,13 @@ class RoleController extends GetxController {
 
   /// Open Dialog to Add a New Role
   void openAddRoleDialog(BuildContext context) {
+    if (!canAddRole) {
+      CustomSnackbar.showWarning(
+        title: 'Access Denied',
+        message: 'You do not have permission to add roles.',
+      );
+      return;
+    }
     final formKey = GlobalKey<FormState>();
     final nameController = TextEditingController();
 
@@ -356,6 +379,13 @@ class RoleController extends GetxController {
 
   /// Open Dialog to Edit Role
   void openEditRoleDialog(BuildContext context, RoleModel role) {
+    if (!canEditRole) {
+      CustomSnackbar.showWarning(
+        title: 'Access Denied',
+        message: 'You do not have permission to edit roles.',
+      );
+      return;
+    }
     if (ResponsiveLayout.isMobile(context)) {
       Navigator.of(context).push(
         MaterialPageRoute(builder: (_) => EditRoleScreen(role: role)),
@@ -495,6 +525,13 @@ class RoleController extends GetxController {
 
   /// Confirm Delete Role
   void confirmDeleteRole(BuildContext context, RoleModel role) {
+    if (!canDeleteRole) {
+      CustomSnackbar.showWarning(
+        title: 'Access Denied',
+        message: 'You do not have permission to delete roles.',
+      );
+      return;
+    }
     Get.dialog(
       AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),

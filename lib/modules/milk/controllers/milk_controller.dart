@@ -7,8 +7,10 @@ import 'package:ayushka/app/data/models/cow_model.dart';
 import 'package:ayushka/app/data/models/notification_model.dart';
 import 'package:ayushka/app/data/models/user_model.dart';
 import 'package:ayushka/app/data/models/worker_model.dart';
+import 'package:ayushka/app/core/values/permission_constants.dart';
 import 'package:ayushka/app/data/services/api_service.dart';
 import 'package:ayushka/app/data/services/gaushala_session_service.dart';
+import 'package:ayushka/app/data/services/permission_service.dart';
 import 'package:ayushka/app/data/services/storage_service.dart';
 import 'package:ayushka/app/routes/app_routes.dart';
 import '../models/fridge_stock_model.dart';
@@ -24,6 +26,33 @@ class MilkController extends GetxController {
   final ApiService _apiService = Get.find<ApiService>();
   final GaushalaSessionService _gaushalaService = Get.find<GaushalaSessionService>();
   final StorageService _storageService = Get.find<StorageService>();
+
+  PermissionService? get _permissionService =>
+      Get.isRegistered<PermissionService>() ? Get.find<PermissionService>() : null;
+
+  bool get canAddProduction =>
+      _permissionService?.canAdd(PermissionModules.milkMgmt, PermissionSubModules.milkProduction) ??
+      (currentUser?.isAdmin ?? false);
+
+  bool get canEditProduction =>
+      _permissionService?.canEdit(PermissionModules.milkMgmt, PermissionSubModules.milkProduction) ??
+      (currentUser?.isAdmin ?? false);
+
+  bool get canDeleteProduction =>
+      _permissionService?.canDelete(PermissionModules.milkMgmt, PermissionSubModules.milkProduction) ??
+      (currentUser?.isAdmin ?? false);
+
+  bool get canAddDistribution =>
+      _permissionService?.canAdd(PermissionModules.milkMgmt, PermissionSubModules.milkDistribution) ??
+      (currentUser?.isAdmin ?? false);
+
+  bool get canEditDistribution =>
+      _permissionService?.canEdit(PermissionModules.milkMgmt, PermissionSubModules.milkDistribution) ??
+      (currentUser?.isAdmin ?? false);
+
+  bool get canDeleteDistribution =>
+      _permissionService?.canDelete(PermissionModules.milkMgmt, PermissionSubModules.milkDistribution) ??
+      (currentUser?.isAdmin ?? false);
 
   // ---------------------------------------------------------------------------
   // NAVIGATION & SHELL

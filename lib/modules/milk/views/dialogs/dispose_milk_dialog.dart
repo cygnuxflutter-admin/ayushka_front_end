@@ -7,6 +7,7 @@ import 'package:phosphor_flutter/phosphor_flutter.dart';
 import '../../../../app/core/values/app_colors.dart';
 import '../../../../app/core/widgets/custom_button.dart';
 import '../../../../app/core/widgets/custom_dropdown_search.dart';
+import '../../../../app/core/widgets/custom_snackbar.dart';
 import '../../../../app/core/widgets/custom_text_field.dart';
 import '../../../../app/data/models/worker_model.dart';
 import '../../controllers/milk_controller.dart';
@@ -28,6 +29,16 @@ class DisposeMilkDialog extends StatefulWidget {
     String? milkDate,
     double? maxQuantity,
   }) async {
+    if (Get.isRegistered<MilkController>()) {
+      final controller = Get.find<MilkController>();
+      if (!controller.canDeleteProduction) {
+        CustomSnackbar.showError(
+          title: 'Access Denied',
+          message: 'You do not have permission to dispose milk.',
+        );
+        return;
+      }
+    }
     await Get.dialog(
       DisposeMilkDialog(
         initialMilkDate: milkDate,

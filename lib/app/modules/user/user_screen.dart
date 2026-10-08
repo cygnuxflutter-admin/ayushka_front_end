@@ -102,10 +102,15 @@ class UserScreen extends GetView<UserController> {
               onPressed: isBusy ? null : controller.refreshUsers,
             );
           }),
-          IconButton(
-            icon: const Icon(Icons.add_rounded),
-            tooltip: 'Add User',
-            onPressed: () => controller.openAddUserDialog(context),
+          PermissionGuard(
+            moduleCode: PermissionModules.user,
+            subModuleCode: PermissionSubModules.userList,
+            action: PermissionAction.add,
+            child: IconButton(
+              icon: const Icon(Icons.add_rounded),
+              tooltip: 'Add User',
+              onPressed: () => controller.openAddUserDialog(context),
+            ),
           ),
         ],
       ),
@@ -155,14 +160,19 @@ class UserScreen extends GetView<UserController> {
           onLogout: controller.logout,
         ),
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        backgroundColor: AppColors.primary,
-        icon: const Icon(Icons.person_add_rounded, color: Colors.white),
-        label: const Text(
-          'Add User',
-          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+      floatingActionButton: PermissionGuard(
+        moduleCode: PermissionModules.user,
+        subModuleCode: PermissionSubModules.userList,
+        action: PermissionAction.add,
+        child: FloatingActionButton.extended(
+          backgroundColor: AppColors.primary,
+          icon: const Icon(Icons.person_add_rounded, color: Colors.white),
+          label: const Text(
+            'Add User',
+            style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+          ),
+          onPressed: () => controller.openAddUserDialog(context),
         ),
-        onPressed: () => controller.openAddUserDialog(context),
       ),
       body: RefreshIndicator(
         onRefresh: controller.refreshUsers,
@@ -1801,23 +1811,33 @@ class _HoverableUserTableRowState extends State<_HoverableUserTableRow> {
                     ),
                   ),
                   if (!user.isDeleted)
-                    Tooltip(
-                      message: 'Edit User',
-                      child: IconButton(
-                        icon: const Icon(Icons.edit_outlined, size: 18),
-                        color: _isHovered ? AppColors.info : AppColors.info.withValues(alpha: 0.8),
-                        visualDensity: VisualDensity.compact,
-                        onPressed: widget.onEdit,
+                    PermissionGuard(
+                      moduleCode: PermissionModules.user,
+                      subModuleCode: PermissionSubModules.userList,
+                      action: PermissionAction.edit,
+                      child: Tooltip(
+                        message: 'Edit User',
+                        child: IconButton(
+                          icon: const Icon(Icons.edit_outlined, size: 18),
+                          color: _isHovered ? AppColors.info : AppColors.info.withValues(alpha: 0.8),
+                          visualDensity: VisualDensity.compact,
+                          onPressed: widget.onEdit,
+                        ),
                       ),
                     ),
                   if (!user.isDeleted)
-                    Tooltip(
-                      message: 'Delete User',
-                      child: IconButton(
-                        icon: const Icon(Icons.delete_outline_rounded, size: 18),
-                        color: _isHovered ? AppColors.error : AppColors.error.withValues(alpha: 0.8),
-                        visualDensity: VisualDensity.compact,
-                        onPressed: widget.onDelete,
+                    PermissionGuard(
+                      moduleCode: PermissionModules.user,
+                      subModuleCode: PermissionSubModules.userList,
+                      action: PermissionAction.delete,
+                      child: Tooltip(
+                        message: 'Delete User',
+                        child: IconButton(
+                          icon: const Icon(Icons.delete_outline_rounded, size: 18),
+                          color: _isHovered ? AppColors.error : AppColors.error.withValues(alpha: 0.8),
+                          visualDensity: VisualDensity.compact,
+                          onPressed: widget.onDelete,
+                        ),
                       ),
                     ),
                 ],

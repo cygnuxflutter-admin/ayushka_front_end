@@ -99,6 +99,9 @@ class ApiService extends getx.GetxService {
         onError: (DioException error, ErrorInterceptorHandler handler) async {
           if (kDebugMode) {
             print('[DIO ERROR] !! [${error.response?.statusCode}] ${error.message}');
+            if (error.response?.data != null) {
+              print('[DIO ERROR DATA] => ${error.response?.data}');
+            }
           }
 
           final requestPath = error.requestOptions.path;
@@ -3252,8 +3255,11 @@ class ApiService extends getx.GetxService {
   /// Retrieves current logged-in user permissions and admin status
   Future<UserPermissionsResponse> getMyPermissions() async {
     final response = await _dio.get('/permissions/my-permissions');
-    if (response.data is Map<String, dynamic>) {
-      return UserPermissionsResponse.fromJson(response.data as Map<String, dynamic>);
+    if (response.data is Map) {
+      final map = response.data is Map<String, dynamic>
+          ? response.data as Map<String, dynamic>
+          : Map<String, dynamic>.from(response.data as Map);
+      return UserPermissionsResponse.fromJson(map);
     }
     return const UserPermissionsResponse(userId: '', role: '');
   }
@@ -3262,8 +3268,11 @@ class ApiService extends getx.GetxService {
   /// Retrieves user permission matrix with all modules and submodules
   Future<UserPermissionMatrixResponse> getUserPermissionMatrix(String userId) async {
     final response = await _dio.get('/permissions/users/${userId.trim()}');
-    if (response.data is Map<String, dynamic>) {
-      return UserPermissionMatrixResponse.fromJson(response.data as Map<String, dynamic>);
+    if (response.data is Map) {
+      final map = response.data is Map<String, dynamic>
+          ? response.data as Map<String, dynamic>
+          : Map<String, dynamic>.from(response.data as Map);
+      return UserPermissionMatrixResponse.fromJson(map);
     }
     return const UserPermissionMatrixResponse();
   }

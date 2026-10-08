@@ -111,11 +111,12 @@ class WorkerScreen extends GetView<WorkerController> {
             tooltip: 'Manage Departments',
             onPressed: () => ManageDepartmentsDialog.show(context),
           ),
-          IconButton(
-            icon: const Icon(Icons.person_add_alt_1_rounded),
-            tooltip: 'Add Worker',
-            onPressed: () => controller.openAddWorkerDialog(context),
-          ),
+          if (controller.canAddWorker)
+            IconButton(
+              icon: const Icon(Icons.person_add_alt_1_rounded),
+              tooltip: 'Add Worker',
+              onPressed: () => controller.openAddWorkerDialog(context),
+            ),
         ],
       ),
       drawer: Obx(
@@ -170,13 +171,15 @@ class WorkerScreen extends GetView<WorkerController> {
           onLogout: controller.logout,
         ),
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        backgroundColor: AppColors.primary,
-        foregroundColor: Colors.white,
-        icon: const Icon(Icons.person_add_alt_1_rounded),
-        label: const Text('Add Worker'),
-        onPressed: () => controller.openAddWorkerDialog(context),
-      ),
+      floatingActionButton: controller.canAddWorker
+          ? FloatingActionButton.extended(
+              backgroundColor: AppColors.primary,
+              foregroundColor: Colors.white,
+              icon: const Icon(Icons.person_add_alt_1_rounded),
+              label: const Text('Add Worker'),
+              onPressed: () => controller.openAddWorkerDialog(context),
+            )
+          : null,
       body: NotificationListener<ScrollNotification>(
         onNotification: (ScrollNotification scrollInfo) {
           if (scrollInfo.metrics.pixels >= scrollInfo.metrics.maxScrollExtent - 200) {
@@ -353,13 +356,15 @@ class WorkerScreen extends GetView<WorkerController> {
               height: 42,
               onPressed: () => ManageDepartmentsDialog.show(context),
             ),
-            const SizedBox(width: 12),
-            CustomButton(
-              text: 'Add Worker',
-              icon: Icons.person_add_alt_1_rounded,
-              height: 42,
-              onPressed: () => controller.openAddWorkerDialog(context),
-            ),
+            if (controller.canAddWorker) ...[
+              const SizedBox(width: 12),
+              CustomButton(
+                text: 'Add Worker',
+                icon: Icons.person_add_alt_1_rounded,
+                height: 42,
+                onPressed: () => controller.openAddWorkerDialog(context),
+              ),
+            ],
           ],
         ),
       ],
@@ -586,14 +591,16 @@ class WorkerScreen extends GetView<WorkerController> {
                             : 'No workers have been registered for this Gaushala yet.',
                         style: TextStyle(fontSize: 13, color: isDark ? AppColors.textMutedDark : AppColors.textSecondaryLight),
                       ),
-                      const SizedBox(height: 16),
-                      CustomButton(
-                        text: 'Add Worker',
-                        icon: Icons.person_add_alt_1_rounded,
-                        variant: ButtonVariant.outlined,
-                        width: 140,
-                        onPressed: () => controller.openAddWorkerDialog(context),
-                      ),
+                      if (controller.canAddWorker) ...[
+                        const SizedBox(height: 16),
+                        CustomButton(
+                          text: 'Add Worker',
+                          icon: Icons.person_add_alt_1_rounded,
+                          variant: ButtonVariant.outlined,
+                          width: 140,
+                          onPressed: () => controller.openAddWorkerDialog(context),
+                        ),
+                      ],
                     ],
                   ),
                 ),
@@ -620,6 +627,8 @@ class WorkerScreen extends GetView<WorkerController> {
                             key: ValueKey('${worker.id}_${worker.isActive}_${worker.leavingDate}_${worker.isDelete}'),
                             worker: worker,
                             isDark: isDark,
+                            canEdit: controller.canEditWorker,
+                            canDelete: controller.canDeleteWorker,
                             onEdit: () => controller.openEditWorkerDialog(context, worker),
                             onMarkLeft: () => controller.openMarkLeftDialog(context, worker),
                             onToggleStatus: () => controller.toggleWorkerStatus(worker),
@@ -681,6 +690,8 @@ class WorkerScreen extends GetView<WorkerController> {
                             serial: serial,
                             worker: worker,
                             isDark: isDark,
+                            canEdit: controller.canEditWorker,
+                            canDelete: controller.canDeleteWorker,
                             onEdit: () => controller.openEditWorkerDialog(context, worker),
                             onMarkLeft: () => controller.openMarkLeftDialog(context, worker),
                             onToggleStatus: () => controller.toggleWorkerStatus(worker),
@@ -1056,6 +1067,8 @@ class _HoverableWorkerTableRow extends StatefulWidget {
   final VoidCallback onMarkLeft;
   final VoidCallback onToggleStatus;
   final VoidCallback onDelete;
+  final bool canEdit;
+  final bool canDelete;
 
   const _HoverableWorkerTableRow({
     super.key,
@@ -1067,6 +1080,8 @@ class _HoverableWorkerTableRow extends StatefulWidget {
     required this.onMarkLeft,
     required this.onToggleStatus,
     required this.onDelete,
+    this.canEdit = true,
+    this.canDelete = true,
   });
 
   @override
@@ -1321,27 +1336,29 @@ class _HoverableWorkerTableRowState extends State<_HoverableWorkerTableRow> {
                 mainAxisAlignment: MainAxisAlignment.end,
                 children: [
                   // Edit Worker
-                  Tooltip(
-                    message: 'Edit Worker',
-                    waitDuration: const Duration(milliseconds: 300),
-                    child: InkWell(
-                      borderRadius: BorderRadius.circular(6),
-                      mouseCursor: SystemMouseCursors.click,
-                      hoverColor: AppColors.primary.withValues(alpha: 0.12),
-                      onTap: widget.onEdit,
-                      child: Padding(
-                        padding: const EdgeInsets.all(6),
-                        child: Icon(
-                          PhosphorIconsRegular.pencilSimple,
-                          size: 17,
-                          color: _isHovered
-                              ? AppColors.primary
-                              : (isDark ? AppColors.textSecondaryDark : AppColors.textSecondaryLight),
+                  if (widget.canEdit) ...[
+                    Tooltip(
+                      message: 'Edit Worker',
+                      waitDuration: const Duration(milliseconds: 300),
+                      child: InkWell(
+                        borderRadius: BorderRadius.circular(6),
+                        mouseCursor: SystemMouseCursors.click,
+                        hoverColor: AppColors.primary.withValues(alpha: 0.12),
+                        onTap: widget.onEdit,
+                        child: Padding(
+                          padding: const EdgeInsets.all(6),
+                          child: Icon(
+                            PhosphorIconsRegular.pencilSimple,
+                            size: 17,
+                            color: _isHovered
+                                ? AppColors.primary
+                                : (isDark ? AppColors.textSecondaryDark : AppColors.textSecondaryLight),
+                          ),
                         ),
                       ),
                     ),
-                  ),
-                  const SizedBox(width: 4),
+                    const SizedBox(width: 4),
+                  ],
 
                   // Mark as Left Gaushala / Reactivate
                   if (worker.isActive)
@@ -1386,29 +1403,31 @@ class _HoverableWorkerTableRowState extends State<_HoverableWorkerTableRow> {
                         ),
                       ),
                     ),
-                  const SizedBox(width: 4),
 
                   // Delete (Soft delete)
-                  Tooltip(
-                    message: 'Delete Worker',
-                    waitDuration: const Duration(milliseconds: 300),
-                    child: InkWell(
-                      borderRadius: BorderRadius.circular(6),
-                      mouseCursor: SystemMouseCursors.click,
-                      hoverColor: AppColors.error.withValues(alpha: 0.12),
-                      onTap: widget.onDelete,
-                      child: Padding(
-                        padding: const EdgeInsets.all(6),
-                        child: Icon(
-                          PhosphorIconsRegular.trash,
-                          size: 17,
-                          color: _isHovered
-                              ? AppColors.error
-                              : (isDark ? AppColors.textSecondaryDark : AppColors.textSecondaryLight),
+                  if (widget.canDelete) ...[
+                    const SizedBox(width: 4),
+                    Tooltip(
+                      message: 'Delete Worker',
+                      waitDuration: const Duration(milliseconds: 300),
+                      child: InkWell(
+                        borderRadius: BorderRadius.circular(6),
+                        mouseCursor: SystemMouseCursors.click,
+                        hoverColor: AppColors.error.withValues(alpha: 0.12),
+                        onTap: widget.onDelete,
+                        child: Padding(
+                          padding: const EdgeInsets.all(6),
+                          child: Icon(
+                            PhosphorIconsRegular.trash,
+                            size: 17,
+                            color: _isHovered
+                                ? AppColors.error
+                                : (isDark ? AppColors.textSecondaryDark : AppColors.textSecondaryLight),
+                          ),
                         ),
                       ),
                     ),
-                  ),
+                  ],
                 ],
               ),
             ),
@@ -1429,6 +1448,8 @@ class _HoverableWorkerMobileCard extends StatefulWidget {
   final VoidCallback onMarkLeft;
   final VoidCallback onToggleStatus;
   final VoidCallback onDelete;
+  final bool canEdit;
+  final bool canDelete;
 
   const _HoverableWorkerMobileCard({
     super.key,
@@ -1438,6 +1459,8 @@ class _HoverableWorkerMobileCard extends StatefulWidget {
     required this.onMarkLeft,
     required this.onToggleStatus,
     required this.onDelete,
+    this.canEdit = true,
+    this.canDelete = true,
   });
 
   @override
@@ -1551,11 +1574,12 @@ class _HoverableWorkerMobileCardState extends State<_HoverableWorkerMobileCard> 
             Row(
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
-                IconButton(
-                  icon: const Icon(PhosphorIconsRegular.pencilSimple, size: 18, color: AppColors.primary),
-                  tooltip: 'Edit Worker',
-                  onPressed: widget.onEdit,
-                ),
+                if (widget.canEdit)
+                  IconButton(
+                    icon: const Icon(PhosphorIconsRegular.pencilSimple, size: 18, color: AppColors.primary),
+                    tooltip: 'Edit Worker',
+                    onPressed: widget.onEdit,
+                  ),
                 if (worker.isActive)
                   IconButton(
                     icon: const Icon(PhosphorIconsRegular.signpost, size: 18, color: AppColors.warning),
@@ -1568,11 +1592,12 @@ class _HoverableWorkerMobileCardState extends State<_HoverableWorkerMobileCard> 
                     tooltip: 'Reactivate Worker',
                     onPressed: widget.onToggleStatus,
                   ),
-                IconButton(
-                  icon: const Icon(PhosphorIconsRegular.trash, size: 18, color: AppColors.error),
-                  tooltip: 'Delete Worker',
-                  onPressed: widget.onDelete,
-                ),
+                if (widget.canDelete)
+                  IconButton(
+                    icon: const Icon(PhosphorIconsRegular.trash, size: 18, color: AppColors.error),
+                    tooltip: 'Delete Worker',
+                    onPressed: widget.onDelete,
+                  ),
               ],
             ),
           ],

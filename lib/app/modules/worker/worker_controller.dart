@@ -10,12 +10,14 @@ import '../../core/widgets/custom_dropdown_search.dart';
 import '../../core/widgets/custom_snackbar.dart';
 import '../../core/widgets/custom_text_field.dart';
 import '../../core/utils/responsive_layout.dart';
+import '../../core/values/permission_constants.dart';
 import '../../data/models/department_model.dart';
 import '../../data/models/department_summary_model.dart';
 import '../../data/models/user_model.dart';
 import '../../data/models/worker_model.dart';
 import '../../data/services/api_service.dart';
 import '../../data/services/gaushala_session_service.dart';
+import '../../data/services/permission_service.dart';
 import '../../data/services/storage_service.dart';
 import '../../routes/app_routes.dart';
 import 'department_controller.dart';
@@ -26,6 +28,20 @@ class WorkerController extends GetxController {
   final ApiService _apiService = Get.find<ApiService>();
   final StorageService _storageService = Get.find<StorageService>();
   final GaushalaSessionService _gaushalaService = Get.find<GaushalaSessionService>();
+  final PermissionService? _permissionService =
+      Get.isRegistered<PermissionService>() ? Get.find<PermissionService>() : null;
+
+  bool get canAddWorker =>
+      _permissionService?.canAdd(PermissionModules.workerMgmt, PermissionSubModules.workerList) ??
+      (currentUser.value?.isAdmin ?? false);
+
+  bool get canEditWorker =>
+      _permissionService?.canEdit(PermissionModules.workerMgmt, PermissionSubModules.workerList) ??
+      (currentUser.value?.isAdmin ?? false);
+
+  bool get canDeleteWorker =>
+      _permissionService?.canDelete(PermissionModules.workerMgmt, PermissionSubModules.workerList) ??
+      (currentUser.value?.isAdmin ?? false);
 
   final Rxn<UserModel> currentUser = Rxn<UserModel>();
   final RxBool isSidebarCollapsed = false.obs;
@@ -518,6 +534,13 @@ class WorkerController extends GetxController {
 
   /// Add Worker Dialog
   void openAddWorkerDialog(BuildContext context) {
+    if (!canAddWorker) {
+      CustomSnackbar.showWarning(
+        title: 'Access Denied',
+        message: 'You do not have permission to add workers.',
+      );
+      return;
+    }
     final formKey = GlobalKey<FormState>();
     final nameController = TextEditingController();
     final Rx<DateTime> joiningDate = DateTime.now().obs;
@@ -693,6 +716,13 @@ class WorkerController extends GetxController {
 
   /// Edit Worker Dialog: Admin can update Name, Department, and Status (isActive).
   void openEditWorkerDialog(BuildContext context, WorkerModel worker) {
+    if (!canEditWorker) {
+      CustomSnackbar.showWarning(
+        title: 'Access Denied',
+        message: 'You do not have permission to edit workers.',
+      );
+      return;
+    }
     if (ResponsiveLayout.isMobile(context)) {
       Get.to(() => EditWorkerScreen(worker: worker));
       return;
@@ -991,6 +1021,13 @@ class WorkerController extends GetxController {
 
   /// Confirm Delete Worker: Soft-delete (isDelete = true, isActive = false)
   void confirmDeleteWorker(BuildContext context, WorkerModel worker) {
+    if (!canDeleteWorker) {
+      CustomSnackbar.showWarning(
+        title: 'Access Denied',
+        message: 'You do not have permission to delete workers.',
+      );
+      return;
+    }
     Get.dialog(
       AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),

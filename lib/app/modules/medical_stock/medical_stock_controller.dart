@@ -1,8 +1,10 @@
 import 'dart:math';
+import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 
+import '../../core/values/permission_constants.dart';
 import '../../core/widgets/custom_snackbar.dart';
 import '../../data/models/cow_model.dart';
 import '../../data/models/gaushala_model.dart';
@@ -11,6 +13,7 @@ import '../../data/models/shed_model.dart';
 import '../../data/models/user_model.dart';
 import '../../data/services/api_service.dart';
 import '../../data/services/gaushala_session_service.dart';
+import '../../data/services/permission_service.dart';
 import '../../data/services/storage_service.dart';
 import '../../routes/app_routes.dart';
 
@@ -87,6 +90,24 @@ class MedicalStockController extends GetxController {
   final ApiService _apiService = Get.find<ApiService>();
   final StorageService _storageService = Get.find<StorageService>();
   final GaushalaSessionService _gaushalaService = Get.find<GaushalaSessionService>();
+  final PermissionService? _permissionService =
+      Get.isRegistered<PermissionService>() ? Get.find<PermissionService>() : null;
+
+  bool get canAddMedicine =>
+      _permissionService?.canAdd(PermissionModules.medicalStock, PermissionSubModules.medicalItems) ??
+      (currentUser.value?.isAdmin ?? false);
+
+  bool get canEditMedicine =>
+      _permissionService?.canEdit(PermissionModules.medicalStock, PermissionSubModules.medicalItems) ??
+      (currentUser.value?.isAdmin ?? false);
+
+  bool get canDeleteMedicine =>
+      _permissionService?.canDelete(PermissionModules.medicalStock, PermissionSubModules.medicalItems) ??
+      (currentUser.value?.isAdmin ?? false);
+
+  bool get canAddTransaction =>
+      _permissionService?.canAdd(PermissionModules.medicalStock, PermissionSubModules.stockTransaction) ??
+      (currentUser.value?.isAdmin ?? false);
 
   // Navigation & Layout
   final RxInt selectedTab = 0.obs; // 0: Dashboard, 1: Master, 2: Inward, 3: Outward, 4: Batches, 5: Ledger
@@ -869,6 +890,27 @@ class MedicalStockController extends GetxController {
     return (len / itemsPerPage.value).ceil();
   }
 
+  String _extractErrorMessage(dynamic error, {String defaultMessage = 'An unexpected error occurred.'}) {
+    if (error is DioException) {
+      final resData = error.response?.data;
+      if (resData is Map) {
+        if (resData['message'] != null && resData['message'].toString().trim().isNotEmpty) {
+          return resData['message'].toString().trim();
+        }
+        if (resData['error'] != null && resData['error'].toString().trim().isNotEmpty) {
+          return resData['error'].toString().trim();
+        }
+      } else if (resData is String && resData.trim().isNotEmpty && !resData.contains('<html')) {
+        return resData.trim();
+      }
+      if (error.message != null && error.message!.trim().isNotEmpty) {
+        return error.message!.trim();
+      }
+    }
+    final str = error.toString();
+    return str.replaceFirst('Exception: ', '');
+  }
+
   Future<bool> createMedicine({
     required String itemName,
     required String itemCode,
@@ -879,9 +921,17 @@ class MedicalStockController extends GetxController {
     required String description,
     List<MedicalInwardBatchDto>? initialBatches,
   }) async {
+    final gId = activeGaushalaId;
+    if (gId.isEmpty) {
+      CustomSnackbar.showError(
+        title: 'Gaushala Required',
+        message: 'Please select an active Gaushala before creating a medicine.',
+      );
+      return false;
+    }
+
     isSubmitting.value = true;
     try {
-      final gId = activeGaushalaId;
       final createdItem = await _apiService.createMedicalItem(
         gaushalaId: gId,
         itemName: itemName,
@@ -924,7 +974,7 @@ class MedicalStockController extends GetxController {
     } catch (e) {
       CustomSnackbar.showError(
         title: 'Error Adding Medicine',
-        message: e.toString(),
+        message: _extractErrorMessage(e, defaultMessage: 'Failed to create medicine.'),
       );
       return false;
     } finally {
@@ -950,7 +1000,7 @@ class MedicalStockController extends GetxController {
     } catch (e) {
       CustomSnackbar.showError(
         title: 'Update Failed',
-        message: e.toString(),
+        message: _extractErrorMessage(e, defaultMessage: 'Failed to update medicine.'),
       );
       return false;
     } finally {
@@ -959,6 +1009,13 @@ class MedicalStockController extends GetxController {
   }
 
   Future<void> deleteMedicine(String id) async {
+    if (!canDeleteMedicine) {
+      CustomSnackbar.showWarning(
+        title: 'Access Denied',
+        message: 'You do not have permission to delete medicine records.',
+      );
+      return;
+    }
     isSubmitting.value = true;
     try {
       await _apiService.deleteMedicalItem(id);
@@ -972,7 +1029,7 @@ class MedicalStockController extends GetxController {
     } catch (e) {
       CustomSnackbar.showError(
         title: 'Delete Failed',
-        message: e.toString(),
+        message: _extractErrorMessage(e, defaultMessage: 'Failed to delete medicine.'),
       );
     } finally {
       isSubmitting.value = false;
@@ -1133,7 +1190,7 @@ class MedicalStockController extends GetxController {
     } catch (e) {
       CustomSnackbar.showError(
         title: 'Stock Inward Failed',
-        message: e.toString(),
+        message: _extractErrorMessage(e, defaultMessage: 'Failed to record stock inward.'),
       );
     } finally {
       isSubmitting.value = false;
@@ -1290,7 +1347,7 @@ class MedicalStockController extends GetxController {
     } catch (e) {
       CustomSnackbar.showError(
         title: 'Stock Outward Failed',
-        message: e.toString(),
+        message: _extractErrorMessage(e, defaultMessage: 'Failed to record stock outward.'),
       );
       return null;
     } finally {
@@ -1402,7 +1459,7 @@ class MedicalStockController extends GetxController {
     } catch (e) {
       CustomSnackbar.showError(
         title: 'Disposal Failed',
-        message: e.toString(),
+        message: _extractErrorMessage(e, defaultMessage: 'Failed to dispose expired stock.'),
       );
       return false;
     } finally {

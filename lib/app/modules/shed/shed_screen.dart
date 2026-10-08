@@ -103,11 +103,12 @@ class ShedScreen extends GetView<ShedController> {
             tooltip: 'Transfer History',
             onPressed: () => controller.openTransferHistoryDialog(context),
           ),
-          IconButton(
-            icon: const Icon(Icons.add_rounded),
-            tooltip: 'Add Shed',
-            onPressed: () => controller.openAddShedDialog(context),
-          ),
+          if (controller.canAddShed)
+            IconButton(
+              icon: const Icon(Icons.add_rounded),
+              tooltip: 'Add Shed',
+              onPressed: () => controller.openAddShedDialog(context),
+            ),
         ],
       ),
       drawer: Obx(
@@ -161,12 +162,14 @@ class ShedScreen extends GetView<ShedController> {
           onLogout: controller.logout,
         ),
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        backgroundColor: AppColors.primary,
-        icon: const Icon(Icons.add_rounded, color: Colors.white),
-        label: const Text('Add Shed', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-        onPressed: () => controller.openAddShedDialog(context),
-      ),
+      floatingActionButton: controller.canAddShed
+          ? FloatingActionButton.extended(
+              backgroundColor: AppColors.primary,
+              icon: const Icon(Icons.add_rounded, color: Colors.white),
+              label: const Text('Add Shed', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+              onPressed: () => controller.openAddShedDialog(context),
+            )
+          : null,
       body: RefreshIndicator(
         onRefresh: controller.refreshSheds,
         child: NotificationListener<ScrollNotification>(
@@ -345,14 +348,16 @@ class ShedScreen extends GetView<ShedController> {
               padding: const EdgeInsets.symmetric(horizontal: 14),
               onPressed: () => controller.openTransferHistoryDialog(context),
             ),
-            const SizedBox(width: 10),
-            CustomButton(
-              text: 'Add Shed',
-              icon: Icons.add_rounded,
-              width: 130,
-              height: 42,
-              onPressed: () => controller.openAddShedDialog(context),
-            ),
+            if (controller.canAddShed) ...[
+              const SizedBox(width: 10),
+              CustomButton(
+                text: 'Add Shed',
+                icon: Icons.add_rounded,
+                width: 130,
+                height: 42,
+                onPressed: () => controller.openAddShedDialog(context),
+              ),
+            ],
           ],
         ),
       ],
@@ -520,7 +525,7 @@ class ShedScreen extends GetView<ShedController> {
                         height: 40,
                         onPressed: controller.clearFilters,
                       )
-                    else
+                    else if (controller.canAddShed)
                       CustomButton(
                         text: 'Add First Shed',
                         icon: Icons.add_rounded,
@@ -983,39 +988,43 @@ class ShedScreen extends GetView<ShedController> {
                       ),
                     ],
                   ),
-                  trailing: PopupMenuButton<String>(
-                    icon: const Icon(Icons.more_vert_rounded, size: 20),
-                    padding: EdgeInsets.zero,
-                    onSelected: (val) {
-                      if (val == 'edit') {
-                        controller.openEditShedDialog(context, shed);
-                      } else if (val == 'delete') {
-                        controller.confirmDeleteShed(context, shed);
-                      }
-                    },
-                    itemBuilder: (ctx) => [
-                      const PopupMenuItem(
-                        value: 'edit',
-                        child: Row(
-                          children: [
-                            Icon(Icons.edit_outlined, size: 18, color: AppColors.info),
-                            SizedBox(width: 8),
-                            Text('Edit Shed'),
+                  trailing: (!controller.canEditShed && !controller.canDeleteShed)
+                      ? null
+                      : PopupMenuButton<String>(
+                          icon: const Icon(Icons.more_vert_rounded, size: 20),
+                          padding: EdgeInsets.zero,
+                          onSelected: (val) {
+                            if (val == 'edit') {
+                              controller.openEditShedDialog(context, shed);
+                            } else if (val == 'delete') {
+                              controller.confirmDeleteShed(context, shed);
+                            }
+                          },
+                          itemBuilder: (ctx) => [
+                            if (controller.canEditShed)
+                              const PopupMenuItem(
+                                value: 'edit',
+                                child: Row(
+                                  children: [
+                                    Icon(Icons.edit_outlined, size: 18, color: AppColors.info),
+                                    SizedBox(width: 8),
+                                    Text('Edit Shed'),
+                                  ],
+                                ),
+                              ),
+                            if (controller.canDeleteShed)
+                              const PopupMenuItem(
+                                value: 'delete',
+                                child: Row(
+                                  children: [
+                                    Icon(Icons.delete_outline_rounded, size: 18, color: AppColors.error),
+                                    SizedBox(width: 8),
+                                    Text('Delete Shed'),
+                                  ],
+                                ),
+                              ),
                           ],
                         ),
-                      ),
-                      const PopupMenuItem(
-                        value: 'delete',
-                        child: Row(
-                          children: [
-                            Icon(Icons.delete_outline_rounded, size: 18, color: AppColors.error),
-                            SizedBox(width: 8),
-                            Text('Delete Shed'),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
                 ),
               );
             },

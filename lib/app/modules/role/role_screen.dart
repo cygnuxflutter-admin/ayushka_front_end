@@ -97,10 +97,11 @@ class RoleScreen extends GetView<RoleController> {
               onPressed: isBusy ? null : controller.refreshRoles,
             );
           }),
-          IconButton(
-            icon: const Icon(Icons.add_rounded),
-            onPressed: () => controller.openAddRoleDialog(context),
-          ),
+          if (controller.canAddRole)
+            IconButton(
+              icon: const Icon(Icons.add_rounded),
+              onPressed: () => controller.openAddRoleDialog(context),
+            ),
         ],
       ),
       drawer: Obx(
@@ -149,12 +150,14 @@ class RoleScreen extends GetView<RoleController> {
           onLogout: controller.logout,
         ),
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        backgroundColor: AppColors.primary,
-        icon: const Icon(Icons.add_rounded, color: Colors.white),
-        label: const Text('Add Role', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-        onPressed: () => controller.openAddRoleDialog(context),
-      ),
+      floatingActionButton: controller.canAddRole
+          ? FloatingActionButton.extended(
+              backgroundColor: AppColors.primary,
+              icon: const Icon(Icons.add_rounded, color: Colors.white),
+              label: const Text('Add Role', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+              onPressed: () => controller.openAddRoleDialog(context),
+            )
+          : null,
       body: NotificationListener<ScrollNotification>(
         onNotification: (scrollInfo) {
           if (scrollInfo.metrics.extentAfter < 300 && controller.hasMoreMobile) {
@@ -325,13 +328,14 @@ class RoleScreen extends GetView<RoleController> {
         ),
         Row(
           children: [
-            CustomButton(
-              text: 'Add Role',
-              icon: Icons.add_rounded,
-              width: 135,
-              height: 42,
-              onPressed: () => controller.openAddRoleDialog(context),
-            ),
+            if (controller.canAddRole)
+              CustomButton(
+                text: 'Add Role',
+                icon: Icons.add_rounded,
+                width: 135,
+                height: 42,
+                onPressed: () => controller.openAddRoleDialog(context),
+              ),
           ],
         ),
       ],
@@ -476,13 +480,14 @@ class RoleScreen extends GetView<RoleController> {
                       style: TextStyle(fontSize: 13, color: AppColors.textSecondaryLight),
                     ),
                     const SizedBox(height: 18),
-                    CustomButton(
-                      text: 'Add First Role',
-                      icon: Icons.add_rounded,
-                      width: 160,
-                      height: 40,
-                      onPressed: () => controller.openAddRoleDialog(context),
-                    ),
+                    if (controller.canAddRole)
+                      CustomButton(
+                        text: 'Add First Role',
+                        icon: Icons.add_rounded,
+                        width: 160,
+                        height: 40,
+                        onPressed: () => controller.openAddRoleDialog(context),
+                      ),
                   ],
                 ),
               );
@@ -647,39 +652,43 @@ class RoleScreen extends GetView<RoleController> {
                       ),
                     ],
                   ),
-                  trailing: PopupMenuButton<String>(
-                    icon: const Icon(Icons.more_vert_rounded, size: 20),
-                    padding: EdgeInsets.zero,
-                    onSelected: (val) {
-                      if (val == 'edit') {
-                        controller.openEditRoleDialog(context, role);
-                      } else if (val == 'delete') {
-                        controller.confirmDeleteRole(context, role);
-                      }
-                    },
-                    itemBuilder: (ctx) => [
-                      const PopupMenuItem(
-                        value: 'edit',
-                        child: Row(
-                          children: [
-                            Icon(Icons.edit_outlined, size: 18, color: AppColors.info),
-                            SizedBox(width: 8),
-                            Text('Edit Role'),
+                  trailing: (!controller.canEditRole && !controller.canDeleteRole)
+                      ? null
+                      : PopupMenuButton<String>(
+                          icon: const Icon(Icons.more_vert_rounded, size: 20),
+                          padding: EdgeInsets.zero,
+                          onSelected: (val) {
+                            if (val == 'edit') {
+                              controller.openEditRoleDialog(context, role);
+                            } else if (val == 'delete') {
+                              controller.confirmDeleteRole(context, role);
+                            }
+                          },
+                          itemBuilder: (ctx) => [
+                            if (controller.canEditRole)
+                              const PopupMenuItem(
+                                value: 'edit',
+                                child: Row(
+                                  children: [
+                                    Icon(Icons.edit_outlined, size: 18, color: AppColors.info),
+                                    SizedBox(width: 8),
+                                    Text('Edit Role'),
+                                  ],
+                                ),
+                              ),
+                            if (controller.canDeleteRole)
+                              const PopupMenuItem(
+                                value: 'delete',
+                                child: Row(
+                                  children: [
+                                    Icon(Icons.delete_outline_rounded, size: 18, color: AppColors.error),
+                                    SizedBox(width: 8),
+                                    Text('Delete Role'),
+                                  ],
+                                ),
+                              ),
                           ],
                         ),
-                      ),
-                      const PopupMenuItem(
-                        value: 'delete',
-                        child: Row(
-                          children: [
-                            Icon(Icons.delete_outline_rounded, size: 18, color: AppColors.error),
-                            SizedBox(width: 8),
-                            Text('Delete Role'),
-                          ],
-                        ),
-                      ),
-                    ],
-                  ),
                 ),
               );
             },

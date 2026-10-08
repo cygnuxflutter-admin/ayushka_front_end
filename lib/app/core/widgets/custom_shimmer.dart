@@ -168,9 +168,12 @@ class CustomTableShimmer extends StatelessWidget {
               SizedBox(
                 width: 56.5,
                 child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 14),
                   child: Text(
                     headers![0],
+                    maxLines: 1,
+                    softWrap: false,
+                    overflow: TextOverflow.ellipsis,
                     style: const TextStyle(
                       fontSize: 11,
                       fontWeight: FontWeight.bold,
@@ -187,9 +190,12 @@ class CustomTableShimmer extends StatelessWidget {
                 return Expanded(
                   flex: flex,
                   child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 14),
                     child: Text(
                       title,
+                      maxLines: 1,
+                      softWrap: false,
+                      overflow: TextOverflow.ellipsis,
                       style: const TextStyle(
                         fontSize: 11,
                         fontWeight: FontWeight.bold,

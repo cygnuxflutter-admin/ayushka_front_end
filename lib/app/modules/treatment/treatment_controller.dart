@@ -9,6 +9,8 @@ import '../../data/models/user_model.dart';
 import '../../data/services/api_service.dart';
 import '../../data/services/gaushala_session_service.dart';
 import '../../data/services/storage_service.dart';
+import '../../core/values/permission_constants.dart';
+import '../../data/services/permission_service.dart';
 import '../../routes/app_routes.dart';
 import '../notification/notification_controller.dart';
 import 'dialogs/add_treatment_dialog.dart';
@@ -21,6 +23,21 @@ class TreatmentController extends GetxController {
   final ApiService _apiService = Get.find<ApiService>();
   final GaushalaSessionService _gaushalaService = Get.find<GaushalaSessionService>();
   final StorageService _storageService = Get.find<StorageService>();
+
+  PermissionService? get _permissionService =>
+      Get.isRegistered<PermissionService>() ? Get.find<PermissionService>() : null;
+
+  bool get canAddTreatment =>
+      _permissionService?.canAdd(PermissionModules.treatment, PermissionSubModules.treatmentList) ??
+      (currentUser.value?.isAdmin ?? true);
+
+  bool get canEditTreatment =>
+      _permissionService?.canEdit(PermissionModules.treatment, PermissionSubModules.treatmentList) ??
+      (currentUser.value?.isAdmin ?? true);
+
+  bool get canDeleteTreatment =>
+      _permissionService?.canDelete(PermissionModules.treatment, PermissionSubModules.treatmentList) ??
+      (currentUser.value?.isAdmin ?? true);
 
   // Layout & Sidebar
   final RxBool isSidebarCollapsed = false.obs;
@@ -308,6 +325,13 @@ class TreatmentController extends GetxController {
 
   // Dialog & Navigation openers
   Future<void> openAddTreatmentDialog(BuildContext context) async {
+    if (!canAddTreatment) {
+      CustomSnackbar.showWarning(
+        title: 'Access Denied',
+        message: 'You do not have permission to create treatments.',
+      );
+      return;
+    }
     final created = await AddTreatmentDialog.show(context);
     if (created == true) {
       loadAll();
@@ -377,6 +401,13 @@ class TreatmentController extends GetxController {
 
   /// Deletes a treatment record
   Future<void> deleteTreatment(BuildContext context, CowTreatmentModel treatment) async {
+    if (!canDeleteTreatment) {
+      CustomSnackbar.showWarning(
+        title: 'Access Denied',
+        message: 'You do not have permission to delete treatment records.',
+      );
+      return;
+    }
     final confirm = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(

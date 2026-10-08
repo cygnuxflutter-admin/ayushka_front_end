@@ -42,16 +42,16 @@ class UserModel {
     if (r == 'admin' || r == 'super admin' || r == 'superadmin' || r.contains('admin')) {
       return true;
     }
-    if (username?.toLowerCase() == 'admin' || email.toLowerCase().contains('admin')) {
+    if (username?.toLowerCase().trim() == 'admin') {
       return true;
     }
     return false;
   }
 
   factory UserModel.fromJson(Map<String, dynamic> json) {
-    String roleStr = 'Admin';
+    String roleStr = 'User';
     String? rId;
-    if (json['role'] is String) {
+    if (json['role'] is String && (json['role'] as String).trim().isNotEmpty) {
       roleStr = json['role'] as String;
     } else if (json['roleId'] is Map && json['roleId']['roleName'] != null) {
       roleStr = json['roleId']['roleName'].toString();
@@ -59,6 +59,8 @@ class UserModel {
     } else if (json['role'] is Map && json['role']['roleName'] != null) {
       roleStr = json['role']['roleName'].toString();
       rId = (json['role']['_id'] ?? json['role']['id'])?.toString();
+    } else if (json['roleName'] != null && json['roleName'].toString().trim().isNotEmpty) {
+      roleStr = json['roleName'].toString();
     }
 
     if (rId == null && json['roleId'] != null) {

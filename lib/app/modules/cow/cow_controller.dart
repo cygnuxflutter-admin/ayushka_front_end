@@ -17,6 +17,8 @@ import '../../data/models/user_model.dart';
 import '../../data/services/api_service.dart';
 import '../../data/services/gaushala_session_service.dart';
 import '../../data/services/storage_service.dart';
+import '../../core/values/permission_constants.dart';
+import '../../data/services/permission_service.dart';
 import '../../routes/app_routes.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 import 'widgets/excel_import_dialog.dart';
@@ -28,6 +30,31 @@ class CowController extends GetxController {
   final ApiService _apiService = Get.find<ApiService>();
   final StorageService _storageService = Get.find<StorageService>();
   final GaushalaSessionService _gaushalaService = Get.find<GaushalaSessionService>();
+
+  PermissionService? get _permissionService =>
+      Get.isRegistered<PermissionService>() ? Get.find<PermissionService>() : null;
+
+  bool get canAddCow =>
+      _permissionService?.canAdd(PermissionModules.cow, PermissionSubModules.cowList) ??
+      (currentUser.value?.isAdmin ?? false);
+
+  bool get canEditCow =>
+      _permissionService?.canEdit(PermissionModules.cow, PermissionSubModules.cowList) ??
+      (currentUser.value?.isAdmin ?? false);
+
+  bool get canDeleteCow =>
+      _permissionService?.canDelete(PermissionModules.cow, PermissionSubModules.cowList) ??
+      (currentUser.value?.isAdmin ?? false);
+
+  bool get canTransferShed =>
+      (_permissionService?.canAdd(PermissionModules.cow, PermissionSubModules.shedTransfer) ?? false) ||
+      (_permissionService?.canAdd(PermissionModules.shed, PermissionSubModules.shedTransfer) ?? false) ||
+      (currentUser.value?.isAdmin ?? false);
+
+  bool get canViewShedTransferHistory =>
+      (_permissionService?.canView(PermissionModules.cow, PermissionSubModules.shedTransfer) ?? false) ||
+      (_permissionService?.canView(PermissionModules.shed, PermissionSubModules.shedTransfer) ?? false) ||
+      (currentUser.value?.isAdmin ?? false);
 
   // In-memory cache for fast transitions
   static final List<CowModel> _cachedCows = [];
@@ -568,6 +595,13 @@ class CowController extends GetxController {
 
   /// Navigate to Add Cow Screen
   Future<void> goToAddCow() async {
+    if (!canAddCow) {
+      CustomSnackbar.showWarning(
+        title: 'Access Denied',
+        message: 'You do not have permission to register new cattle.',
+      );
+      return;
+    }
     final result = await Get.toNamed(
       AppRoutes.addCow,
       arguments: {'gaushalaId': selectedGaushalaId.value},
@@ -584,6 +618,13 @@ class CowController extends GetxController {
 
   /// Navigate to Edit Cow Screen
   Future<void> goToEditCow(CowModel cow) async {
+    if (!canEditCow) {
+      CustomSnackbar.showWarning(
+        title: 'Access Denied',
+        message: 'You do not have permission to edit cattle records.',
+      );
+      return;
+    }
     if (!cow.canEdit) {
       CustomSnackbar.showWarning(
         title: 'Action Not Allowed',
@@ -611,6 +652,13 @@ class CowController extends GetxController {
 
   /// Delete a cow
   Future<void> confirmDeleteCow(BuildContext context, CowModel cow) async {
+    if (!canDeleteCow) {
+      CustomSnackbar.showWarning(
+        title: 'Access Denied',
+        message: 'You do not have permission to delete cattle records.',
+      );
+      return;
+    }
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     final confirmed = await showDialog<bool>(
@@ -989,6 +1037,13 @@ class CowController extends GetxController {
     CowModel? cow,
     List<CowModel>? preselectedCows,
   }) async {
+    if (!canTransferShed) {
+      CustomSnackbar.showError(
+        title: 'Access Denied',
+        message: 'You do not have permission to transfer cow sheds.',
+      );
+      return;
+    }
     if (cow != null && !cow.canTransferShed) {
       CustomSnackbar.showWarning(
         title: 'Action Not Allowed',
@@ -1011,6 +1066,13 @@ class CowController extends GetxController {
     String? cowId,
     CowModel? cow,
   }) async {
+    if (!canViewShedTransferHistory) {
+      CustomSnackbar.showError(
+        title: 'Access Denied',
+        message: 'You do not have permission to view shed transfer history.',
+      );
+      return;
+    }
     await ShedTransferHistoryDialog.show(
       context: context,
       gaushalaId: gaushalaId ?? selectedGaushalaId.value ?? globalGaushalaId,

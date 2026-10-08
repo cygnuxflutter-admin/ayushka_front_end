@@ -97,10 +97,11 @@ class BreedScreen extends GetView<BreedController> {
               onPressed: isBusy ? null : controller.refreshBreeds,
             );
           }),
-          IconButton(
-            icon: const Icon(Icons.add_rounded),
-            onPressed: () => controller.openAddBreedDialog(context),
-          ),
+          if (controller.canAddBreed)
+            IconButton(
+              icon: const Icon(Icons.add_rounded),
+              onPressed: () => controller.openAddBreedDialog(context),
+            ),
         ],
       ),
       drawer: Obx(
@@ -149,12 +150,14 @@ class BreedScreen extends GetView<BreedController> {
           onLogout: controller.logout,
         ),
       ),
-      floatingActionButton: FloatingActionButton.extended(
-        backgroundColor: AppColors.primary,
-        icon: const Icon(Icons.add_rounded, color: Colors.white),
-        label: const Text('Add Breed', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-        onPressed: () => controller.openAddBreedDialog(context),
-      ),
+      floatingActionButton: controller.canAddBreed
+          ? FloatingActionButton.extended(
+              backgroundColor: AppColors.primary,
+              icon: const Icon(Icons.add_rounded, color: Colors.white),
+              label: const Text('Add Breed', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+              onPressed: () => controller.openAddBreedDialog(context),
+            )
+          : null,
       body: RefreshIndicator(
         onRefresh: controller.refreshBreeds,
         child: NotificationListener<ScrollNotification>(
@@ -325,13 +328,14 @@ class BreedScreen extends GetView<BreedController> {
         ),
         Row(
           children: [
-            CustomButton(
-              text: 'Add Breed',
-              icon: Icons.add_rounded,
-              width: 150,
-              height: 42,
-              onPressed: () => controller.openAddBreedDialog(context),
-            ),
+            if (controller.canAddBreed)
+              CustomButton(
+                text: 'Add Breed',
+                icon: Icons.add_rounded,
+                width: 150,
+                height: 42,
+                onPressed: () => controller.openAddBreedDialog(context),
+              ),
           ],
         ),
       ],
@@ -476,13 +480,14 @@ class BreedScreen extends GetView<BreedController> {
                       style: TextStyle(fontSize: 13, color: AppColors.textSecondaryLight),
                     ),
                     const SizedBox(height: 18),
-                    CustomButton(
-                      text: 'Add First Breed',
-                      icon: Icons.add_rounded,
-                      width: 170,
-                      height: 40,
-                      onPressed: () => controller.openAddBreedDialog(context),
-                    ),
+                    if (controller.canAddBreed)
+                      CustomButton(
+                        text: 'Add First Breed',
+                        icon: Icons.add_rounded,
+                        width: 170,
+                        height: 40,
+                        onPressed: () => controller.openAddBreedDialog(context),
+                      ),
                   ],
                 ),
               );

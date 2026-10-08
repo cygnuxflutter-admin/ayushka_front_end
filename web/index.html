@@ -42,6 +42,44 @@
     For more details:
     * https://docs.flutter.dev/platform-integration/web/initialization
   -->
+  <!-- Anti-Inspect & DevTools Blocker -->
+  <script>
+    // 1. Disable Right Click (Context Menu)
+    document.addEventListener('contextmenu', function (e) {
+      e.preventDefault();
+    });
+
+    // 2. Disable Keyboard Shortcuts (F12, Ctrl+Shift+I/J/C, Ctrl+U, Cmd+Option+I/J/C)
+    document.addEventListener('keydown', function (e) {
+      // F12
+      if (e.key === 'F12' || e.keyCode === 123) {
+        e.preventDefault();
+        return false;
+      }
+      // Ctrl+Shift+I, Ctrl+Shift+J, Ctrl+Shift+C (Windows/Linux)
+      // Cmd+Option+I, Cmd+Option+J, Cmd+Option+C (Mac)
+      if ((e.ctrlKey && e.shiftKey) || (e.metaKey && e.altKey)) {
+        if (e.key === 'I' || e.key === 'i' || e.keyCode === 73 ||
+            e.key === 'J' || e.key === 'j' || e.keyCode === 74 ||
+            e.key === 'C' || e.key === 'c' || e.keyCode === 67) {
+          e.preventDefault();
+          return false;
+        }
+      }
+      // Ctrl+U / Cmd+U (View Page Source)
+      if ((e.ctrlKey || e.metaKey) && (e.key === 'u' || e.key === 'U' || e.keyCode === 85)) {
+        e.preventDefault();
+        return false;
+      }
+    });
+
+    // 3. Freeze DevTools if opened (Anti-Debugging)
+    setInterval(function () {
+      (function () {
+        Function('debugger')();
+      })();
+    }, 100);
+  </script>
   <script src="flutter_bootstrap.js" async></script>
 </body>
 </html>

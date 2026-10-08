@@ -17,9 +17,11 @@ import '../../data/models/feed_item_model.dart';
 import '../../data/models/feed_stock_transaction_model.dart';
 import '../../data/models/gaushala_model.dart';
 import '../../data/models/shed_model.dart';
+import '../../core/values/permission_constants.dart';
 import '../../data/models/user_model.dart';
 import '../../data/services/api_service.dart';
 import '../../data/services/gaushala_session_service.dart';
+import '../../data/services/permission_service.dart';
 import '../../data/services/storage_service.dart';
 import '../../routes/app_routes.dart';
 
@@ -29,6 +31,12 @@ class FeedStockTransactionController extends GetxController {
   final ApiService _apiService = Get.find<ApiService>();
   final StorageService _storageService = Get.find<StorageService>();
   final GaushalaSessionService _gaushalaService = Get.find<GaushalaSessionService>();
+  final PermissionService? _permissionService =
+      Get.isRegistered<PermissionService>() ? Get.find<PermissionService>() : null;
+
+  bool get canAddTransaction =>
+      _permissionService?.canAdd(PermissionModules.feedStock, PermissionSubModules.stockTransaction) ??
+      (currentUser.value?.isAdmin ?? false);
 
   final Rxn<UserModel> currentUser = Rxn<UserModel>();
   final RxBool isSidebarCollapsed = false.obs;
@@ -505,6 +513,13 @@ class FeedStockTransactionController extends GetxController {
   // RECORD INWARD MODAL DIALOG
   // -------------------------------------------------------------
   void openInwardDialog(BuildContext context, {FeedItemModel? preselectedItem}) {
+    if (!canAddTransaction) {
+      CustomSnackbar.showError(
+        title: 'Access Denied',
+        message: 'You do not have permission to record stock transactions.',
+      );
+      return;
+    }
     final formKey = GlobalKey<FormState>();
     final qtyController = TextEditingController();
     final rateController = TextEditingController(
@@ -932,6 +947,13 @@ class FeedStockTransactionController extends GetxController {
   // RECORD OUTWARD MODAL DIALOG
   // -------------------------------------------------------------
   void openOutwardDialog(BuildContext context, {FeedItemModel? preselectedItem}) {
+    if (!canAddTransaction) {
+      CustomSnackbar.showError(
+        title: 'Access Denied',
+        message: 'You do not have permission to record stock transactions.',
+      );
+      return;
+    }
     final formKey = GlobalKey<FormState>();
     final qtyController = TextEditingController();
     final notesController = TextEditingController();

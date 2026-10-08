@@ -4,10 +4,12 @@ import '../../core/values/app_colors.dart';
 import '../../core/widgets/custom_button.dart';
 import '../../core/widgets/custom_snackbar.dart';
 import '../../core/widgets/custom_text_field.dart';
+import '../../core/values/permission_constants.dart';
 import '../../data/models/gaushala_model.dart';
 import '../../data/models/user_model.dart';
 import '../../data/services/api_service.dart';
 import '../../data/services/gaushala_session_service.dart';
+import '../../data/services/permission_service.dart';
 import '../../data/services/storage_service.dart';
 import '../../routes/app_routes.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
@@ -16,6 +18,20 @@ import 'package:phosphor_flutter/phosphor_flutter.dart';
 class GaushalaController extends GetxController {
   final ApiService _apiService = Get.find<ApiService>();
   final StorageService _storageService = Get.find<StorageService>();
+  final PermissionService? _permissionService =
+      Get.isRegistered<PermissionService>() ? Get.find<PermissionService>() : null;
+
+  bool get canAddGaushala =>
+      _permissionService?.canAdd(PermissionModules.gaushala, PermissionSubModules.gaushalaList) ??
+      (currentUser.value?.isAdmin ?? false);
+
+  bool get canEditGaushala =>
+      _permissionService?.canEdit(PermissionModules.gaushala, PermissionSubModules.gaushalaList) ??
+      (currentUser.value?.isAdmin ?? false);
+
+  bool get canDeleteGaushala =>
+      _permissionService?.canDelete(PermissionModules.gaushala, PermissionSubModules.gaushalaList) ??
+      (currentUser.value?.isAdmin ?? false);
 
   // Static in-memory cache to prevent flickering / repeated loading animations on navigation
   static final List<GaushalaModel> _cachedGaushalas = [];
@@ -186,6 +202,13 @@ class GaushalaController extends GetxController {
 
   /// Open Dialog to Add a New Gaushala
   void openAddGaushalaDialog(BuildContext context) {
+    if (!canAddGaushala) {
+      CustomSnackbar.showError(
+        title: 'Access Denied',
+        message: 'You do not have permission to add gaushalas.',
+      );
+      return;
+    }
     final formKey = GlobalKey<FormState>();
     final nameController = TextEditingController();
 

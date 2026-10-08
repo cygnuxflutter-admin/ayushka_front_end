@@ -1,12 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import '../../core/values/app_colors.dart';
+import '../../core/values/permission_constants.dart';
 import '../../core/widgets/custom_button.dart';
 import '../../core/widgets/custom_snackbar.dart';
 import '../../core/widgets/custom_text_field.dart';
 import '../../data/models/breed_model.dart';
 import '../../data/models/user_model.dart';
 import '../../data/services/api_service.dart';
+import '../../data/services/permission_service.dart';
 import '../../data/services/storage_service.dart';
 import '../../routes/app_routes.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
@@ -15,6 +17,12 @@ import 'package:phosphor_flutter/phosphor_flutter.dart';
 class BreedController extends GetxController {
   final ApiService _apiService = Get.find<ApiService>();
   final StorageService _storageService = Get.find<StorageService>();
+  final PermissionService? _permissionService =
+      Get.isRegistered<PermissionService>() ? Get.find<PermissionService>() : null;
+
+  bool get canAddBreed =>
+      _permissionService?.canAdd(PermissionModules.breedType, PermissionSubModules.breedTypeList) ??
+      (currentUser.value?.isAdmin ?? false);
 
   // Static in-memory cache to prevent flickering / repeated loading animations on navigation
   static final List<BreedModel> _cachedBreeds = [];
@@ -182,6 +190,13 @@ class BreedController extends GetxController {
 
   /// Open Dialog to Add a New Breed
   void openAddBreedDialog(BuildContext context) {
+    if (!canAddBreed) {
+      CustomSnackbar.showWarning(
+        title: 'Access Denied',
+        message: 'You do not have permission to add cattle breeds.',
+      );
+      return;
+    }
     final formKey = GlobalKey<FormState>();
     final nameController = TextEditingController();
 

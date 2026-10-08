@@ -16,7 +16,20 @@ class GaushalaSessionService extends GetxService {
   final Rxn<GaushalaModel> selectedGaushala = Rxn<GaushalaModel>();
   final RxBool isLoading = false.obs;
 
-  String get selectedGaushalaId => selectedGaushala.value?.id ?? '';
+  String get selectedGaushalaId {
+    if (selectedGaushala.value != null && selectedGaushala.value!.id.isNotEmpty) {
+      return selectedGaushala.value!.id;
+    }
+    final defaultG = getUserDefaultGaushala();
+    if (defaultG != null && defaultG.id.isNotEmpty) {
+      return defaultG.id;
+    }
+    final user = currentUser;
+    if (user?.gaushalaId != null && user!.gaushalaId!.isNotEmpty) {
+      return user.gaushalaId!;
+    }
+    return '';
+  }
 
   /// Always returns the human-readable Gaushala Name, never a raw MongoDB ObjectId
   String get selectedGaushalaName {

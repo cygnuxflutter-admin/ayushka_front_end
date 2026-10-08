@@ -7,6 +7,7 @@ import 'package:phosphor_flutter/phosphor_flutter.dart';
 import '../../../../app/core/values/app_colors.dart';
 import '../../../../app/core/widgets/custom_button.dart';
 import '../../../../app/core/widgets/custom_dropdown_search.dart';
+import '../../../../app/core/widgets/custom_snackbar.dart';
 import '../../../../app/core/widgets/custom_text_field.dart';
 import '../../../../app/data/models/cow_model.dart';
 import '../../../../app/data/models/worker_model.dart';
@@ -31,6 +32,16 @@ class AddProductionDialog extends StatefulWidget {
     ProductionEntryMode mode = ProductionEntryMode.single,
     String? shift,
   }) async {
+    if (Get.isRegistered<MilkController>()) {
+      final controller = Get.find<MilkController>();
+      if (!controller.canAddProduction) {
+        CustomSnackbar.showError(
+          title: 'Access Denied',
+          message: 'You do not have permission to add milk production.',
+        );
+        return;
+      }
+    }
     await Get.dialog(
       AddProductionDialog(
         initialMode: mode,

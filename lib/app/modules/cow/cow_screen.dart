@@ -891,8 +891,10 @@ class CowScreen extends GetView<CowController> {
                   crossAxisAlignment: WrapCrossAlignment.center,
                   children: [
                     // Gaushala Filter Dropdown
-                    _buildGaushalaFilterDropdown(context, isDark),
-                    const SizedBox(width: 12),
+                    if (controller.canChangeGaushala) ...[
+                      _buildGaushalaFilterDropdown(context, isDark),
+                      const SizedBox(width: 12),
+                    ],
                     // Gender Filter Tabs
                     _buildGenderFilterTabs(context, isDark),
                     const SizedBox(width: 12),
@@ -1207,7 +1209,10 @@ class CowScreen extends GetView<CowController> {
               ),
             ),
             menuProps: MenuProps(
-              borderRadius: BorderRadius.circular(12),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+                side: BorderSide(color: isDark ? AppColors.borderDark : AppColors.borderLight),
+              ),
               backgroundColor: isDark ? AppColors.cardDark : AppColors.cardLight,
               elevation: 8,
             ),
@@ -1390,8 +1395,10 @@ class CowScreen extends GetView<CowController> {
 
     return Column(
       children: [
-        _buildGaushalaFilterDropdown(context, isDark, isExpanded: true),
-        const SizedBox(height: 10),
+        if (controller.canChangeGaushala) ...[
+          _buildGaushalaFilterDropdown(context, isDark, isExpanded: true),
+          const SizedBox(height: 10),
+        ],
         Row(
           children: [
             Expanded(

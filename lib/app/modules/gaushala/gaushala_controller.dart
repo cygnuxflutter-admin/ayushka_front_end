@@ -105,6 +105,16 @@ class GaushalaController extends GetxController {
   void onInit() {
     super.onInit();
     _loadUser();
+    if (currentUser.value != null && !currentUser.value!.isSuperAdmin) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        CustomSnackbar.showWarning(
+          title: 'Access Restricted',
+          message: 'Only Super Administrators can manage gaushalas.',
+        );
+        Get.offAllNamed(AppRoutes.dashboard);
+      });
+      return;
+    }
     debounce(searchQuery, (_) {
       currentPage.value = 1;
       mobileLimit.value = 10;

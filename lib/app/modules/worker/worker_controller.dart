@@ -13,6 +13,7 @@ import '../../core/utils/responsive_layout.dart';
 import '../../core/values/permission_constants.dart';
 import '../../data/models/department_model.dart';
 import '../../data/models/department_summary_model.dart';
+import '../../data/models/gaushala_model.dart';
 import '../../data/models/user_model.dart';
 import '../../data/models/worker_model.dart';
 import '../../data/services/api_service.dart';
@@ -114,6 +115,7 @@ class WorkerController extends GetxController {
   }
 
   String get currentGaushalaId => _gaushalaService.selectedGaushalaId;
+  bool get isSuperAdmin => _gaushalaService.isSuperAdmin;
 
   @override
   void onInit() {
@@ -327,8 +329,9 @@ class WorkerController extends GetxController {
     required String name,
     required String departmentId,
     required DateTime joiningDate,
+    String? gaushalaId,
   }) async {
-    final gId = currentGaushalaId;
+    final gId = (gaushalaId != null && gaushalaId.isNotEmpty) ? gaushalaId : currentGaushalaId;
     if (gId.isEmpty) {
       CustomSnackbar.showError(title: 'Error', message: 'No active Gaushala selected.');
       return false;
@@ -545,9 +548,13 @@ class WorkerController extends GetxController {
     final nameController = TextEditingController();
     final Rx<DateTime> joiningDate = DateTime.now().obs;
 
+    final initialGaushala = _gaushalaService.getUserDefaultGaushala() ?? _gaushalaService.selectedGaushala.value;
+    final Rxn<GaushalaModel> selectedGaushala = Rxn<GaushalaModel>(initialGaushala);
+
     final deptCtrl = Get.find<DepartmentController>();
-    if (deptCtrl.departments.isEmpty) {
-      deptCtrl.fetchDepartments();
+    final gIdToFetch = selectedGaushala.value?.id ?? currentGaushalaId;
+    if (gIdToFetch.isNotEmpty) {
+      deptCtrl.fetchDepartments(gaushalaId: gIdToFetch);
     }
 
     DepartmentModel? initialDept;
@@ -614,6 +621,37 @@ class WorkerController extends GetxController {
                     style: TextStyle(fontSize: 12, color: AppColors.textSecondaryLight),
                   ),
                   const SizedBox(height: 20),
+
+                  // Gaushala Dropdown
+                  Obx(() {
+                    return CustomDropdownSearch<GaushalaModel>(
+                      label: 'Gaushala',
+                      isRequired: true,
+                      enabled: isSuperAdmin,
+                      hint: 'Select Gaushala',
+                      prefixIcon: Icons.storefront_outlined,
+                      selectedItem: selectedGaushala.value,
+                      items: _gaushalaService.gaushalas.toList(),
+                      itemAsString: (g) => g.gaushalaName,
+                      compareFn: (g1, g2) => g1.id == g2.id,
+                      searchable: true,
+                      searchHint: 'Search Gaushala...',
+                      onChanged: (g) {
+                        selectedGaushala.value = g;
+                        if (g != null) {
+                          deptCtrl.fetchDepartments(gaushalaId: g.id);
+                          selectedDept.value = null;
+                        }
+                      },
+                      validator: (g) {
+                        if (g == null && selectedGaushala.value == null) {
+                          return 'Please select a gaushala';
+                        }
+                        return null;
+                      },
+                    );
+                  }),
+                  const SizedBox(height: 16),
 
                   // Worker Name
                   CustomTextField(
@@ -682,6 +720,10 @@ class WorkerController extends GetxController {
                           width: 140,
                           onPressed: () async {
                             if (formKey.currentState?.validate() ?? false) {
+                              if (selectedGaushala.value == null) {
+                                CustomSnackbar.showError(title: 'Validation Error', message: 'Please select a gaushala');
+                                return;
+                              }
                               if (selectedDept.value == null) {
                                 CustomSnackbar.showError(title: 'Validation Error', message: 'Please select a department');
                                 return;
@@ -691,6 +733,7 @@ class WorkerController extends GetxController {
                                 name: nameController.text,
                                 departmentId: selectedDept.value!.id,
                                 joiningDate: joiningDate.value,
+                                gaushalaId: selectedGaushala.value!.id,
                               );
                               if (ok) {
                                 if (Get.isDialogOpen ?? false) {

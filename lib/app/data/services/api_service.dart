@@ -13,6 +13,7 @@ import '../models/department_summary_model.dart';
 import '../models/feed_item_model.dart';
 import '../models/feed_stock_transaction_model.dart';
 import '../models/gaushala_model.dart';
+import '../models/module_model.dart';
 import '../models/role_model.dart';
 import '../models/medical_item_model.dart';
 import '../models/notification_model.dart';
@@ -3432,6 +3433,214 @@ class ApiService extends getx.GetxService {
     );
 
     return response.statusCode == 200 || response.statusCode == 201;
+  }
+
+  // =========================================================================
+  // MODULE MANAGEMENT API SERVICES
+  // Base Route: /api/v1/modules (Requires Admin Bearer Token)
+  // =========================================================================
+
+  /// Helper to robustly parse a single ModuleModel from various backend response envelopes
+  ModuleModel _parseModule(dynamic responseData) {
+    if (responseData is Map) {
+      final map = Map<String, dynamic>.from(responseData);
+      if (map['data'] is Map) {
+        return ModuleModel.fromJson(Map<String, dynamic>.from(map['data'] as Map));
+      }
+      if (map['module'] is Map) {
+        return ModuleModel.fromJson(Map<String, dynamic>.from(map['module'] as Map));
+      }
+      return ModuleModel.fromJson(map);
+    }
+    throw const FormatException('Invalid module response data format');
+  }
+
+  /// Helper to robustly parse a list of ModuleModel items from various backend response envelopes
+  List<ModuleModel> _parseModulesList(dynamic responseData) {
+    List rawList = [];
+    if (responseData is List) {
+      rawList = responseData;
+    } else if (responseData is Map) {
+      final map = Map<String, dynamic>.from(responseData);
+      if (map['data'] is List) {
+        rawList = map['data'] as List;
+      } else if (map['modules'] is List) {
+        rawList = map['modules'] as List;
+      }
+    }
+    return rawList
+        .whereType<Map>()
+        .map((item) => ModuleModel.fromJson(Map<String, dynamic>.from(item)))
+        .toList();
+  }
+
+  /// 1. GET /api/v1/modules
+  /// Query params: isActive (optional boolean)
+  Future<List<ModuleModel>> getModules({bool? isActive}) async {
+    final Map<String, dynamic> queryParams = {};
+    if (isActive != null) {
+      queryParams['isActive'] = isActive;
+    }
+
+    final response = await _dio.get(
+      '/modules',
+      queryParameters: queryParams.isNotEmpty ? queryParams : null,
+    );
+
+    if (response.statusCode == 200 && response.data != null) {
+      return _parseModulesList(response.data);
+    }
+    return [];
+  }
+
+  /// 2. GET /api/v1/modules/:id
+  Future<ModuleModel> getModuleById(String id) async {
+    final response = await _dio.get('/modules/${id.trim()}');
+
+    if (response.statusCode == 200 && response.data != null) {
+      return _parseModule(response.data);
+    }
+
+    throw DioException(
+      requestOptions: response.requestOptions,
+      response: response,
+      message: response.data?['message']?.toString() ?? 'Module not found.',
+    );
+  }
+
+  /// 3. POST /api/v1/modules
+  Future<ModuleModel> createModule(Map<String, dynamic> data) async {
+    final response = await _dio.post(
+      '/modules',
+      data: data,
+    );
+
+    if (response.statusCode == 200 || response.statusCode == 201) {
+      if (response.data != null) {
+        return _parseModule(response.data);
+      }
+    }
+
+    throw DioException(
+      requestOptions: response.requestOptions,
+      response: response,
+      message: response.data?['message']?.toString() ?? 'Failed to create module.',
+    );
+  }
+
+  /// 4. POST /api/v1/modules/bulk
+  Future<List<ModuleModel>> bulkCreateModules(List<Map<String, dynamic>> modules) async {
+    final response = await _dio.post(
+      '/modules/bulk',
+      data: modules,
+    );
+
+    if (response.statusCode == 200 || response.statusCode == 201) {
+      if (response.data != null) {
+        return _parseModulesList(response.data);
+      }
+    }
+    return [];
+  }
+
+  /// 5. PUT /api/v1/modules/:id (with fallback to POST /api/v1/modules/:id/update)
+  Future<ModuleModel> updateModule(String id, Map<String, dynamic> data) async {
+    Response response;
+    try {
+      response = await _dio.put(
+        '/modules/${id.trim()}',
+        data: data,
+      );
+    } on DioException catch (e) {
+      if (e.response?.statusCode == 404 || e.response?.statusCode == 405) {
+        response = await _dio.post(
+          '/modules/${id.trim()}/update',
+          data: data,
+        );
+      } else {
+        rethrow;
+      }
+    }
+
+    if (response.statusCode == 200 || response.statusCode == 201) {
+      if (response.data != null) {
+        return _parseModule(response.data);
+      }
+    }
+
+    throw DioException(
+      requestOptions: response.requestOptions,
+      response: response,
+      message: response.data?['message']?.toString() ?? 'Failed to update module.',
+    );
+  }
+
+  /// 6. DELETE /api/v1/modules/:id (with fallback to POST /api/v1/modules/:id/delete)
+  Future<bool> deleteModule(String id) async {
+    Response response;
+    try {
+      response = await _dio.delete('/modules/${id.trim()}');
+    } on DioException catch (e) {
+      if (e.response?.statusCode == 404 || e.response?.statusCode == 405) {
+        response = await _dio.post('/modules/${id.trim()}/delete');
+      } else {
+        rethrow;
+      }
+    }
+
+    return response.statusCode == 200 || response.statusCode == 204;
+  }
+
+  /// 7. POST /api/v1/modules/:id/submodules
+  Future<ModuleModel> addSubModule(String moduleId, Map<String, dynamic> subModuleData) async {
+    final response = await _dio.post(
+      '/modules/${moduleId.trim()}/submodules',
+      data: subModuleData,
+    );
+
+    if (response.statusCode == 200 || response.statusCode == 201) {
+      if (response.data != null) {
+        return _parseModule(response.data);
+      }
+    }
+
+    throw DioException(
+      requestOptions: response.requestOptions,
+      response: response,
+      message: response.data?['message']?.toString() ?? 'Failed to add sub-module.',
+    );
+  }
+
+  /// 8. POST /api/v1/modules/:id/submodules/:subModuleCode/delete
+  /// (with fallback to DELETE /api/v1/modules/:id/submodules/:subModuleCode)
+  Future<ModuleModel> deleteSubModule(String moduleId, String subModuleCode) async {
+    Response response;
+    try {
+      response = await _dio.post(
+        '/modules/${moduleId.trim()}/submodules/${subModuleCode.trim()}/delete',
+      );
+    } on DioException catch (e) {
+      if (e.response?.statusCode == 404 || e.response?.statusCode == 405) {
+        response = await _dio.delete(
+          '/modules/${moduleId.trim()}/submodules/${subModuleCode.trim()}',
+        );
+      } else {
+        rethrow;
+      }
+    }
+
+    if (response.statusCode == 200 || response.statusCode == 204) {
+      if (response.data != null && response.data is Map) {
+        return _parseModule(response.data);
+      }
+      return await getModuleById(moduleId);
+    }
+
+    throw DioException(
+      requestOptions: response.requestOptions,
+      response: response,
+      message: response.data?['message']?.toString() ?? 'Failed to delete sub-module.',
+    );
   }
 }
 

@@ -385,6 +385,15 @@ class MobileDrawer extends StatelessWidget {
                                     ),
                                   ),
                                 ),
+                              )
+                            else
+                              const Tooltip(
+                                message: 'Gaushala locked to your account',
+                                child: Icon(
+                                  PhosphorIconsRegular.lockSimple,
+                                  size: 14,
+                                  color: Color(0xFF86EFAC),
+                                ),
                               ),
                           ],
                         ),

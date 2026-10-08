@@ -414,8 +414,10 @@ class TypeScreen extends GetView<TypeController> {
                 Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    _buildGaushalaFilterDropdown(context, isDark),
-                    const SizedBox(width: 12),
+                    if (controller.isSuperAdmin) ...[
+                      _buildGaushalaFilterDropdown(context, isDark),
+                      const SizedBox(width: 12),
+                    ],
                     SizedBox(
                       width: 260,
                       height: 38,
@@ -713,7 +715,6 @@ class TypeScreen extends GetView<TypeController> {
             constraints: const BoxConstraints(maxHeight: 280),
             menuProps: MenuProps(
               backgroundColor: isDark ? AppColors.cardDark : AppColors.surfaceLight,
-              borderRadius: BorderRadius.circular(12),
               elevation: 4,
               shadowColor: Colors.black.withValues(alpha: 0.12),
               shape: RoundedRectangleBorder(
@@ -821,8 +822,10 @@ class TypeScreen extends GetView<TypeController> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     return Column(
       children: [
-        _buildGaushalaFilterDropdown(context, isDark, isExpanded: true),
-        const SizedBox(height: 12),
+        if (controller.isSuperAdmin) ...[
+          _buildGaushalaFilterDropdown(context, isDark, isExpanded: true),
+          const SizedBox(height: 12),
+        ],
         TextField(
           onChanged: (val) => controller.searchQuery.value = val,
           decoration: InputDecoration(

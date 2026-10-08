@@ -36,10 +36,18 @@ class UserModel {
     this.updatedAt,
   });
 
+  /// Returns true if this user is a Super Administrator (highest platform authority).
+  bool get isSuperAdmin {
+    final r = role.toLowerCase().trim().replaceAll(' ', '').replaceAll('_', '').replaceAll('-', '');
+    if (r == 'superadmin') return true;
+    if (username?.toLowerCase().replaceAll(' ', '').replaceAll('_', '') == 'superadmin') return true;
+    return false;
+  }
+
   /// Returns true if this user has Administrator privileges.
   bool get isAdmin {
     final r = role.toLowerCase().trim();
-    if (r == 'admin' || r == 'super admin' || r == 'superadmin' || r.contains('admin')) {
+    if (r == 'admin' || isSuperAdmin || r.contains('admin')) {
       return true;
     }
     if (username?.toLowerCase().trim() == 'admin') {

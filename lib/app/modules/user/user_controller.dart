@@ -52,6 +52,7 @@ class UserController extends GetxController {
 
   /// Returns true if the logged-in user can change the active gaushala
   bool get canChangeGaushala => _gaushalaService.canChangeGaushala;
+  bool get isSuperAdmin => _gaushalaService.isSuperAdmin;
 
   /// Look up a Gaushala by ID, Name, or query
   GaushalaModel? findGaushala(String? query) {
@@ -74,6 +75,7 @@ class UserController extends GetxController {
 
   /// Set the gaushala filter on this screen
   void setGaushalaFilter(String? gaushalaId) {
+    if (!isSuperAdmin) return;
     selectedGaushalaFilter.value = (gaushalaId == null || gaushalaId.isEmpty || gaushalaId == 'all')
         ? null
         : gaushalaId;
@@ -472,10 +474,10 @@ class UserController extends GetxController {
     final Rxn<GaushalaModel> selectedGaushala = Rxn<GaushalaModel>();
     final RxBool isActive = true.obs;
 
-    // Pre-select active global gaushala if available
-    if (_gaushalaService.selectedGaushala.value != null && gaushalas.isNotEmpty) {
-      final activeG = _gaushalaService.selectedGaushala.value!;
-      selectedGaushala.value = gaushalas.firstWhereOrNull((g) => g.id == activeG.id);
+    // Pre-select active global gaushala or assigned gaushala
+    final defaultG = _gaushalaService.getUserDefaultGaushala() ?? _gaushalaService.selectedGaushala.value;
+    if (defaultG != null && gaushalas.isNotEmpty) {
+      selectedGaushala.value = gaushalas.firstWhereOrNull((g) => g.id == defaultG.id) ?? defaultG;
     }
 
     final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -610,7 +612,8 @@ class UserController extends GetxController {
                             compareFn: (g1, g2) => g1.id == g2.id,
                             searchable: true,
                             searchHint: 'Search gaushala...',
-                            onChanged: (sel) => selectedGaushala.value = sel,
+                            enabled: isSuperAdmin,
+                            onChanged: isSuperAdmin ? (sel) => selectedGaushala.value = sel : null,
                             validator: (sel) => sel == null ? 'Gaushala is required' : null,
                           );
                         }),
@@ -916,6 +919,7 @@ class UserController extends GetxController {
                           return CustomDropdownSearch<GaushalaModel>(
                             label: 'Gaushala',
                             isRequired: true,
+                            enabled: isSuperAdmin,
                             hint: 'Select Gaushala',
                             prefixIcon: Icons.storefront_outlined,
                             selectedItem: selectedGaushala.value,
@@ -924,7 +928,7 @@ class UserController extends GetxController {
                             compareFn: (g1, g2) => g1.id == g2.id,
                             searchable: true,
                             searchHint: 'Search gaushala...',
-                            onChanged: (sel) => selectedGaushala.value = sel,
+                            onChanged: isSuperAdmin ? (sel) => selectedGaushala.value = sel : null,
                             validator: (sel) => sel == null ? 'Gaushala is required' : null,
                           );
                         }),

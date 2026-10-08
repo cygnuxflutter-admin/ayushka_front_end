@@ -1,6 +1,7 @@
 import 'package:dropdown_search/dropdown_search.dart';
 import 'package:flutter/material.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
+
 import '../values/app_colors.dart';
 import '../values/app_constants.dart';
 
@@ -79,9 +80,7 @@ class CustomDropdownSearch<T> extends StatelessWidget {
       enabled: enabled,
       items: (filter, infiniteScrollProps) {
         if (filter.isEmpty) return list;
-        return list
-            .where((item) => itemAsString(item).toLowerCase().contains(filter.toLowerCase()))
-            .toList();
+        return list.where((item) => itemAsString(item).toLowerCase().contains(filter.toLowerCase())).toList();
       },
       itemAsString: (item) => itemAsString(item),
       compareFn: compareFn ?? ((a, b) => a == b || itemAsString(a) == itemAsString(b)),
@@ -118,7 +117,8 @@ class CustomDropdownSearch<T> extends StatelessWidget {
               }
             }
           : null,
-      validator: validator ??
+      validator:
+          validator ??
           ((isRequired && enabled)
               ? (selected) {
                   if (selected == null && currentItem == null) {
@@ -130,14 +130,8 @@ class CustomDropdownSearch<T> extends StatelessWidget {
               : null),
       suffixProps: DropdownSuffixProps(
         clearButtonProps: ClearButtonProps(
-          isVisible: enabled &&
-              (showClearButton ?? (onClear != null && !isRequired)) &&
-              currentItem != null,
-          icon: Icon(
-            Icons.clear_rounded,
-            size: 16,
-            color: isDark ? AppColors.textMutedDark : AppColors.textMutedLight,
-          ),
+          isVisible: enabled && (showClearButton ?? (onClear != null && !isRequired)) && currentItem != null,
+          icon: Icon(Icons.clear_rounded, size: 16, color: isDark ? AppColors.textMutedDark : AppColors.textMutedLight),
         ),
         dropdownButtonProps: DropdownButtonProps(
           isVisible: true,
@@ -161,12 +155,9 @@ class CustomDropdownSearch<T> extends StatelessWidget {
         decoration: InputDecoration(
           isDense: true,
           hintText: hint,
-          hintStyle: TextStyle(
-            fontSize: 14,
-            overflow: TextOverflow.ellipsis,
-            color: isDark ? AppColors.textMutedDark : AppColors.textMutedLight,
-          ),
-          prefixIcon: prefixWidget ??
+          hintStyle: TextStyle(fontSize: 14, overflow: TextOverflow.ellipsis, color: isDark ? AppColors.textMutedDark : AppColors.textMutedLight),
+          prefixIcon:
+              prefixWidget ??
               (prefixIcon != null
                   ? Icon(
                       prefixIcon,
@@ -176,45 +167,33 @@ class CustomDropdownSearch<T> extends StatelessWidget {
                           : (isDark ? AppColors.textMutedDark : AppColors.textMutedLight),
                     )
                   : null),
-          prefixIconConstraints: (prefixWidget != null || prefixIcon != null)
-              ? const BoxConstraints(minWidth: 40, minHeight: 40)
-              : null,
+          prefixIconConstraints: (prefixWidget != null || prefixIcon != null) ? const BoxConstraints(minWidth: 40, minHeight: 40) : null,
           filled: true,
-          fillColor: fillColor ??
+          fillColor:
+              fillColor ??
               (!enabled
                   ? (isDark ? AppColors.surfaceDark.withValues(alpha: 0.5) : const Color(0xFFF1F4EE))
                   : (isDark ? AppColors.cardDark : AppColors.surfaceLight)),
           contentPadding: contentPadding ?? const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(AppConstants.defaultBorderRadius),
-            borderSide: BorderSide(
-              color: isDark ? AppColors.borderDark : AppColors.borderLight,
-            ),
+            borderSide: BorderSide(color: isDark ? AppColors.borderDark : AppColors.borderLight),
           ),
           enabledBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(AppConstants.defaultBorderRadius),
-            borderSide: BorderSide(
-              color: isDark ? AppColors.borderDark : AppColors.borderLight,
-            ),
+            borderSide: BorderSide(color: isDark ? AppColors.borderDark : AppColors.borderLight),
           ),
           disabledBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(AppConstants.defaultBorderRadius),
-            borderSide: BorderSide(
-              color: (isDark ? AppColors.borderDark : AppColors.borderLight).withValues(alpha: 0.6),
-            ),
+            borderSide: BorderSide(color: (isDark ? AppColors.borderDark : AppColors.borderLight).withValues(alpha: 0.6)),
           ),
           focusedBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(AppConstants.defaultBorderRadius),
-            borderSide: const BorderSide(
-              color: AppColors.primary,
-              width: 1.8,
-            ),
+            borderSide: const BorderSide(color: AppColors.primary, width: 1.8),
           ),
           errorBorder: OutlineInputBorder(
             borderRadius: BorderRadius.circular(AppConstants.defaultBorderRadius),
-            borderSide: const BorderSide(
-              color: AppColors.error,
-            ),
+            borderSide: const BorderSide(color: AppColors.error),
           ),
         ),
       ),
@@ -224,33 +203,21 @@ class CustomDropdownSearch<T> extends StatelessWidget {
         constraints: BoxConstraints(maxHeight: popupMaxHeight),
         menuProps: MenuProps(
           backgroundColor: isDark ? AppColors.cardDark : AppColors.surfaceLight,
-          borderRadius: BorderRadius.circular(AppConstants.defaultBorderRadius),
+
           elevation: 4,
           barrierColor: Colors.transparent,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(AppConstants.defaultBorderRadius),
-            side: BorderSide(
-              color: isDark ? AppColors.borderDark : AppColors.borderLight,
-            ),
+            side: BorderSide(color: isDark ? AppColors.borderDark : AppColors.borderLight),
           ),
         ),
         searchFieldProps: TextFieldProps(
           autofocus: true,
-          style: TextStyle(
-            fontSize: 14,
-            color: isDark ? AppColors.textPrimaryDark : AppColors.textPrimaryLight,
-          ),
+          style: TextStyle(fontSize: 14, color: isDark ? AppColors.textPrimaryDark : AppColors.textPrimaryLight),
           decoration: InputDecoration(
             hintText: searchHint ?? (label != null ? 'Search ${label!.replaceAll('*', '').trim()}...' : 'Search...'),
-            hintStyle: TextStyle(
-              fontSize: 13,
-              color: isDark ? AppColors.textMutedDark : AppColors.textMutedLight,
-            ),
-            prefixIcon: Icon(
-              PhosphorIconsRegular.magnifyingGlass,
-              size: 16,
-              color: isDark ? AppColors.textMutedDark : AppColors.textMutedLight,
-            ),
+            hintStyle: TextStyle(fontSize: 13, color: isDark ? AppColors.textMutedDark : AppColors.textMutedLight),
+            prefixIcon: Icon(PhosphorIconsRegular.magnifyingGlass, size: 16, color: isDark ? AppColors.textMutedDark : AppColors.textMutedLight),
             isDense: true,
             contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
             filled: true,
@@ -269,13 +236,12 @@ class CustomDropdownSearch<T> extends StatelessWidget {
             ),
           ),
         ),
-        itemBuilder: customItemBuilder ??
+        itemBuilder:
+            customItemBuilder ??
             (context, item, isDisabled, isSelected) {
               return Container(
                 padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-                color: isSelected
-                    ? AppColors.primary.withValues(alpha: isDark ? 0.16 : 0.08)
-                    : Colors.transparent,
+                color: isSelected ? AppColors.primary.withValues(alpha: isDark ? 0.16 : 0.08) : Colors.transparent,
                 child: Row(
                   children: [
                     Expanded(
@@ -284,18 +250,11 @@ class CustomDropdownSearch<T> extends StatelessWidget {
                         style: TextStyle(
                           fontSize: 14,
                           fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
-                          color: isSelected
-                              ? AppColors.primary
-                              : (isDark ? AppColors.textPrimaryDark : AppColors.textPrimaryLight),
+                          color: isSelected ? AppColors.primary : (isDark ? AppColors.textPrimaryDark : AppColors.textPrimaryLight),
                         ),
                       ),
                     ),
-                    if (isSelected)
-                      const Icon(
-                        PhosphorIconsRegular.check,
-                        size: 16,
-                        color: AppColors.primary,
-                      ),
+                    if (isSelected) const Icon(PhosphorIconsRegular.check, size: 16, color: AppColors.primary),
                   ],
                 ),
               );
@@ -315,11 +274,7 @@ class CustomDropdownSearch<T> extends StatelessWidget {
       children: [
         Text(
           displayLabel,
-          style: TextStyle(
-            fontSize: 13,
-            fontWeight: FontWeight.w600,
-            color: isDark ? AppColors.textSecondaryDark : AppColors.textSecondaryLight,
-          ),
+          style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: isDark ? AppColors.textSecondaryDark : AppColors.textSecondaryLight),
         ),
         const SizedBox(height: 6),
         dropdownWidget,

@@ -13,12 +13,14 @@ class PermissionGuardMiddleware extends GetMiddleware {
   final String? requiredSubModule;
   final PermissionAction requiredAction;
   final bool adminOnly;
+  final bool superAdminOnly;
 
   PermissionGuardMiddleware({
     this.requiredModule,
     this.requiredSubModule,
     this.requiredAction = PermissionAction.view,
     this.adminOnly = false,
+    this.superAdminOnly = false,
     int? priority,
   }) : super(priority: priority ?? 1);
 
@@ -39,7 +41,17 @@ class PermissionGuardMiddleware extends GetMiddleware {
     }
     final permissionService = Get.find<PermissionService>();
 
-    // Admins bypass all restrictions
+    // SuperAdmin only route check
+    if (superAdminOnly) {
+      if (!permissionService.isSuperAdmin) {
+        return RouteSettings(
+          name: '${AppRoutes.forbidden}?route=${Uri.encodeComponent(route ?? '')}',
+        );
+      }
+      return null;
+    }
+
+    // Admins bypass normal module permission restrictions
     if (permissionService.isAdmin) {
       return null;
     }
@@ -103,6 +115,7 @@ class RoutePermissionRegistry {
           requiredModule: PermissionModules.gaushala,
           requiredSubModule: PermissionSubModules.gaushalaList,
           requiredAction: PermissionAction.view,
+          superAdminOnly: true,
         );
       case AppRoutes.roles:
         return PermissionGuardMiddleware(
@@ -117,6 +130,7 @@ class RoutePermissionRegistry {
           requiredAction: PermissionAction.view,
         );
       case AppRoutes.userPermissions:
+      case AppRoutes.moduleManagement:
         return PermissionGuardMiddleware(
           adminOnly: true,
         );

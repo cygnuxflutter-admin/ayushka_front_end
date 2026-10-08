@@ -515,6 +515,7 @@ class WebSidebar extends StatelessWidget {
                           label: 'Masters',
                           isCollapsed: collapsed,
                           isInitiallyExpanded: currentRoute == AppRoutes.roles ||
+                              currentRoute == AppRoutes.moduleManagement ||
                               currentRoute == AppRoutes.users ||
                               currentRoute == AppRoutes.workers ||
                               currentRoute == AppRoutes.departments ||

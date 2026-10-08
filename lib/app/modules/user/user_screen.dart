@@ -3,25 +3,26 @@ import 'package:flutter/material.dart';
 import 'package:get/get.dart';
 import 'package:intl/intl.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
+
+import '../../../models/permission_model.dart';
+import '../../../screens/user_permissions_screen.dart';
+import '../../../widgets/permission_guard.dart';
 import '../../core/utils/responsive_layout.dart';
 import '../../core/values/app_colors.dart';
 import '../../core/values/app_constants.dart';
+import '../../core/values/permission_constants.dart';
 import '../../core/widgets/custom_button.dart';
 import '../../core/widgets/custom_loader.dart';
 import '../../core/widgets/custom_pagination.dart';
-import '../../core/widgets/mobile_list_bottom_loader.dart';
 import '../../core/widgets/custom_shimmer.dart';
 import '../../core/widgets/global_gaushala_selector.dart';
 import '../../core/widgets/header_user_profile_badge.dart';
-import '../notification/widgets/notification_bell_widget.dart';
+import '../../core/widgets/mobile_list_bottom_loader.dart';
 import '../../data/models/user_model.dart';
 import '../../routes/app_routes.dart';
 import '../dashboard/widgets/mobile_drawer.dart';
 import '../dashboard/widgets/web_sidebar.dart';
-import '../../../screens/user_permissions_screen.dart';
-import '../../../models/permission_model.dart';
-import '../../core/values/permission_constants.dart';
-import '../../../widgets/permission_guard.dart';
+import '../notification/widgets/notification_bell_widget.dart';
 import 'user_controller.dart';
 
 /// Screen for Managing System Users (Master > Users).
@@ -65,11 +66,7 @@ class UserScreen extends GetView<UserController> {
                         constraints: const BoxConstraints(maxWidth: AppConstants.maxContentWidth),
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            _buildBreadcrumbAndActionBar(context),
-                            const SizedBox(height: 24),
-                            _buildUsersTableCard(context),
-                          ],
+                          children: [_buildBreadcrumbAndActionBar(context), const SizedBox(height: 24), _buildUsersTableCard(context)],
                         ),
                       ),
                     ),
@@ -95,9 +92,7 @@ class UserScreen extends GetView<UserController> {
           Obx(() {
             final isBusy = controller.isRefreshing.value || controller.isLoading.value;
             return IconButton(
-              icon: isBusy
-                  ? const CustomInlineLoader(size: 18, strokeWidth: 2)
-                  : const Icon(Icons.refresh_rounded),
+              icon: isBusy ? const CustomInlineLoader(size: 18, strokeWidth: 2) : const Icon(Icons.refresh_rounded),
               tooltip: isBusy ? 'Refreshing...' : 'Refresh Users',
               onPressed: isBusy ? null : controller.refreshUsers,
             );
@@ -114,21 +109,10 @@ class UserScreen extends GetView<UserController> {
           ),
         ],
       ),
-      drawer: Obx(
-        () => MobileDrawer(
-          currentUser: controller.currentUser.value,
-          onLogout: controller.logout,
-        ),
-      ),
+      drawer: Obx(() => MobileDrawer(currentUser: controller.currentUser.value, onLogout: controller.logout)),
       body: SingleChildScrollView(
         padding: const EdgeInsets.all(20.0),
-        child: Column(
-          children: [
-            _buildSearchAndFilters(context, isMobile: false),
-            const SizedBox(height: 16),
-            _buildUsersCardsList(context),
-          ],
-        ),
+        child: Column(children: [_buildSearchAndFilters(context, isMobile: false), const SizedBox(height: 16), _buildUsersCardsList(context)]),
       ),
     );
   }
@@ -145,9 +129,7 @@ class UserScreen extends GetView<UserController> {
           Obx(() {
             final isBusy = controller.isRefreshing.value || controller.isLoading.value;
             return IconButton(
-              icon: isBusy
-                  ? const CustomInlineLoader(size: 18, strokeWidth: 2)
-                  : const Icon(Icons.refresh_rounded),
+              icon: isBusy ? const CustomInlineLoader(size: 18, strokeWidth: 2) : const Icon(Icons.refresh_rounded),
               tooltip: isBusy ? 'Refreshing...' : 'Refresh Users',
               onPressed: isBusy ? null : controller.refreshUsers,
             );
@@ -186,13 +168,7 @@ class UserScreen extends GetView<UserController> {
           child: SingleChildScrollView(
             physics: const AlwaysScrollableScrollPhysics(),
             padding: const EdgeInsets.all(16.0),
-            child: Column(
-              children: [
-                _buildSearchAndFilters(context, isMobile: true),
-                const SizedBox(height: 16),
-                _buildUsersCardsList(context),
-              ],
-            ),
+            child: Column(children: [_buildSearchAndFilters(context, isMobile: true), const SizedBox(height: 16), _buildUsersCardsList(context)]),
           ),
         ),
       ),
@@ -211,12 +187,7 @@ class UserScreen extends GetView<UserController> {
       padding: const EdgeInsets.symmetric(horizontal: 28),
       decoration: BoxDecoration(
         color: isDark ? AppColors.surfaceDark : AppColors.surfaceLight,
-        border: Border(
-          bottom: BorderSide(
-            color: isDark ? AppColors.borderDark : AppColors.borderLight,
-            width: 0.8,
-          ),
-        ),
+        border: Border(bottom: BorderSide(color: isDark ? AppColors.borderDark : AppColors.borderLight, width: 0.8)),
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -225,39 +196,22 @@ class UserScreen extends GetView<UserController> {
             children: [
               Obx(
                 () => IconButton(
-                  icon: Icon(
-                    controller.isSidebarCollapsed.value
-                        ? Icons.menu_open_rounded
-                        : Icons.menu_rounded,
-                    size: 22,
-                  ),
-                  tooltip: controller.isSidebarCollapsed.value
-                      ? 'Expand Sidebar'
-                      : 'Collapse Sidebar',
+                  icon: Icon(controller.isSidebarCollapsed.value ? Icons.menu_open_rounded : Icons.menu_rounded, size: 22),
+                  tooltip: controller.isSidebarCollapsed.value ? 'Expand Sidebar' : 'Collapse Sidebar',
                   onPressed: controller.toggleSidebar,
                 ),
               ),
               const SizedBox(width: 8),
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                decoration: BoxDecoration(
-                  color: AppColors.primary.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(6),
-                ),
+                decoration: BoxDecoration(color: AppColors.primary.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(6)),
                 child: const Text(
                   'MASTER',
-                  style: TextStyle(
-                    color: AppColors.primary,
-                    fontSize: 11,
-                    fontWeight: FontWeight.bold,
-                  ),
+                  style: TextStyle(color: AppColors.primary, fontSize: 11, fontWeight: FontWeight.bold),
                 ),
               ),
               const SizedBox(width: 14),
-              const Text(
-                'User & Personnel Management',
-                style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
-              ),
+              const Text('User & Personnel Management', style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600)),
             ],
           ),
           Row(
@@ -269,9 +223,7 @@ class UserScreen extends GetView<UserController> {
               Obx(() {
                 final isBusy = controller.isRefreshing.value || controller.isLoading.value;
                 return IconButton(
-                  icon: isBusy
-                      ? const CustomInlineLoader(size: 18, strokeWidth: 2)
-                      : const Icon(Icons.refresh_rounded, size: 20),
+                  icon: isBusy ? const CustomInlineLoader(size: 18, strokeWidth: 2) : const Icon(Icons.refresh_rounded, size: 20),
                   tooltip: isBusy ? 'Refreshing...' : 'Refresh Users',
                   onPressed: isBusy ? null : controller.refreshUsers,
                 );
@@ -305,40 +257,26 @@ class UserScreen extends GetView<UserController> {
                   child: InkWell(
                     mouseCursor: SystemMouseCursors.click,
                     onTap: () => Get.offNamed(AppRoutes.dashboard),
-                    child: const Text(
-                      'Dashboard',
-                      style: TextStyle(fontSize: 12, color: AppColors.textSecondaryLight),
-                    ),
+                    child: const Text('Dashboard', style: TextStyle(fontSize: 12, color: AppColors.textSecondaryLight)),
                   ),
                 ),
                 const SizedBox(width: 6),
                 const Icon(Icons.chevron_right_rounded, size: 14, color: AppColors.textSecondaryLight),
                 const SizedBox(width: 6),
-                const Text(
-                  'Masters',
-                  style: TextStyle(fontSize: 12, color: AppColors.textSecondaryLight),
-                ),
+                const Text('Masters', style: TextStyle(fontSize: 12, color: AppColors.textSecondaryLight)),
                 const SizedBox(width: 6),
                 const Icon(Icons.chevron_right_rounded, size: 14, color: AppColors.textSecondaryLight),
                 const SizedBox(width: 6),
                 const Text(
                   'Users',
-                  style: TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.bold,
-                    color: AppColors.primary,
-                  ),
+                  style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: AppColors.primary),
                 ),
               ],
             ),
             const SizedBox(height: 6),
             Text(
               'Users Master',
-              style: TextStyle(
-                fontSize: 22,
-                fontWeight: FontWeight.bold,
-                color: isDark ? AppColors.textPrimaryDark : AppColors.textPrimaryLight,
-              ),
+              style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold, color: isDark ? AppColors.textPrimaryDark : AppColors.textPrimaryLight),
             ),
           ],
         ),
@@ -374,16 +312,8 @@ class UserScreen extends GetView<UserController> {
       decoration: BoxDecoration(
         color: isDark ? AppColors.cardDark : AppColors.cardLight,
         borderRadius: BorderRadius.circular(16),
-        border: Border.all(
-          color: isDark ? AppColors.borderDark : AppColors.borderLight,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.04),
-            blurRadius: 10,
-            offset: const Offset(0, 4),
-          ),
-        ],
+        border: Border.all(color: isDark ? AppColors.borderDark : AppColors.borderLight),
+        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.04), blurRadius: 10, offset: const Offset(0, 4))],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -402,34 +332,21 @@ class UserScreen extends GetView<UserController> {
                   children: [
                     const Icon(PhosphorIconsRegular.users, color: AppColors.primary, size: 22),
                     const SizedBox(width: 10),
-                    const Text(
-                      'System Users',
-                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                    ),
+                    const Text('System Users', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                     const SizedBox(width: 10),
                     Obx(
                       () => Container(
                         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                        decoration: BoxDecoration(
-                          color: AppColors.primary.withValues(alpha: 0.12),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
+                        decoration: BoxDecoration(color: AppColors.primary.withValues(alpha: 0.12), borderRadius: BorderRadius.circular(12)),
                         child: Text(
                           '${controller.filteredUsers.length} Total',
-                          style: const TextStyle(
-                            fontSize: 11,
-                            fontWeight: FontWeight.bold,
-                            color: AppColors.primary,
-                          ),
+                          style: const TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: AppColors.primary),
                         ),
                       ),
                     ),
                     Obx(() {
                       if (controller.isLoading.value && controller.users.isNotEmpty) {
-                        return const Padding(
-                          padding: EdgeInsets.only(left: 8.0),
-                          child: CustomInlineLoader(size: 14, strokeWidth: 1.8),
-                        );
+                        return const Padding(padding: EdgeInsets.only(left: 8.0), child: CustomInlineLoader(size: 14, strokeWidth: 1.8));
                       }
                       return const SizedBox.shrink();
                     }),
@@ -465,16 +382,15 @@ class UserScreen extends GetView<UserController> {
                           contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(10),
-                            borderSide: BorderSide(
-                              color: isDark ? AppColors.borderDark : AppColors.borderLight,
-                            ),
+                            borderSide: BorderSide(color: isDark ? AppColors.borderDark : AppColors.borderLight),
                           ),
                         ),
                       ),
                     ),
 
                     // Gaushala Filter Dropdown
-                    _buildGaushalaFilterDropdown(context, isDark, width: 230),
+                    if (controller.isSuperAdmin)
+                      _buildGaushalaFilterDropdown(context, isDark, width: 230),
 
                     // Role Filter Dropdown
                     _buildRoleFilterDropdown(context, isDark, width: 180),
@@ -507,10 +423,7 @@ class UserScreen extends GetView<UserController> {
                     children: [
                       Icon(PhosphorIconsRegular.userList, size: 48, color: AppColors.textMutedLight),
                       const SizedBox(height: 12),
-                      const Text(
-                        'No Users Found',
-                        style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                      ),
+                      const Text('No Users Found', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
                       const SizedBox(height: 6),
                       Text(
                         controller.searchQuery.value.isNotEmpty ||
@@ -536,12 +449,8 @@ class UserScreen extends GetView<UserController> {
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
                   decoration: BoxDecoration(
-                    color: isDark
-                        ? AppColors.surfaceDark.withValues(alpha: 0.6)
-                        : const Color(0xFFF9FAFB),
-                    border: const Border(
-                      left: BorderSide(color: Colors.transparent, width: 3.5),
-                    ),
+                    color: isDark ? AppColors.surfaceDark.withValues(alpha: 0.6) : const Color(0xFFF9FAFB),
+                    border: const Border(left: BorderSide(color: Colors.transparent, width: 3.5)),
                   ),
                   child: Row(
                     children: const [
@@ -552,7 +461,10 @@ class UserScreen extends GetView<UserController> {
                       Expanded(flex: 3, child: Text('GAUSHALA', style: _headerStyle)),
                       Expanded(flex: 2, child: Text('STATUS', style: _headerStyle)),
                       Expanded(flex: 2, child: Text('CREATED', style: _headerStyle)),
-                      SizedBox(width: 135, child: Text('ACTIONS', style: _headerStyle, textAlign: TextAlign.right)),
+                      SizedBox(
+                        width: 135,
+                        child: Text('ACTIONS', style: _headerStyle, textAlign: TextAlign.right),
+                      ),
                     ],
                   ),
                 ),
@@ -595,12 +507,7 @@ class UserScreen extends GetView<UserController> {
   // -------------------------------------------------------------
   // GAUSHALA FILTER DROPDOWN
   // -------------------------------------------------------------
-  Widget _buildGaushalaFilterDropdown(
-    BuildContext context,
-    bool isDark, {
-    double width = 230,
-    bool isExpanded = false,
-  }) {
+  Widget _buildGaushalaFilterDropdown(BuildContext context, bool isDark, {double width = 230, bool isExpanded = false}) {
     return Obx(() {
       final list = controller.gaushalas.toList();
       final canChange = controller.canChangeGaushala;
@@ -629,19 +536,12 @@ class UserScreen extends GetView<UserController> {
             decoration: BoxDecoration(
               color: isDark ? AppColors.surfaceDark : Theme.of(context).cardColor,
               borderRadius: BorderRadius.circular(10),
-              border: Border.all(
-                color: isDark ? AppColors.borderDark : AppColors.borderLight,
-                width: 1.0,
-              ),
+              border: Border.all(color: isDark ? AppColors.borderDark : AppColors.borderLight, width: 1.0),
             ),
             child: Row(
               mainAxisSize: isExpanded ? MainAxisSize.max : MainAxisSize.min,
               children: [
-                const Icon(
-                  Icons.location_on_outlined,
-                  size: 16,
-                  color: AppColors.primary,
-                ),
+                const Icon(Icons.location_on_outlined, size: 16, color: AppColors.primary),
                 const SizedBox(width: 8),
                 Expanded(
                   child: Text(
@@ -656,11 +556,7 @@ class UserScreen extends GetView<UserController> {
                   ),
                 ),
                 const SizedBox(width: 6),
-                Icon(
-                  PhosphorIconsRegular.lockSimple,
-                  size: 13,
-                  color: isDark ? AppColors.textMutedDark : AppColors.textMutedLight,
-                ),
+                Icon(PhosphorIconsRegular.lockSimple, size: 13, color: isDark ? AppColors.textMutedDark : AppColors.textMutedLight),
               ],
             ),
           ),
@@ -674,9 +570,7 @@ class UserScreen extends GetView<UserController> {
         child: DropdownSearch<String>(
           items: (filter, infiniteScrollProps) {
             if (filter.isEmpty) return items;
-            return items
-                .where((item) => item.toLowerCase().contains(filter.toLowerCase()))
-                .toList();
+            return items.where((item) => item.toLowerCase().contains(filter.toLowerCase())).toList();
           },
           selectedItem: selectedName,
           compareFn: (i1, i2) => i1 == i2,
@@ -693,36 +587,29 @@ class UserScreen extends GetView<UserController> {
             searchFieldProps: TextFieldProps(
               decoration: InputDecoration(
                 hintText: 'Search gaushala...',
-                hintStyle: TextStyle(
-                  fontSize: 13,
-                  color: isDark ? AppColors.textMutedDark : AppColors.textMutedLight,
-                ),
+                hintStyle: TextStyle(fontSize: 13, color: isDark ? AppColors.textMutedDark : AppColors.textMutedLight),
                 prefixIcon: const Icon(Icons.search_rounded, size: 16),
                 contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
                 isDense: true,
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(8),
-                  borderSide: BorderSide(
-                    color: isDark ? AppColors.borderDark : AppColors.borderLight,
-                  ),
+                  borderSide: BorderSide(color: isDark ? AppColors.borderDark : AppColors.borderLight),
                 ),
                 enabledBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(8),
-                  borderSide: BorderSide(
-                    color: isDark ? AppColors.borderDark : AppColors.borderLight,
-                  ),
+                  borderSide: BorderSide(color: isDark ? AppColors.borderDark : AppColors.borderLight),
                 ),
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(8),
-                  borderSide: const BorderSide(
-                    color: AppColors.primary,
-                    width: 1.5,
-                  ),
+                  borderSide: const BorderSide(color: AppColors.primary, width: 1.5),
                 ),
               ),
             ),
             menuProps: MenuProps(
-              borderRadius: BorderRadius.circular(12),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+                side: BorderSide(color: isDark ? AppColors.borderDark : AppColors.borderLight),
+              ),
               backgroundColor: isDark ? AppColors.cardDark : AppColors.cardLight,
               elevation: 8,
             ),
@@ -730,15 +617,11 @@ class UserScreen extends GetView<UserController> {
               final isCurrent = item == selectedName;
               return Container(
                 padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                color: isCurrent
-                    ? AppColors.primary.withValues(alpha: 0.12)
-                    : Colors.transparent,
+                color: isCurrent ? AppColors.primary.withValues(alpha: 0.12) : Colors.transparent,
                 child: Row(
                   children: [
                     Icon(
-                      item == 'All Gaushalas'
-                          ? PhosphorIconsRegular.circlesFour
-                          : Icons.location_on_outlined,
+                      item == 'All Gaushalas' ? PhosphorIconsRegular.circlesFour : Icons.location_on_outlined,
                       size: 15,
                       color: isCurrent ? AppColors.primary : (isDark ? Colors.white70 : Colors.black54),
                     ),
@@ -749,14 +632,11 @@ class UserScreen extends GetView<UserController> {
                         style: TextStyle(
                           fontSize: 13,
                           fontWeight: isCurrent ? FontWeight.bold : FontWeight.w500,
-                          color: isCurrent
-                              ? AppColors.primary
-                              : (isDark ? AppColors.textPrimaryDark : AppColors.textPrimaryLight),
+                          color: isCurrent ? AppColors.primary : (isDark ? AppColors.textPrimaryDark : AppColors.textPrimaryLight),
                         ),
                       ),
                     ),
-                    if (isCurrent)
-                      const Icon(Icons.check_rounded, size: 16, color: AppColors.primary),
+                    if (isCurrent) const Icon(Icons.check_rounded, size: 16, color: AppColors.primary),
                   ],
                 ),
               );
@@ -767,63 +647,34 @@ class UserScreen extends GetView<UserController> {
               selectedItem ?? 'All Gaushalas',
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.w600,
-                color: isDark ? AppColors.textPrimaryDark : AppColors.textPrimaryLight,
-              ),
+              style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: isDark ? AppColors.textPrimaryDark : AppColors.textPrimaryLight),
             );
           },
           suffixProps: DropdownSuffixProps(
             dropdownButtonProps: DropdownButtonProps(
-              iconClosed: Icon(
-                Icons.keyboard_arrow_down_rounded,
-                size: 18,
-                color: isDark ? AppColors.textMutedDark : AppColors.textMutedLight,
-              ),
-              iconOpened: Icon(
-                Icons.keyboard_arrow_up_rounded,
-                size: 18,
-                color: AppColors.primary,
-              ),
+              iconClosed: Icon(Icons.keyboard_arrow_down_rounded, size: 18, color: isDark ? AppColors.textMutedDark : AppColors.textMutedLight),
+              iconOpened: Icon(Icons.keyboard_arrow_up_rounded, size: 18, color: AppColors.primary),
             ),
           ),
           decoratorProps: DropDownDecoratorProps(
-            baseStyle: TextStyle(
-              fontSize: 13,
-              fontWeight: FontWeight.w600,
-              color: isDark ? AppColors.textPrimaryDark : AppColors.textPrimaryLight,
-            ),
+            baseStyle: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: isDark ? AppColors.textPrimaryDark : AppColors.textPrimaryLight),
             decoration: InputDecoration(
               isDense: true,
               contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8.5),
               filled: true,
               fillColor: isDark ? AppColors.surfaceDark : Theme.of(context).cardColor,
-              prefixIcon: const Icon(
-                Icons.location_on_outlined,
-                size: 16,
-                color: AppColors.primary,
-              ),
+              prefixIcon: const Icon(Icons.location_on_outlined, size: 16, color: AppColors.primary),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(10),
-                borderSide: BorderSide(
-                  color: isDark ? AppColors.borderDark : AppColors.borderLight,
-                  width: 1.0,
-                ),
+                borderSide: BorderSide(color: isDark ? AppColors.borderDark : AppColors.borderLight, width: 1.0),
               ),
               enabledBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(10),
-                borderSide: BorderSide(
-                  color: isDark ? AppColors.borderDark : AppColors.borderLight,
-                  width: 1.0,
-                ),
+                borderSide: BorderSide(color: isDark ? AppColors.borderDark : AppColors.borderLight, width: 1.0),
               ),
               focusedBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(10),
-                borderSide: const BorderSide(
-                  color: AppColors.primary,
-                  width: 1.5,
-                ),
+                borderSide: const BorderSide(color: AppColors.primary, width: 1.5),
               ),
             ),
           ),
@@ -835,12 +686,7 @@ class UserScreen extends GetView<UserController> {
   // -------------------------------------------------------------
   // ROLE FILTER DROPDOWN
   // -------------------------------------------------------------
-  Widget _buildRoleFilterDropdown(
-    BuildContext context,
-    bool isDark, {
-    double width = 180,
-    bool isExpanded = false,
-  }) {
+  Widget _buildRoleFilterDropdown(BuildContext context, bool isDark, {double width = 180, bool isExpanded = false}) {
     return Obx(() {
       final list = controller.roles.toList();
       final currentFilter = controller.selectedRoleFilter.value;
@@ -867,9 +713,7 @@ class UserScreen extends GetView<UserController> {
         child: DropdownSearch<String>(
           items: (filter, infiniteScrollProps) {
             if (filter.isEmpty) return items;
-            return items
-                .where((item) => item.toLowerCase().contains(filter.toLowerCase()))
-                .toList();
+            return items.where((item) => item.toLowerCase().contains(filter.toLowerCase())).toList();
           },
           selectedItem: selectedName,
           compareFn: (i1, i2) => i1 == i2,
@@ -887,36 +731,29 @@ class UserScreen extends GetView<UserController> {
             searchFieldProps: TextFieldProps(
               decoration: InputDecoration(
                 hintText: 'Search role...',
-                hintStyle: TextStyle(
-                  fontSize: 13,
-                  color: isDark ? AppColors.textMutedDark : AppColors.textMutedLight,
-                ),
+                hintStyle: TextStyle(fontSize: 13, color: isDark ? AppColors.textMutedDark : AppColors.textMutedLight),
                 prefixIcon: const Icon(Icons.search_rounded, size: 16),
                 contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
                 isDense: true,
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(8),
-                  borderSide: BorderSide(
-                    color: isDark ? AppColors.borderDark : AppColors.borderLight,
-                  ),
+                  borderSide: BorderSide(color: isDark ? AppColors.borderDark : AppColors.borderLight),
                 ),
                 enabledBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(8),
-                  borderSide: BorderSide(
-                    color: isDark ? AppColors.borderDark : AppColors.borderLight,
-                  ),
+                  borderSide: BorderSide(color: isDark ? AppColors.borderDark : AppColors.borderLight),
                 ),
                 focusedBorder: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(8),
-                  borderSide: const BorderSide(
-                    color: AppColors.primary,
-                    width: 1.5,
-                  ),
+                  borderSide: const BorderSide(color: AppColors.primary, width: 1.5),
                 ),
               ),
             ),
             menuProps: MenuProps(
-              borderRadius: BorderRadius.circular(12),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+                side: BorderSide(color: isDark ? AppColors.borderDark : AppColors.borderLight),
+              ),
               backgroundColor: isDark ? AppColors.cardDark : AppColors.cardLight,
               elevation: 8,
             ),
@@ -924,15 +761,11 @@ class UserScreen extends GetView<UserController> {
               final isCurrent = item == selectedName;
               return Container(
                 padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                color: isCurrent
-                    ? AppColors.primary.withValues(alpha: 0.12)
-                    : Colors.transparent,
+                color: isCurrent ? AppColors.primary.withValues(alpha: 0.12) : Colors.transparent,
                 child: Row(
                   children: [
                     Icon(
-                      item == 'All Roles'
-                          ? PhosphorIconsRegular.circlesFour
-                          : Icons.shield_outlined,
+                      item == 'All Roles' ? PhosphorIconsRegular.circlesFour : Icons.shield_outlined,
                       size: 15,
                       color: isCurrent ? AppColors.primary : (isDark ? Colors.white70 : Colors.black54),
                     ),
@@ -943,14 +776,11 @@ class UserScreen extends GetView<UserController> {
                         style: TextStyle(
                           fontSize: 13,
                           fontWeight: isCurrent ? FontWeight.bold : FontWeight.w500,
-                          color: isCurrent
-                              ? AppColors.primary
-                              : (isDark ? AppColors.textPrimaryDark : AppColors.textPrimaryLight),
+                          color: isCurrent ? AppColors.primary : (isDark ? AppColors.textPrimaryDark : AppColors.textPrimaryLight),
                         ),
                       ),
                     ),
-                    if (isCurrent)
-                      const Icon(Icons.check_rounded, size: 16, color: AppColors.primary),
+                    if (isCurrent) const Icon(Icons.check_rounded, size: 16, color: AppColors.primary),
                   ],
                 ),
               );
@@ -961,63 +791,34 @@ class UserScreen extends GetView<UserController> {
               selectedItem ?? 'All Roles',
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.w600,
-                color: isDark ? AppColors.textPrimaryDark : AppColors.textPrimaryLight,
-              ),
+              style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: isDark ? AppColors.textPrimaryDark : AppColors.textPrimaryLight),
             );
           },
           suffixProps: DropdownSuffixProps(
             dropdownButtonProps: DropdownButtonProps(
-              iconClosed: Icon(
-                Icons.keyboard_arrow_down_rounded,
-                size: 18,
-                color: isDark ? AppColors.textMutedDark : AppColors.textMutedLight,
-              ),
-              iconOpened: Icon(
-                Icons.keyboard_arrow_up_rounded,
-                size: 18,
-                color: AppColors.primary,
-              ),
+              iconClosed: Icon(Icons.keyboard_arrow_down_rounded, size: 18, color: isDark ? AppColors.textMutedDark : AppColors.textMutedLight),
+              iconOpened: Icon(Icons.keyboard_arrow_up_rounded, size: 18, color: AppColors.primary),
             ),
           ),
           decoratorProps: DropDownDecoratorProps(
-            baseStyle: TextStyle(
-              fontSize: 13,
-              fontWeight: FontWeight.w600,
-              color: isDark ? AppColors.textPrimaryDark : AppColors.textPrimaryLight,
-            ),
+            baseStyle: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: isDark ? AppColors.textPrimaryDark : AppColors.textPrimaryLight),
             decoration: InputDecoration(
               isDense: true,
               contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8.5),
               filled: true,
               fillColor: isDark ? AppColors.surfaceDark : Theme.of(context).cardColor,
-              prefixIcon: const Icon(
-                Icons.shield_outlined,
-                size: 16,
-                color: AppColors.primary,
-              ),
+              prefixIcon: const Icon(Icons.shield_outlined, size: 16, color: AppColors.primary),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(10),
-                borderSide: BorderSide(
-                  color: isDark ? AppColors.borderDark : AppColors.borderLight,
-                  width: 1.0,
-                ),
+                borderSide: BorderSide(color: isDark ? AppColors.borderDark : AppColors.borderLight, width: 1.0),
               ),
               enabledBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(10),
-                borderSide: BorderSide(
-                  color: isDark ? AppColors.borderDark : AppColors.borderLight,
-                  width: 1.0,
-                ),
+                borderSide: BorderSide(color: isDark ? AppColors.borderDark : AppColors.borderLight, width: 1.0),
               ),
               focusedBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(10),
-                borderSide: const BorderSide(
-                  color: AppColors.primary,
-                  width: 1.5,
-                ),
+                borderSide: const BorderSide(color: AppColors.primary, width: 1.5),
               ),
             ),
           ),
@@ -1029,17 +830,10 @@ class UserScreen extends GetView<UserController> {
   // -------------------------------------------------------------
   // STATUS FILTER DROPDOWN
   // -------------------------------------------------------------
-  Widget _buildStatusFilterDropdown(
-    BuildContext context,
-    bool isDark, {
-    double width = 170,
-    bool isExpanded = false,
-  }) {
+  Widget _buildStatusFilterDropdown(BuildContext context, bool isDark, {double width = 170, bool isExpanded = false}) {
     return Obx(() {
       final status = controller.selectedStatusFilter.value;
-      final selectedStatusName = status == 'active'
-          ? 'Active Only'
-          : (status == 'inactive' ? 'Inactive Only' : 'All Status');
+      final selectedStatusName = status == 'active' ? 'Active Only' : (status == 'inactive' ? 'Inactive Only' : 'All Status');
 
       const items = ['All Status', 'Active Only', 'Inactive Only'];
       final effectiveWidth = isExpanded ? double.infinity : width;
@@ -1063,7 +857,10 @@ class UserScreen extends GetView<UserController> {
           popupProps: PopupProps.menu(
             showSearchBox: false,
             menuProps: MenuProps(
-              borderRadius: BorderRadius.circular(12),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+                side: BorderSide(color: isDark ? AppColors.borderDark : AppColors.borderLight),
+              ),
               backgroundColor: isDark ? AppColors.cardDark : AppColors.cardLight,
               elevation: 8,
             ),
@@ -1084,16 +881,10 @@ class UserScreen extends GetView<UserController> {
 
               return Container(
                 padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                color: isCurrent
-                    ? AppColors.primary.withValues(alpha: 0.12)
-                    : Colors.transparent,
+                color: isCurrent ? AppColors.primary.withValues(alpha: 0.12) : Colors.transparent,
                 child: Row(
                   children: [
-                    Icon(
-                      icon,
-                      size: 15,
-                      color: isCurrent ? AppColors.primary : iconColor,
-                    ),
+                    Icon(icon, size: 15, color: isCurrent ? AppColors.primary : iconColor),
                     const SizedBox(width: 10),
                     Expanded(
                       child: Text(
@@ -1101,14 +892,11 @@ class UserScreen extends GetView<UserController> {
                         style: TextStyle(
                           fontSize: 13,
                           fontWeight: isCurrent ? FontWeight.bold : FontWeight.w500,
-                          color: isCurrent
-                              ? AppColors.primary
-                              : (isDark ? AppColors.textPrimaryDark : AppColors.textPrimaryLight),
+                          color: isCurrent ? AppColors.primary : (isDark ? AppColors.textPrimaryDark : AppColors.textPrimaryLight),
                         ),
                       ),
                     ),
-                    if (isCurrent)
-                      const Icon(Icons.check_rounded, size: 16, color: AppColors.primary),
+                    if (isCurrent) const Icon(Icons.check_rounded, size: 16, color: AppColors.primary),
                   ],
                 ),
               );
@@ -1119,63 +907,34 @@ class UserScreen extends GetView<UserController> {
               selectedItem ?? 'All Status',
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
-              style: TextStyle(
-                fontSize: 13,
-                fontWeight: FontWeight.w600,
-                color: isDark ? AppColors.textPrimaryDark : AppColors.textPrimaryLight,
-              ),
+              style: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: isDark ? AppColors.textPrimaryDark : AppColors.textPrimaryLight),
             );
           },
           suffixProps: DropdownSuffixProps(
             dropdownButtonProps: DropdownButtonProps(
-              iconClosed: Icon(
-                Icons.keyboard_arrow_down_rounded,
-                size: 18,
-                color: isDark ? AppColors.textMutedDark : AppColors.textMutedLight,
-              ),
-              iconOpened: Icon(
-                Icons.keyboard_arrow_up_rounded,
-                size: 18,
-                color: AppColors.primary,
-              ),
+              iconClosed: Icon(Icons.keyboard_arrow_down_rounded, size: 18, color: isDark ? AppColors.textMutedDark : AppColors.textMutedLight),
+              iconOpened: Icon(Icons.keyboard_arrow_up_rounded, size: 18, color: AppColors.primary),
             ),
           ),
           decoratorProps: DropDownDecoratorProps(
-            baseStyle: TextStyle(
-              fontSize: 13,
-              fontWeight: FontWeight.w600,
-              color: isDark ? AppColors.textPrimaryDark : AppColors.textPrimaryLight,
-            ),
+            baseStyle: TextStyle(fontSize: 13, fontWeight: FontWeight.w600, color: isDark ? AppColors.textPrimaryDark : AppColors.textPrimaryLight),
             decoration: InputDecoration(
               isDense: true,
               contentPadding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8.5),
               filled: true,
               fillColor: isDark ? AppColors.surfaceDark : Theme.of(context).cardColor,
-              prefixIcon: const Icon(
-                Icons.toggle_on_outlined,
-                size: 16,
-                color: AppColors.primary,
-              ),
+              prefixIcon: const Icon(Icons.toggle_on_outlined, size: 16, color: AppColors.primary),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(10),
-                borderSide: BorderSide(
-                  color: isDark ? AppColors.borderDark : AppColors.borderLight,
-                  width: 1.0,
-                ),
+                borderSide: BorderSide(color: isDark ? AppColors.borderDark : AppColors.borderLight, width: 1.0),
               ),
               enabledBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(10),
-                borderSide: BorderSide(
-                  color: isDark ? AppColors.borderDark : AppColors.borderLight,
-                  width: 1.0,
-                ),
+                borderSide: BorderSide(color: isDark ? AppColors.borderDark : AppColors.borderLight, width: 1.0),
               ),
               focusedBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(10),
-                borderSide: const BorderSide(
-                  color: AppColors.primary,
-                  width: 1.5,
-                ),
+                borderSide: const BorderSide(color: AppColors.primary, width: 1.5),
               ),
             ),
           ),
@@ -1230,8 +989,10 @@ class UserScreen extends GetView<UserController> {
           child: Row(
             children: [
               // Gaushala Filter Dropdown
-              _buildGaushalaFilterDropdown(context, isDark, width: 210),
-              const SizedBox(width: 8),
+              if (controller.isSuperAdmin) ...[
+                _buildGaushalaFilterDropdown(context, isDark, width: 210),
+                const SizedBox(width: 8),
+              ],
 
               // Role Filter Dropdown
               _buildRoleFilterDropdown(context, isDark, width: 170),
@@ -1288,166 +1049,138 @@ class UserScreen extends GetView<UserController> {
             itemBuilder: (context, index) {
               final user = displayUsers[index];
 
-          return _HoverableListCard(
-            child: Padding(
-              padding: const EdgeInsets.all(16),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Top Row: Avatar + Name + Status switch
-                  Row(
+              return _HoverableListCard(
+                child: Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      _buildUserAvatar(user),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              user.name,
-                              style: const TextStyle(
-                                fontSize: 15,
-                                fontWeight: FontWeight.bold,
-                              ),
+                      // Top Row: Avatar + Name + Status switch
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          _buildUserAvatar(user),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(user.name, style: const TextStyle(fontSize: 15, fontWeight: FontWeight.bold)),
+                                if (user.username != null && user.username!.isNotEmpty) ...[
+                                  const SizedBox(height: 2),
+                                  Text(
+                                    '@${user.username}',
+                                    style: TextStyle(fontSize: 12, color: isDark ? AppColors.textMutedDark : AppColors.textMutedLight),
+                                  ),
+                                ],
+                              ],
                             ),
-                            if (user.username != null && user.username!.isNotEmpty) ...[
-                              const SizedBox(height: 2),
-                              Text(
-                                '@${user.username}',
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  color: isDark ? AppColors.textMutedDark : AppColors.textMutedLight,
-                                ),
-                              ),
-                            ],
-                          ],
-                        ),
-                      ),
-                      Switch.adaptive(
-                        value: user.isActive,
-                        activeThumbColor: AppColors.primary,
-                        onChanged: (val) => controller.toggleUserStatus(user, val),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 12),
-
-                  // Email
-                  Row(
-                    children: [
-                      const Icon(Icons.mail_outline_rounded, size: 15, color: AppColors.textMutedLight),
-                      const SizedBox(width: 6),
-                      Expanded(
-                        child: Text(
-                          user.email,
-                          style: TextStyle(
-                            fontSize: 13,
-                            color: isDark ? AppColors.textSecondaryDark : AppColors.textSecondaryLight,
                           ),
-                        ),
+                          Switch.adaptive(
+                            value: user.isActive,
+                            activeThumbColor: AppColors.primary,
+                            onChanged: (val) => controller.toggleUserStatus(user, val),
+                          ),
+                        ],
                       ),
-                    ],
-                  ),
-                  const SizedBox(height: 10),
+                      const SizedBox(height: 12),
 
-                  // Badges Row
-                  Wrap(
-                    spacing: 8,
-                    runSpacing: 6,
-                    children: [
-                      _buildRoleBadge(user.role),
-                      _buildGaushalaBadge(user.gaushalaName),
-                    ],
-                  ),
-                  const Divider(height: 20),
-
-                  // Bottom Row: Created date + actions
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        user.createdAt != null
-                            ? 'Created ${DateFormat('dd MMM yyyy').format(user.createdAt!)}'
-                            : '',
-                        style: TextStyle(
-                          fontSize: 11,
-                          color: isDark ? AppColors.textMutedDark : AppColors.textMutedLight,
-                        ),
-                      ),
+                      // Email
                       Row(
                         children: [
-                          IconButton(
-                            icon: const Icon(PhosphorIconsRegular.shieldCheck, size: 18),
-                            tooltip: 'Manage Permissions',
-                            color: AppColors.primary,
-                            visualDensity: VisualDensity.compact,
-                            onPressed: () => UserPermissionsScreen.show(
-                              context,
-                              userId: user.id,
-                              userName: user.name,
-                              userRole: user.role,
-                              isUserAdmin: user.isAdmin,
+                          const Icon(Icons.mail_outline_rounded, size: 15, color: AppColors.textMutedLight),
+                          const SizedBox(width: 6),
+                          Expanded(
+                            child: Text(
+                              user.email,
+                              style: TextStyle(fontSize: 13, color: isDark ? AppColors.textSecondaryDark : AppColors.textSecondaryLight),
                             ),
                           ),
-                          IconButton(
-                            icon: const Icon(Icons.lock_reset_rounded, size: 18),
-                            tooltip: 'Change Password',
-                            color: AppColors.warning,
-                            visualDensity: VisualDensity.compact,
-                            onPressed: () => controller.openChangePasswordDialog(context, user),
+                        ],
+                      ),
+                      const SizedBox(height: 10),
+
+                      // Badges Row
+                      Wrap(spacing: 8, runSpacing: 6, children: [_buildRoleBadge(user.role), _buildGaushalaBadge(user.gaushalaName)]),
+                      const Divider(height: 20),
+
+                      // Bottom Row: Created date + actions
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            user.createdAt != null ? 'Created ${DateFormat('dd MMM yyyy').format(user.createdAt!)}' : '',
+                            style: TextStyle(fontSize: 11, color: isDark ? AppColors.textMutedDark : AppColors.textMutedLight),
                           ),
-                          if (!user.isDeleted)
-                            PermissionGuard(
-                              moduleCode: PermissionModules.user,
-                              subModuleCode: PermissionSubModules.userList,
-                              action: PermissionAction.edit,
-                              child: IconButton(
-                                icon: const Icon(Icons.edit_outlined, size: 18),
-                                tooltip: 'Edit User',
-                                color: AppColors.info,
+                          Row(
+                            children: [
+                              IconButton(
+                                icon: const Icon(PhosphorIconsRegular.shieldCheck, size: 18),
+                                tooltip: 'Manage Permissions',
+                                color: AppColors.primary,
                                 visualDensity: VisualDensity.compact,
-                                onPressed: () => controller.openEditUserDialog(context, user),
+                                onPressed: () => UserPermissionsScreen.show(
+                                  context,
+                                  userId: user.id,
+                                  userName: user.name,
+                                  userRole: user.role,
+                                  isUserAdmin: user.isAdmin,
+                                ),
                               ),
-                            ),
-                          if (!user.isDeleted)
-                            PermissionGuard(
-                              moduleCode: PermissionModules.user,
-                              subModuleCode: PermissionSubModules.userList,
-                              action: PermissionAction.delete,
-                              child: IconButton(
-                                icon: const Icon(Icons.delete_outline_rounded, size: 18),
-                                tooltip: 'Delete User',
-                                color: AppColors.error,
+                              IconButton(
+                                icon: const Icon(Icons.lock_reset_rounded, size: 18),
+                                tooltip: 'Change Password',
+                                color: AppColors.warning,
                                 visualDensity: VisualDensity.compact,
-                                onPressed: () => controller.confirmDeleteUser(context, user),
+                                onPressed: () => controller.openChangePasswordDialog(context, user),
                               ),
-                            ),
+                              if (!user.isDeleted)
+                                PermissionGuard(
+                                  moduleCode: PermissionModules.user,
+                                  subModuleCode: PermissionSubModules.userList,
+                                  action: PermissionAction.edit,
+                                  child: IconButton(
+                                    icon: const Icon(Icons.edit_outlined, size: 18),
+                                    tooltip: 'Edit User',
+                                    color: AppColors.info,
+                                    visualDensity: VisualDensity.compact,
+                                    onPressed: () => controller.openEditUserDialog(context, user),
+                                  ),
+                                ),
+                              if (!user.isDeleted)
+                                PermissionGuard(
+                                  moduleCode: PermissionModules.user,
+                                  subModuleCode: PermissionSubModules.userList,
+                                  action: PermissionAction.delete,
+                                  child: IconButton(
+                                    icon: const Icon(Icons.delete_outline_rounded, size: 18),
+                                    tooltip: 'Delete User',
+                                    color: AppColors.error,
+                                    visualDensity: VisualDensity.compact,
+                                    onPressed: () => controller.confirmDeleteUser(context, user),
+                                  ),
+                                ),
+                            ],
+                          ),
                         ],
                       ),
                     ],
                   ),
-                ],
-              ),
-            ),
-          );
-        },
-      ),
+                ),
+              );
+            },
+          ),
           if (isMobile) ...[
             const SizedBox(height: 16),
-            MobileListBottomLoader(
-              hasMore: controller.hasMoreMobile,
-              totalCount: list.length,
-            ),
+            MobileListBottomLoader(hasMore: controller.hasMoreMobile, totalCount: list.length),
           ] else ...[
             const SizedBox(height: 14),
             Card(
               margin: EdgeInsets.zero,
+
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(12),
-                side: BorderSide(
-                  color: isDark ? AppColors.borderDark : AppColors.borderLight,
-                ),
+                side: BorderSide(color: isDark ? AppColors.borderDark : AppColors.borderLight),
               ),
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(12),
@@ -1463,8 +1196,8 @@ class UserScreen extends GetView<UserController> {
           ],
         ],
       );
-});
-}
+    });
+  }
 
   // -------------------------------------------------------------
   // HELPER WIDGETS
@@ -1490,11 +1223,7 @@ class UserScreen extends GetView<UserController> {
       backgroundColor: bgColor.withValues(alpha: 0.15),
       child: Text(
         initial,
-        style: TextStyle(
-          color: bgColor,
-          fontSize: 13,
-          fontWeight: FontWeight.bold,
-        ),
+        style: TextStyle(color: bgColor, fontSize: 13, fontWeight: FontWeight.bold),
       ),
     );
   }
@@ -1520,10 +1249,7 @@ class UserScreen extends GetView<UserController> {
 
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-      decoration: BoxDecoration(
-        color: bg,
-        borderRadius: BorderRadius.circular(6),
-      ),
+      decoration: BoxDecoration(color: bg, borderRadius: BorderRadius.circular(6)),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -1531,11 +1257,7 @@ class UserScreen extends GetView<UserController> {
           const SizedBox(width: 4),
           Text(
             roleName.isNotEmpty ? roleName : 'Staff',
-            style: TextStyle(
-              fontSize: 11,
-              fontWeight: FontWeight.bold,
-              color: color,
-            ),
+            style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: color),
           ),
         ],
       ),
@@ -1558,23 +1280,14 @@ class UserScreen extends GetView<UserController> {
           const SizedBox(width: 4),
           Text(
             name,
-            style: const TextStyle(
-              fontSize: 11,
-              fontWeight: FontWeight.w600,
-              color: AppColors.primary,
-            ),
+            style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: AppColors.primary),
           ),
         ],
       ),
     );
   }
 
-  static const TextStyle _headerStyle = TextStyle(
-    fontSize: 11,
-    fontWeight: FontWeight.bold,
-    letterSpacing: 0.6,
-    color: AppColors.textSecondaryLight,
-  );
+  static const TextStyle _headerStyle = TextStyle(fontSize: 11, fontWeight: FontWeight.bold, letterSpacing: 0.6, color: AppColors.textSecondaryLight);
 }
 
 // -------------------------------------------------------------
@@ -1624,23 +1337,11 @@ class _HoverableUserTableRowState extends State<_HoverableUserTableRow> {
         padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
         decoration: BoxDecoration(
           color: _isHovered
-              ? (isDark
-                  ? AppColors.surfaceDark.withValues(alpha: 0.85)
-                  : AppColors.primary.withValues(alpha: 0.045))
-              : (widget.index.isEven
-                  ? Colors.transparent
-                  : (isDark ? Colors.white.withValues(alpha: 0.015) : const Color(0xFFFAFCF9))),
+              ? (isDark ? AppColors.surfaceDark.withValues(alpha: 0.85) : AppColors.primary.withValues(alpha: 0.045))
+              : (widget.index.isEven ? Colors.transparent : (isDark ? Colors.white.withValues(alpha: 0.015) : const Color(0xFFFAFCF9))),
           border: Border(
-            top: BorderSide(
-              color: isDark ? AppColors.borderDark : AppColors.borderLight,
-              width: 0.6,
-            ),
-            left: BorderSide(
-              color: _isHovered
-                  ? (isDark ? AppColors.primaryLight : AppColors.primary)
-                  : Colors.transparent,
-              width: 3.5,
-            ),
+            top: BorderSide(color: isDark ? AppColors.borderDark : AppColors.borderLight, width: 0.6),
+            left: BorderSide(color: _isHovered ? (isDark ? AppColors.primaryLight : AppColors.primary) : Colors.transparent, width: 3.5),
           ),
         ),
         child: Row(
@@ -1688,10 +1389,7 @@ class _HoverableUserTableRowState extends State<_HoverableUserTableRow> {
                           const SizedBox(height: 2),
                           Text(
                             '@${user.username}',
-                            style: TextStyle(
-                              fontSize: 11,
-                              color: isDark ? AppColors.textMutedDark : AppColors.textMutedLight,
-                            ),
+                            style: TextStyle(fontSize: 11, color: isDark ? AppColors.textMutedDark : AppColors.textMutedLight),
                             overflow: TextOverflow.ellipsis,
                           ),
                         ],
@@ -1710,9 +1408,7 @@ class _HoverableUserTableRowState extends State<_HoverableUserTableRow> {
                   Icon(
                     Icons.mail_outline_rounded,
                     size: 14,
-                    color: _isHovered
-                        ? (isDark ? AppColors.primaryLight : AppColors.primary)
-                        : AppColors.textMutedLight,
+                    color: _isHovered ? (isDark ? AppColors.primaryLight : AppColors.primary) : AppColors.textMutedLight,
                   ),
                   const SizedBox(width: 6),
                   Expanded(
@@ -1734,19 +1430,13 @@ class _HoverableUserTableRowState extends State<_HoverableUserTableRow> {
             // Role Badge
             Expanded(
               flex: 3,
-              child: Align(
-                alignment: Alignment.centerLeft,
-                child: UserScreen._buildRoleBadge(user.role),
-              ),
+              child: Align(alignment: Alignment.centerLeft, child: UserScreen._buildRoleBadge(user.role)),
             ),
 
             // Gaushala Badge
             Expanded(
               flex: 3,
-              child: Align(
-                alignment: Alignment.centerLeft,
-                child: UserScreen._buildGaushalaBadge(user.gaushalaName),
-              ),
+              child: Align(alignment: Alignment.centerLeft, child: UserScreen._buildGaushalaBadge(user.gaushalaName)),
             ),
 
             // Status Switch
@@ -1757,11 +1447,7 @@ class _HoverableUserTableRowState extends State<_HoverableUserTableRow> {
                 child: Transform.scale(
                   scale: 0.8,
                   alignment: Alignment.centerLeft,
-                  child: Switch.adaptive(
-                    value: user.isActive,
-                    activeThumbColor: AppColors.primary,
-                    onChanged: widget.onToggleStatus,
-                  ),
+                  child: Switch.adaptive(value: user.isActive, activeThumbColor: AppColors.primary, onChanged: widget.onToggleStatus),
                 ),
               ),
             ),
@@ -1770,13 +1456,8 @@ class _HoverableUserTableRowState extends State<_HoverableUserTableRow> {
             Expanded(
               flex: 2,
               child: Text(
-                user.createdAt != null
-                    ? DateFormat('dd MMM yyyy').format(user.createdAt!)
-                    : '—',
-                style: TextStyle(
-                  fontSize: 12,
-                  color: isDark ? AppColors.textMutedDark : AppColors.textMutedLight,
-                ),
+                user.createdAt != null ? DateFormat('dd MMM yyyy').format(user.createdAt!) : '—',
+                style: TextStyle(fontSize: 12, color: isDark ? AppColors.textMutedDark : AppColors.textMutedLight),
               ),
             ),
 
@@ -1792,13 +1473,8 @@ class _HoverableUserTableRowState extends State<_HoverableUserTableRow> {
                       icon: const Icon(PhosphorIconsRegular.shieldCheck, size: 18),
                       color: _isHovered ? AppColors.primary : AppColors.primary.withValues(alpha: 0.8),
                       visualDensity: VisualDensity.compact,
-                      onPressed: () => UserPermissionsScreen.show(
-                        context,
-                        userId: user.id,
-                        userName: user.name,
-                        userRole: user.role,
-                        isUserAdmin: user.isAdmin,
-                      ),
+                      onPressed: () =>
+                          UserPermissionsScreen.show(context, userId: user.id, userName: user.name, userRole: user.role, isUserAdmin: user.isAdmin),
                     ),
                   ),
                   Tooltip(

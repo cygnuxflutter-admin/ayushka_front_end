@@ -527,8 +527,10 @@ class FeedItemScreen extends GetView<FeedItemController> {
             prefixIcon: const Icon(Icons.search_rounded, size: 20),
             onChanged: (val) => controller.searchQuery.value = val,
           ),
-          const SizedBox(height: 10),
-          _buildGaushalaFilterDropdown(context, isDark, isExpanded: true),
+          if (controller.isSuperAdmin) ...[
+            const SizedBox(height: 10),
+            _buildGaushalaFilterDropdown(context, isDark, isExpanded: true),
+          ],
           const SizedBox(height: 10),
           SingleChildScrollView(
             scrollDirection: Axis.horizontal,
@@ -555,9 +557,11 @@ class FeedItemScreen extends GetView<FeedItemController> {
         ),
         const SizedBox(width: 12),
 
-        // Gaushala Filter Dropdown
-        _buildGaushalaFilterDropdown(context, isDark),
-        const SizedBox(width: 12),
+        if (controller.isSuperAdmin) ...[
+          // Gaushala Filter Dropdown
+          _buildGaushalaFilterDropdown(context, isDark),
+          const SizedBox(width: 12),
+        ],
 
         // Category Filter Dropdown
         _buildCategoryFilterDropdown(context, isDark),
@@ -669,7 +673,9 @@ class FeedItemScreen extends GetView<FeedItemController> {
             showSearchBox: items.length > 6,
             menuProps: MenuProps(
               backgroundColor: isDark ? AppColors.surfaceDark : AppColors.cardLight,
-              borderRadius: BorderRadius.circular(10),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
             ),
           ),
         ),
@@ -731,7 +737,9 @@ class FeedItemScreen extends GetView<FeedItemController> {
           popupProps: PopupProps.menu(
             menuProps: MenuProps(
               backgroundColor: isDark ? AppColors.surfaceDark : AppColors.cardLight,
-              borderRadius: BorderRadius.circular(10),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
             ),
           ),
         ),

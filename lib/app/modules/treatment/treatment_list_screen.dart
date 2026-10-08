@@ -996,7 +996,10 @@ class TreatmentListScreen extends GetView<TreatmentController> {
           popupProps: PopupProps.menu(
             fit: FlexFit.loose,
             menuProps: MenuProps(
-              borderRadius: BorderRadius.circular(12),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+                side: BorderSide(color: isDark ? AppColors.borderDark : AppColors.borderLight),
+              ),
               backgroundColor: isDark ? AppColors.cardDark : AppColors.cardLight,
               elevation: 8,
             ),
@@ -1141,7 +1144,10 @@ class TreatmentListScreen extends GetView<TreatmentController> {
           popupProps: PopupProps.menu(
             fit: FlexFit.loose,
             menuProps: MenuProps(
-              borderRadius: BorderRadius.circular(12),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(12),
+                side: BorderSide(color: isDark ? AppColors.borderDark : AppColors.borderLight),
+              ),
               backgroundColor: isDark ? AppColors.cardDark : AppColors.cardLight,
               elevation: 8,
             ),

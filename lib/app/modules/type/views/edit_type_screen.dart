@@ -82,6 +82,7 @@ class _EditTypeScreenState extends State<EditTypeScreen> {
             return CustomDropdownSearch<GaushalaModel>(
               label: 'Assigned Gaushala',
               isRequired: true,
+              enabled: controller.isSuperAdmin,
               hint: 'Select Gaushala',
               prefixIcon: Icons.storefront_outlined,
               selectedItem: _selectedGaushala.value,

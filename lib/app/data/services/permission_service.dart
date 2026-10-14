@@ -35,16 +35,20 @@ class PermissionService extends GetxService with ChangeNotifier {
 
   /// Returns true if the user has Administrator privileges
   bool get isAdmin {
+    // Touch reactive variables so any Obx tracking isAdmin registers an active dependency
+    _version.value;
+    _isAdmin.value;
+
+    final user = _storageService.getUser();
+    if (user != null && (user.isAdmin || user.isSuperAdmin)) {
+      return true;
+    }
     if (_isInitialized.value) {
       return _isAdmin.value;
     }
     final cachedAdmin = _storageService.getIsAdminPermission();
     if (cachedAdmin != null) {
       return cachedAdmin;
-    }
-    final user = _storageService.getUser();
-    if (user != null) {
-      return user.isAdmin;
     }
     return _isAdmin.value;
   }
@@ -61,13 +65,17 @@ class PermissionService extends GetxService with ChangeNotifier {
   void loadFromCache() {
     final cached = _storageService.getUserPermissions();
     final cachedAdmin = _storageService.getIsAdminPermission();
+    final user = _storageService.getUser();
     if (cached != null && cached.isNotEmpty) {
       _permissions.assignAll(cached);
       _isInitialized.value = true;
     }
-    if (cachedAdmin != null) {
+    if (user != null && (user.isAdmin || user.isSuperAdmin)) {
+      _isAdmin.value = true;
+    } else if (cachedAdmin != null) {
       _isAdmin.value = cachedAdmin;
     }
+    _version.value++;
   }
 
   /// Initialize and refresh permissions from the server.
@@ -87,15 +95,15 @@ class PermissionService extends GetxService with ChangeNotifier {
       final response = await _apiService.getMyPermissions();
 
       _permissions.assignAll(response.permissions);
-      _isAdmin.value = response.isAdmin;
+      final user = _storageService.getUser();
+      _isAdmin.value = response.isAdmin || (user?.isAdmin ?? false) || (user?.isSuperAdmin ?? false);
       _isInitialized.value = true;
       _version.value++;
 
       // Save to local cache
-      await _storageService.saveUserPermissions(response.permissions, response.isAdmin);
+      await _storageService.saveUserPermissions(response.permissions, _isAdmin.value);
 
       // Keep stored user profile in sync with confirmed role
-      final user = _storageService.getUser();
       if (user != null && response.role.isNotEmpty && user.role != response.role) {
         await _storageService.saveUser(user.copyWith(role: response.role));
       }
@@ -138,6 +146,11 @@ class PermissionService extends GetxService with ChangeNotifier {
     required String subModule,
     required PermissionAction action,
   }) {
+    // Touch reactive variables so any Obx tracking hasPermission registers a dependency
+    _version.value;
+    _isAdmin.value;
+    _permissions.length;
+
     // 1. Admins have unrestricted access to everything
     if (isAdmin) return true;
 
@@ -188,6 +201,10 @@ class PermissionService extends GetxService with ChangeNotifier {
   /// Returns true if user has ANY permission (view, add, edit, or delete) on the submodule.
   /// If the user has none of these rights (or has no entry), returns false.
   bool hasAnySubModulePermission(String module, String subModule) {
+    _version.value;
+    _isAdmin.value;
+    _permissions.length;
+
     if (isAdmin) return true;
     final targetModule = module.trim().toUpperCase();
     final targetSubModule = subModule.trim().toUpperCase();
@@ -221,6 +238,10 @@ class PermissionService extends GetxService with ChangeNotifier {
   /// Returns true if user is Admin OR has at least one active permission (view, add, edit, delete)
   /// on ANY submodule belonging to that module.
   bool isModuleVisible(String module) {
+    _version.value;
+    _isAdmin.value;
+    _permissions.length;
+
     if (isAdmin) return true;
     final targetModule = module.trim().toUpperCase();
     return _permissions.any(

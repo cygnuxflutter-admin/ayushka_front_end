@@ -525,7 +525,7 @@ class _AddProductionDialogState extends State<AddProductionDialog> {
               selectedItem: _selectedCow,
               itemAsString: (c) => c.tagId.isNotEmpty ? '${c.tagId}${c.calfName != null ? " (${c.calfName})" : ""}' : c.id,
               onChanged: (c) => setState(() => _selectedCow = c),
-              prefixIcon: Icons.pets_rounded,
+              prefixIcon: PhosphorIconsRegular.cow,
             ),
             const SizedBox(height: 14),
 

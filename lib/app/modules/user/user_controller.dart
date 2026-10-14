@@ -54,6 +54,32 @@ class UserController extends GetxController {
   bool get canChangeGaushala => _gaushalaService.canChangeGaushala;
   bool get isSuperAdmin => _gaushalaService.isSuperAdmin;
 
+  /// Returns true if the given [user] is the currently logged-in user.
+  bool isCurrentUser(UserModel user) {
+    final current = currentUser.value ?? _storageService.getUser();
+    if (current == null) return false;
+    if (current.id.isNotEmpty && user.id.isNotEmpty && current.id == user.id) {
+      return true;
+    }
+    if (current.email.isNotEmpty && user.email.isNotEmpty &&
+        current.email.trim().toLowerCase() == user.email.trim().toLowerCase()) {
+      return true;
+    }
+    if (current.username != null && current.username!.isNotEmpty &&
+        user.username != null && user.username!.isNotEmpty &&
+        current.username!.trim().toLowerCase() == user.username!.trim().toLowerCase()) {
+      return true;
+    }
+    return false;
+  }
+
+  /// Returns true if [userId] is the ID of the currently logged-in user.
+  bool isCurrentUserId(String userId) {
+    final current = currentUser.value ?? _storageService.getUser();
+    if (current == null) return false;
+    return current.id.isNotEmpty && current.id == userId;
+  }
+
   /// Look up a Gaushala by ID, Name, or query
   GaushalaModel? findGaushala(String? query) {
     if (query == null || query.isEmpty) return null;
@@ -109,11 +135,16 @@ class UserController extends GetxController {
 
   List<UserModel> get filteredUsers {
     final query = searchQuery.value.trim().toLowerCase();
-    final filterGId = selectedGaushalaFilter.value;
+    final filterGId = isSuperAdmin ? selectedGaushalaFilter.value : _gaushalaService.selectedGaushalaId;
     final filterRId = selectedRoleFilter.value;
     final status = selectedStatusFilter.value;
 
     return users.where((u) {
+      // 0. Super Admin should never be displayed in the users list
+      if (u.isSuperAdmin) {
+        return false;
+      }
+
       // 1. Gaushala Filter
       if (filterGId != null && filterGId.isNotEmpty && filterGId != 'all') {
         final matchesId = u.gaushalaId == filterGId;
@@ -122,6 +153,8 @@ class UserController extends GetxController {
         if (!matchesId && !matchesName) {
           return false;
         }
+      } else if (!isSuperAdmin) {
+        return false;
       }
 
       // 2. Role Filter
@@ -193,7 +226,7 @@ class UserController extends GetxController {
 
     // Hydrate from cache immediately
     if (_cachedUsers.isNotEmpty) {
-      users.assignAll(_cachedUsers);
+      users.assignAll(_cachedUsers.where((u) => !u.isSuperAdmin));
     }
 
     // Fetch initial data
@@ -251,7 +284,11 @@ class UserController extends GetxController {
     isLoadingRoles.value = true;
     try {
       final list = await _apiService.getRoles();
-      roles.assignAll(list);
+      final filteredList = list.where((r) {
+        final rName = r.roleName.toLowerCase().replaceAll(' ', '').replaceAll('_', '').replaceAll('-', '');
+        return rName != 'superadmin' && !rName.contains('superadmin');
+      }).toList();
+      roles.assignAll(filteredList);
     } catch (_) {
       // Dio interceptor handles toast
     } finally {
@@ -263,6 +300,15 @@ class UserController extends GetxController {
   Future<void> fetchGaushalas() async {
     isLoadingGaushalas.value = true;
     try {
+      if (!isSuperAdmin) {
+        final assigned = _gaushalaService.selectedGaushala.value ?? _gaushalaService.getUserDefaultGaushala();
+        if (assigned != null) {
+          gaushalas.assignAll([assigned]);
+        } else {
+          gaushalas.clear();
+        }
+        return;
+      }
       final list = await _apiService.getGaushalas();
       gaushalas.assignAll(list);
     } catch (_) {
@@ -285,11 +331,15 @@ class UserController extends GetxController {
     }
 
     try {
-      final result = await _apiService.getUsers();
+      final gId = isSuperAdmin ? selectedGaushalaFilter.value : _gaushalaService.selectedGaushalaId;
+      final result = await _apiService.getUsers(
+        gaushalaId: (gId != null && gId.isNotEmpty && gId != 'all') ? gId : null,
+      );
+      final nonSuperAdminUsers = result.where((u) => !u.isSuperAdmin).toList();
       _cachedUsers
         ..clear()
-        ..addAll(result);
-      users.assignAll(result);
+        ..addAll(nonSuperAdminUsers);
+      users.assignAll(nonSuperAdminUsers);
 
       if (isManualRefresh) {
         CustomSnackbar.showSuccess(
@@ -356,6 +406,13 @@ class UserController extends GetxController {
     required String gaushalaId,
     bool? isActive,
   }) async {
+    if (isCurrentUserId(id)) {
+      CustomSnackbar.showWarning(
+        title: 'Action Not Allowed',
+        message: 'Admins cannot edit their own account.',
+      );
+      return false;
+    }
     isSubmitting.value = true;
     try {
       final updated = await _apiService.updateUser(
@@ -387,6 +444,13 @@ class UserController extends GetxController {
 
   /// Deletes a user via DELETE /api/v1/users/:id
   Future<void> deleteUser(String id) async {
+    if (isCurrentUserId(id)) {
+      CustomSnackbar.showWarning(
+        title: 'Action Not Allowed',
+        message: 'You cannot delete your own account.',
+      );
+      return;
+    }
     isLoading.value = true;
     try {
       final success = await _apiService.deleteUser(id);
@@ -428,6 +492,13 @@ class UserController extends GetxController {
 
   /// Toggles a user's active status with optimistic update and rollback on failure.
   Future<void> toggleUserStatus(UserModel user, bool newStatus) async {
+    if (isCurrentUser(user)) {
+      CustomSnackbar.showWarning(
+        title: 'Action Not Allowed',
+        message: 'You cannot change the status of your own account.',
+      );
+      return;
+    }
     final index = users.indexWhere((u) => u.id == user.id);
     if (index == -1) return;
 
@@ -775,6 +846,14 @@ class UserController extends GetxController {
 
   /// Opens Dialog to Edit User
   void openEditUserDialog(BuildContext context, UserModel user) {
+    if (isCurrentUser(user)) {
+      CustomSnackbar.showWarning(
+        title: 'Action Not Allowed',
+        message: 'Admins cannot edit their own account.',
+      );
+      return;
+    }
+
     if (ResponsiveLayout.isMobile(context)) {
       Get.to(() => EditUserScreen(user: user));
       return;
@@ -1053,6 +1132,13 @@ class UserController extends GetxController {
 
   /// Opens Confirm Delete User dialog
   void confirmDeleteUser(BuildContext context, UserModel user) {
+    if (isCurrentUser(user)) {
+      CustomSnackbar.showWarning(
+        title: 'Action Not Allowed',
+        message: 'You cannot delete your own account.',
+      );
+      return;
+    }
     Get.dialog(
       AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
@@ -1111,11 +1197,8 @@ class UserController extends GetxController {
   /// Opens Change / Reset Password dialog for a specific user.
   void openChangePasswordDialog(BuildContext context, UserModel user) {
     final formKey = GlobalKey<FormState>();
-    final oldPasswordController = TextEditingController();
     final newPasswordController = TextEditingController();
-    final confirmPasswordController = TextEditingController();
 
-    final bool isAdmin = user.isAdmin;
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     Get.dialog(
@@ -1187,25 +1270,7 @@ class UserController extends GetxController {
                   ),
                   const SizedBox(height: 20),
 
-                  // Old Password (Only for other non-admin users)
-                  if (!isAdmin) ...[
-                    CustomTextField(
-                      controller: oldPasswordController,
-                      label: 'Old Password *',
-                      hint: 'Enter current password',
-                      isPassword: true,
-                      prefixIcon: const Icon(Icons.lock_outline_rounded, size: 18),
-                      validator: (val) {
-                        if (val == null || val.trim().isEmpty) {
-                          return 'Old password is required';
-                        }
-                        return null;
-                      },
-                    ),
-                    const SizedBox(height: 16),
-                  ],
-
-                  // New Password (Always present)
+                  // New Password (Single field)
                   CustomTextField(
                     controller: newPasswordController,
                     label: 'New Password *',
@@ -1219,33 +1284,9 @@ class UserController extends GetxController {
                       if (val.length < 6) {
                         return 'Password must be at least 6 characters';
                       }
-                      if (!isAdmin && val == oldPasswordController.text) {
-                        return 'New password cannot be identical to old password';
-                      }
                       return null;
                     },
                   ),
-
-                  // Confirm New Password (Only for other non-admin users)
-                  if (!isAdmin) ...[
-                    const SizedBox(height: 16),
-                    CustomTextField(
-                      controller: confirmPasswordController,
-                      label: 'Confirm New Password *',
-                      hint: 'Re-enter new password',
-                      isPassword: true,
-                      prefixIcon: const Icon(Icons.lock_outline_rounded, size: 18),
-                      validator: (val) {
-                        if (val == null || val.trim().isEmpty) {
-                          return 'Please confirm your new password';
-                        }
-                        if (val != newPasswordController.text) {
-                          return 'Passwords do not match';
-                        }
-                        return null;
-                      },
-                    ),
-                  ],
                   const SizedBox(height: 24),
 
                   // Dialog Actions
@@ -1274,7 +1315,6 @@ class UserController extends GetxController {
                             if (formKey.currentState?.validate() ?? false) {
                               final success = await changePassword(
                                 userId: user.id,
-                                oldPassword: isAdmin ? null : oldPasswordController.text.trim(),
                                 newPassword: newPasswordController.text.trim(),
                               );
 

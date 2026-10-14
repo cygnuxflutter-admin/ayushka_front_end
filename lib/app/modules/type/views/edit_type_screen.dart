@@ -24,11 +24,13 @@ class _EditTypeScreenState extends State<EditTypeScreen> {
   late final TextEditingController _nameController;
   final TypeController controller = Get.find<TypeController>();
   late final Rxn<GaushalaModel> _selectedGaushala;
+  late final RxString _selectedTag;
 
   @override
   void initState() {
     super.initState();
     _nameController = TextEditingController(text: widget.type.typeName);
+    _selectedTag = RxString(widget.type.tag.isNotEmpty ? widget.type.tag : 'both');
 
     if (controller.gaushalas.isEmpty) {
       controller.fetchGaushalas();
@@ -57,6 +59,7 @@ class _EditTypeScreenState extends State<EditTypeScreen> {
       widget.type.id,
       _nameController.text,
       gaushalaId: _selectedGaushala.value?.id,
+      tag: _selectedTag.value,
     );
 
     if (success && mounted) {
@@ -66,12 +69,13 @@ class _EditTypeScreenState extends State<EditTypeScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
     return Obx(
       () => MobileEditScaffold(
         title: 'Edit Type',
         icon: Icons.edit_rounded,
         headerIconColor: AppColors.info,
-        subtitle: 'Update classification name for "${widget.type.typeName}"',
+        subtitle: 'Update classification name and tag for "${widget.type.typeName}"',
         formKey: _formKey,
         isSaving: controller.isSubmitting.value,
         saveText: 'Save Changes',
@@ -113,6 +117,18 @@ class _EditTypeScreenState extends State<EditTypeScreen> {
               return null;
             },
           ),
+          const SizedBox(height: 16),
+
+          // Applicable Gender / Tag
+          const Text(
+            'Applicable Gender / Tag *',
+            style: TextStyle(
+              fontSize: 13,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+          const SizedBox(height: 8),
+          controller.buildTagSelector(_selectedTag, isDark: isDark),
         ],
       ),
     );

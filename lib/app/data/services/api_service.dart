@@ -25,6 +25,8 @@ import '../models/user_model.dart';
 import '../models/worker_model.dart';
 import '../../../models/permission_model.dart';
 import '../models/dashboard_alerts_model.dart';
+import '../models/cow_heat_model.dart';
+import '../models/cow_mating_model.dart';
 import 'storage_service.dart';
 
 /// Centralized HTTP networking service powered by Dio.
@@ -62,6 +64,17 @@ class ApiService extends getx.GetxService {
     _dio.interceptors.add(
       InterceptorsWrapper(
         onRequest: (RequestOptions options, RequestInterceptorHandler handler) {
+          // Strictly allow only GET and POST APIs across the application
+          final currentMethod = options.method.toUpperCase();
+          if (currentMethod == 'DELETE') {
+            options.method = 'POST';
+            if (!options.path.endsWith('/delete')) {
+              options.path = '${options.path}/delete';
+            }
+          } else if (currentMethod != 'GET' && currentMethod != 'POST') {
+            options.method = 'POST';
+          }
+
           final isAuthPath = options.path.contains('/auth/login') ||
               options.path.contains('/auth/refresh-token');
           if (!isAuthPath) {
@@ -135,7 +148,13 @@ class ApiService extends getx.GetxService {
             return handler.next(error);
           }
 
-          _handleHttpError(error);
+          final bool isSilent = error.requestOptions.extra['silent'] == true ||
+              error.requestOptions.extra['suppressError'] == true ||
+              error.requestOptions.extra['suppressErrorSnackbar'] == true;
+
+          if (!isSilent) {
+            _handleHttpError(error);
+          }
           return handler.next(error);
         },
       ),
@@ -241,7 +260,15 @@ class ApiService extends getx.GetxService {
     Map<String, dynamic>? queryParameters,
     Options? options,
   }) async {
-    return await _dio.delete<T>(path, data: data, queryParameters: queryParameters, options: options);
+    final String postPath = path.endsWith('/delete') ? path : '$path/delete';
+    try {
+      return await _dio.post<T>(postPath, data: data, queryParameters: queryParameters, options: options);
+    } on DioException catch (e) {
+      if (e.response?.statusCode == 404 || e.response?.statusCode == 405) {
+        return await _dio.post<T>(path, data: data, queryParameters: queryParameters, options: options);
+      }
+      rethrow;
+    }
   }
 
   // -------------------------------------------------------------
@@ -454,8 +481,18 @@ class ApiService extends getx.GetxService {
   }
 
   Future<bool> deleteRole(String id) async {
-    final response = await _dio.delete('/roles/$id');
-    return response.statusCode == 200 || response.statusCode == 204;
+    final cleanId = id.trim();
+    Response response;
+    try {
+      response = await _dio.post('/roles/$cleanId/delete');
+    } on DioException catch (e) {
+      if (e.response?.statusCode == 404 || e.response?.statusCode == 405) {
+        response = await _dio.post('/roles/$cleanId');
+      } else {
+        rethrow;
+      }
+    }
+    return response.statusCode == 200 || response.statusCode == 201 || response.statusCode == 204;
   }
 
   // -------------------------------------------------------------
@@ -655,8 +692,18 @@ class ApiService extends getx.GetxService {
   }
 
   Future<bool> deleteShed(String id) async {
-    final response = await _dio.delete('/sheds/$id');
-    return response.statusCode == 200 || response.statusCode == 204;
+    final cleanId = id.trim();
+    Response response;
+    try {
+      response = await _dio.post('/sheds/$cleanId/delete');
+    } on DioException catch (e) {
+      if (e.response?.statusCode == 404 || e.response?.statusCode == 405) {
+        response = await _dio.post('/sheds/$cleanId');
+      } else {
+        rethrow;
+      }
+    }
+    return response.statusCode == 200 || response.statusCode == 201 || response.statusCode == 204;
   }
 
   // -------------------------------------------------------------
@@ -702,6 +749,10 @@ class ApiService extends getx.GetxService {
 
         if (responseData['data'] is Map) {
           return BreedModel.fromJson(Map<String, dynamic>.from(responseData['data'] as Map));
+        } else if (responseData['breed'] is Map) {
+          return BreedModel.fromJson(Map<String, dynamic>.from(responseData['breed'] as Map));
+        } else if (responseData.containsKey('breedName') || responseData.containsKey('name')) {
+          return BreedModel.fromJson(responseData);
         }
       }
     }
@@ -761,22 +812,39 @@ class ApiService extends getx.GetxService {
   }
 
   Future<bool> deleteBreedType(String id) async {
-    final response = await _dio.delete('/breed-types/$id');
-    return response.statusCode == 200 || response.statusCode == 204;
+    final cleanId = id.trim();
+    Response response;
+    try {
+      response = await _dio.post('/breed-types/$cleanId/delete');
+    } on DioException catch (e) {
+      if (e.response?.statusCode == 404 || e.response?.statusCode == 405) {
+        response = await _dio.post('/breed-types/$cleanId');
+      } else {
+        rethrow;
+      }
+    }
+    return response.statusCode == 200 || response.statusCode == 201 || response.statusCode == 204;
   }
 
   // -------------------------------------------------------------
   // TYPES MASTER
   // -------------------------------------------------------------
-  Future<List<TypeModel>> getTypes({String? gaushalaId}) async {
+  Future<List<TypeModel>> getTypes({String? gaushalaId, String? tag}) async {
     final cleanGaushalaId = gaushalaId?.trim();
     if (cleanGaushalaId == null || cleanGaushalaId.isEmpty || cleanGaushalaId == 'all') {
       return <TypeModel>[];
     }
 
+    final Map<String, dynamic> queryParameters = {
+      'gaushalaId': cleanGaushalaId,
+    };
+    if (tag != null && tag.trim().isNotEmpty && tag.trim().toLowerCase() != 'all') {
+      queryParameters['tag'] = tag.trim();
+    }
+
     final response = await _dio.get(
       '/types',
-      queryParameters: {'gaushalaId': cleanGaushalaId},
+      queryParameters: queryParameters,
     );
     if (response.statusCode == 200 && response.data != null) {
       if (response.data is List) {
@@ -805,13 +873,20 @@ class ApiService extends getx.GetxService {
     return [];
   }
 
-  Future<TypeModel> createType(String typeName, {String? gaushalaId}) async {
+  Future<TypeModel> createType(
+    String typeName, {
+    String? gaushalaId,
+    String? tag,
+  }) async {
     final Map<String, dynamic> data = {
       'typeName': typeName.trim(),
     };
     if (gaushalaId != null && gaushalaId.trim().isNotEmpty) {
       data['gaushalaId'] = gaushalaId.trim();
       data['gaushala_id'] = gaushalaId.trim();
+    }
+    if (tag != null && tag.trim().isNotEmpty) {
+      data['tag'] = tag.trim();
     }
 
     final response = await _dio.post(
@@ -840,13 +915,21 @@ class ApiService extends getx.GetxService {
     );
   }
 
-  Future<TypeModel> updateType(String id, String typeName, {String? gaushalaId}) async {
+  Future<TypeModel> updateType(
+    String id,
+    String typeName, {
+    String? gaushalaId,
+    String? tag,
+  }) async {
     final Map<String, dynamic> data = {
       'typeName': typeName.trim(),
     };
     if (gaushalaId != null && gaushalaId.trim().isNotEmpty) {
       data['gaushalaId'] = gaushalaId.trim();
       data['gaushala_id'] = gaushalaId.trim();
+    }
+    if (tag != null && tag.trim().isNotEmpty) {
+      data['tag'] = tag.trim();
     }
 
     Response response;
@@ -892,8 +975,18 @@ class ApiService extends getx.GetxService {
   }
 
   Future<bool> deleteType(String id) async {
-    final response = await _dio.delete('/types/$id');
-    return response.statusCode == 200 || response.statusCode == 204;
+    final cleanId = id.trim();
+    Response response;
+    try {
+      response = await _dio.post('/types/$cleanId/delete');
+    } on DioException catch (e) {
+      if (e.response?.statusCode == 404 || e.response?.statusCode == 405) {
+        response = await _dio.post('/types/$cleanId');
+      } else {
+        rethrow;
+      }
+    }
+    return response.statusCode == 200 || response.statusCode == 201 || response.statusCode == 204;
   }
 
   // -------------------------------------------------------------
@@ -1046,8 +1139,18 @@ class ApiService extends getx.GetxService {
   }
 
   Future<bool> deleteFeedItem(String id) async {
-    final response = await _dio.delete('/feed-stock/items/$id');
-    return response.statusCode == 200 || response.statusCode == 204;
+    final cleanId = id.trim();
+    Response response;
+    try {
+      response = await _dio.post('/feed-stock/items/$cleanId/delete');
+    } on DioException catch (e) {
+      if (e.response?.statusCode == 404 || e.response?.statusCode == 405) {
+        response = await _dio.post('/feed-stock/items/$cleanId');
+      } else {
+        rethrow;
+      }
+    }
+    return response.statusCode == 200 || response.statusCode == 201 || response.statusCode == 204;
   }
 
   // -------------------------------------------------------------
@@ -1161,13 +1264,32 @@ class ApiService extends getx.GetxService {
     if (response.statusCode == 200 || response.statusCode == 201) {
       if (response.data != null) {
         final responseData = response.data;
-        if (responseData is Map && responseData['data'] != null) {
+        if (responseData is Map) {
           final dataMap = responseData['data'];
-          if (dataMap is Map && dataMap['transaction'] != null) {
-            return FeedStockTransactionModel.fromJson(Map<String, dynamic>.from(dataMap['transaction'] as Map));
-          } else if (dataMap is Map) {
+          if (dataMap is Map) {
+            if (dataMap['transaction'] != null && dataMap['transaction'] is Map) {
+              return FeedStockTransactionModel.fromJson(Map<String, dynamic>.from(dataMap['transaction'] as Map));
+            }
             return FeedStockTransactionModel.fromJson(Map<String, dynamic>.from(dataMap));
+          } else if (responseData['transaction'] != null && responseData['transaction'] is Map) {
+            return FeedStockTransactionModel.fromJson(Map<String, dynamic>.from(responseData['transaction'] as Map));
+          } else if (responseData.containsKey('_id') || responseData.containsKey('type') || responseData.containsKey('quantity')) {
+            return FeedStockTransactionModel.fromJson(Map<String, dynamic>.from(responseData));
           }
+          // Fallback if successful but minimal payload
+          return FeedStockTransactionModel(
+            id: responseData['_id']?.toString() ?? responseData['id']?.toString() ?? '',
+            gaushalaId: request.gaushalaId,
+            itemId: request.itemId,
+            itemName: '',
+            type: 'INWARD',
+            reason: request.reason,
+            quantity: request.quantity,
+            unit: request.unit,
+            ratePerUnit: request.ratePerUnit ?? 0.0,
+            transactionDate: request.transactionDate,
+            notes: request.notes ?? '',
+          );
         }
       }
     }
@@ -1188,13 +1310,32 @@ class ApiService extends getx.GetxService {
     if (response.statusCode == 200 || response.statusCode == 201) {
       if (response.data != null) {
         final responseData = response.data;
-        if (responseData is Map && responseData['data'] != null) {
+        if (responseData is Map) {
           final dataMap = responseData['data'];
-          if (dataMap is Map && dataMap['transaction'] != null) {
-            return FeedStockTransactionModel.fromJson(Map<String, dynamic>.from(dataMap['transaction'] as Map));
-          } else if (dataMap is Map) {
+          if (dataMap is Map) {
+            if (dataMap['transaction'] != null && dataMap['transaction'] is Map) {
+              return FeedStockTransactionModel.fromJson(Map<String, dynamic>.from(dataMap['transaction'] as Map));
+            }
             return FeedStockTransactionModel.fromJson(Map<String, dynamic>.from(dataMap));
+          } else if (responseData['transaction'] != null && responseData['transaction'] is Map) {
+            return FeedStockTransactionModel.fromJson(Map<String, dynamic>.from(responseData['transaction'] as Map));
+          } else if (responseData.containsKey('_id') || responseData.containsKey('type') || responseData.containsKey('quantity')) {
+            return FeedStockTransactionModel.fromJson(Map<String, dynamic>.from(responseData));
           }
+          // Fallback if successful but minimal payload
+          return FeedStockTransactionModel(
+            id: responseData['_id']?.toString() ?? responseData['id']?.toString() ?? '',
+            gaushalaId: request.gaushalaId,
+            itemId: request.itemId,
+            itemName: '',
+            type: 'OUTWARD',
+            reason: request.reason,
+            quantity: request.quantity,
+            unit: request.unit,
+            shedId: request.shedId,
+            transactionDate: request.transactionDate,
+            notes: request.notes ?? '',
+          );
         }
       }
     }
@@ -2022,21 +2163,20 @@ class ApiService extends getx.GetxService {
   }
 
   /// Deletes a Medical Item SKU (Soft delete)
-  /// DELETE /medical-stock/items/:id or POST /medical-stock/items/:id/delete
+  /// POST /medical-stock/items/:id/delete
   Future<bool> deleteMedicalItem(String id) async {
+    final cleanId = id.trim();
+    Response response;
     try {
-      final response = await _dio.delete('/medical-stock/items/$id');
-      if (response.statusCode == 200 || response.statusCode == 204) {
-        return true;
-      }
+      response = await _dio.post('/medical-stock/items/$cleanId/delete');
     } on DioException catch (e) {
       if (e.response?.statusCode == 404 || e.response?.statusCode == 405) {
-        final response = await _dio.post('/medical-stock/items/$id/delete');
-        return response.statusCode == 200 || response.statusCode == 204;
+        response = await _dio.post('/medical-stock/items/$cleanId');
+      } else {
+        rethrow;
       }
-      rethrow;
     }
-    return false;
+    return response.statusCode == 200 || response.statusCode == 201 || response.statusCode == 204;
   }
 
   /// Records Stock Inward with single or dynamic multi-batch array
@@ -3295,7 +3435,8 @@ class ApiService extends getx.GetxService {
   }
 
   /// Aggregated Alerts Summary: GET /dashboard/alerts-summary?gaushalaId={gaushalaId}
-  /// Returns consolidated alert metrics across treatments, milk, medical stock, and feed.
+  /// (with fallback to /dashboard/alerts)
+  /// Returns consolidated alert metrics across treatments, milk, medical stock, feed, heats, and matings.
   Future<DashboardAlertsSummaryResponse?> getDashboardAlertsSummary({
     required String gaushalaId,
   }) async {
@@ -3303,10 +3444,24 @@ class ApiService extends getx.GetxService {
     if (cleanGId.isEmpty) return null;
 
     try {
-      final response = await _dio.get(
-        '/dashboard/alerts-summary',
-        queryParameters: {'gaushalaId': cleanGId},
-      );
+      Response response;
+      try {
+        response = await _dio.get(
+          '/dashboard/alerts-summary',
+          queryParameters: {'gaushalaId': cleanGId},
+          options: Options(extra: {'silent': true}),
+        );
+      } on DioException catch (e) {
+        if (e.response?.statusCode == 404 || e.response?.statusCode == 405) {
+          response = await _dio.get(
+            '/dashboard/alerts',
+            queryParameters: {'gaushalaId': cleanGId},
+            options: Options(extra: {'silent': true}),
+          );
+        } else {
+          rethrow;
+        }
+      }
 
       if (response.statusCode == 200 && response.data != null) {
         final resData = response.data;
@@ -3335,6 +3490,7 @@ class ApiService extends getx.GetxService {
       final response = await _dio.get(
         '/feed-stock/items/low-stock',
         queryParameters: queryParams.isNotEmpty ? queryParams : null,
+        options: Options(extra: {'silent': true}),
       );
 
       if (response.statusCode == 200 && response.data != null) {
@@ -3543,18 +3699,18 @@ class ApiService extends getx.GetxService {
     return [];
   }
 
-  /// 5. PUT /api/v1/modules/:id (with fallback to POST /api/v1/modules/:id/update)
+  /// 5. POST /api/v1/modules/:id/update (with fallback to POST /api/v1/modules/:id)
   Future<ModuleModel> updateModule(String id, Map<String, dynamic> data) async {
     Response response;
     try {
-      response = await _dio.put(
-        '/modules/${id.trim()}',
+      response = await _dio.post(
+        '/modules/${id.trim()}/update',
         data: data,
       );
     } on DioException catch (e) {
       if (e.response?.statusCode == 404 || e.response?.statusCode == 405) {
         response = await _dio.post(
-          '/modules/${id.trim()}/update',
+          '/modules/${id.trim()}',
           data: data,
         );
       } else {
@@ -3575,20 +3731,21 @@ class ApiService extends getx.GetxService {
     );
   }
 
-  /// 6. DELETE /api/v1/modules/:id (with fallback to POST /api/v1/modules/:id/delete)
+  /// 6. POST /api/v1/modules/:id/delete
   Future<bool> deleteModule(String id) async {
+    final cleanId = id.trim();
     Response response;
     try {
-      response = await _dio.delete('/modules/${id.trim()}');
+      response = await _dio.post('/modules/$cleanId/delete');
     } on DioException catch (e) {
       if (e.response?.statusCode == 404 || e.response?.statusCode == 405) {
-        response = await _dio.post('/modules/${id.trim()}/delete');
+        response = await _dio.post('/modules/$cleanId');
       } else {
         rethrow;
       }
     }
 
-    return response.statusCode == 200 || response.statusCode == 204;
+    return response.statusCode == 200 || response.statusCode == 201 || response.statusCode == 204;
   }
 
   /// 7. POST /api/v1/modules/:id/submodules
@@ -3612,24 +3769,25 @@ class ApiService extends getx.GetxService {
   }
 
   /// 8. POST /api/v1/modules/:id/submodules/:subModuleCode/delete
-  /// (with fallback to DELETE /api/v1/modules/:id/submodules/:subModuleCode)
   Future<ModuleModel> deleteSubModule(String moduleId, String subModuleCode) async {
+    final cleanModuleId = moduleId.trim();
+    final cleanSubCode = subModuleCode.trim();
     Response response;
     try {
       response = await _dio.post(
-        '/modules/${moduleId.trim()}/submodules/${subModuleCode.trim()}/delete',
+        '/modules/$cleanModuleId/submodules/$cleanSubCode/delete',
       );
     } on DioException catch (e) {
       if (e.response?.statusCode == 404 || e.response?.statusCode == 405) {
-        response = await _dio.delete(
-          '/modules/${moduleId.trim()}/submodules/${subModuleCode.trim()}',
+        response = await _dio.post(
+          '/modules/$cleanModuleId/submodules/$cleanSubCode',
         );
       } else {
         rethrow;
       }
     }
 
-    if (response.statusCode == 200 || response.statusCode == 204) {
+    if (response.statusCode == 200 || response.statusCode == 201 || response.statusCode == 204) {
       if (response.data != null && response.data is Map) {
         return _parseModule(response.data);
       }
@@ -3641,6 +3799,610 @@ class ApiService extends getx.GetxService {
       response: response,
       message: response.data?['message']?.toString() ?? 'Failed to delete sub-module.',
     );
+  }
+
+  // ===========================================================================
+  // COW HEAT MANAGEMENT APIS (/api/v1/heats)
+  // ===========================================================================
+
+  /// List Paginated Cow Heat Records:
+  /// GET /heats?gaushalaId={gaushalaId}&cowId={cowId}&status={status}&heatStage={stage}&intensity={intensity}&isRepeatHeatAlert={bool}&startDate={date}&endDate={date}&search={query}&page={page}&limit={limit}
+  Future<HeatPaginatedResult> getHeats({
+    required String gaushalaId,
+    String? cowId,
+    String? status,
+    String? heatStage,
+    String? intensity,
+    bool? isRepeatHeatAlert,
+    DateTime? startDate,
+    DateTime? endDate,
+    String? search,
+    int page = 1,
+    int limit = 10,
+  }) async {
+    final cleanGId = gaushalaId.trim();
+    final Map<String, dynamic> queryParams = {
+      'page': page,
+      'limit': limit,
+    };
+
+    if (cleanGId.isNotEmpty && cleanGId != 'all') {
+      queryParams['gaushalaId'] = cleanGId;
+    }
+    if (cowId != null && cowId.trim().isNotEmpty) {
+      queryParams['cowId'] = cowId.trim();
+    }
+    if (status != null && status.trim().isNotEmpty && status != 'ALL') {
+      queryParams['status'] = status.trim();
+    }
+    if (heatStage != null && heatStage.trim().isNotEmpty && heatStage != 'ALL') {
+      queryParams['heatStage'] = heatStage.trim();
+    }
+    if (intensity != null && intensity.trim().isNotEmpty && intensity != 'ALL') {
+      queryParams['intensity'] = intensity.trim();
+    }
+    if (isRepeatHeatAlert != null) {
+      queryParams['isRepeatHeatAlert'] = isRepeatHeatAlert;
+    }
+    if (search != null && search.trim().isNotEmpty) {
+      queryParams['search'] = search.trim();
+    }
+    if (startDate != null) {
+      queryParams['startDate'] = startDate.toIso8601String().substring(0, 10);
+    }
+    if (endDate != null) {
+      queryParams['endDate'] = endDate.toIso8601String().substring(0, 10);
+    }
+
+    try {
+      final response = await _dio.get(
+        '/heats',
+        queryParameters: queryParams,
+      );
+
+      if (response.statusCode == 200 && response.data != null) {
+        final resData = response.data;
+        List<CowHeatModel> items = [];
+        int total = 0;
+        int resPage = page;
+        int resLimit = limit;
+        int totalPages = 1;
+
+        if (resData is Map) {
+          final dataSection = resData['data'];
+          if (dataSection is List) {
+            items = dataSection
+                .whereType<Map>()
+                .map((h) => CowHeatModel.fromJson(Map<String, dynamic>.from(h)))
+                .toList();
+          } else if (dataSection is Map) {
+            final subList = dataSection['heats'] ?? dataSection['items'] ?? dataSection['data'];
+            if (subList is List) {
+              items = subList
+                  .whereType<Map>()
+                  .map((h) => CowHeatModel.fromJson(Map<String, dynamic>.from(h)))
+                  .toList();
+            }
+          }
+
+          if (resData['pagination'] is Map) {
+            final p = resData['pagination'] as Map;
+            total = int.tryParse(p['total']?.toString() ?? '') ?? items.length;
+            resPage = int.tryParse(p['page']?.toString() ?? '') ?? page;
+            resLimit = int.tryParse(p['limit']?.toString() ?? '') ?? limit;
+            totalPages = int.tryParse(p['totalPages']?.toString() ?? '') ?? ((total / resLimit).ceil());
+          } else {
+            total = int.tryParse(resData['total']?.toString() ?? resData['count']?.toString() ?? '') ?? items.length;
+            totalPages = total > 0 ? (total / resLimit).ceil() : 1;
+          }
+        } else if (resData is List) {
+          items = resData
+              .whereType<Map>()
+              .map((h) => CowHeatModel.fromJson(Map<String, dynamic>.from(h)))
+              .toList();
+          total = items.length;
+          totalPages = 1;
+        }
+
+        return HeatPaginatedResult(
+          items: items,
+          total: total,
+          page: resPage,
+          limit: resLimit,
+          totalPages: totalPages > 0 ? totalPages : 1,
+        );
+      }
+    } catch (e) {
+      if (kDebugMode) print('[ApiService] getHeats error: $e');
+    }
+
+    return HeatPaginatedResult(
+      items: const [],
+      total: 0,
+      page: page,
+      limit: limit,
+      totalPages: 1,
+    );
+  }
+
+  /// Active Heat Alerts: GET /heats/alerts/active?gaushalaId={gaushalaId}
+  Future<List<CowHeatModel>> getActiveHeatAlerts({required String gaushalaId}) async {
+    final cleanGId = gaushalaId.trim();
+    if (cleanGId.isEmpty) return const [];
+
+    try {
+      final response = await _dio.get(
+        '/heats/alerts/active',
+        queryParameters: {'gaushalaId': cleanGId},
+      );
+
+      if (response.statusCode == 200 && response.data != null) {
+        final resData = response.data;
+        List rawList = [];
+        if (resData is Map) {
+          rawList = (resData['data'] is List)
+              ? resData['data'] as List
+              : (resData['activeHeats'] is List ? resData['activeHeats'] as List : []);
+        } else if (resData is List) {
+          rawList = resData;
+        }
+
+        return rawList
+            .whereType<Map>()
+            .map((h) => CowHeatModel.fromJson(Map<String, dynamic>.from(h)))
+            .toList();
+      }
+    } catch (e) {
+      if (kDebugMode) print('[ApiService] getActiveHeatAlerts error: $e');
+    }
+    return const [];
+  }
+
+  /// Repeat Heat Alerts: GET /heats/alerts/repeat?gaushalaId={gaushalaId}
+  Future<List<CowHeatModel>> getRepeatHeatAlerts({required String gaushalaId}) async {
+    final cleanGId = gaushalaId.trim();
+    if (cleanGId.isEmpty) return const [];
+
+    try {
+      final response = await _dio.get(
+        '/heats/alerts/repeat',
+        queryParameters: {'gaushalaId': cleanGId},
+      );
+
+      if (response.statusCode == 200 && response.data != null) {
+        final resData = response.data;
+        List rawList = [];
+        if (resData is Map) {
+          rawList = (resData['data'] is List)
+              ? resData['data'] as List
+              : (resData['repeatHeatAlerts'] is List ? resData['repeatHeatAlerts'] as List : []);
+        } else if (resData is List) {
+          rawList = resData;
+        }
+
+        return rawList
+            .whereType<Map>()
+            .map((h) => CowHeatModel.fromJson(Map<String, dynamic>.from(h)))
+            .toList();
+      }
+    } catch (e) {
+      if (kDebugMode) print('[ApiService] getRepeatHeatAlerts error: $e');
+    }
+    return const [];
+  }
+
+  /// Single Heat record: GET /heats/:id
+  Future<CowHeatModel?> getHeatById(String id) async {
+    final cleanId = id.trim();
+    if (cleanId.isEmpty) return null;
+
+    try {
+      final response = await _dio.get('/heats/$cleanId');
+      if (response.statusCode == 200 && response.data != null) {
+        final resData = response.data;
+        if (resData is Map) {
+          final data = (resData['data'] is Map) ? resData['data'] : resData;
+          return CowHeatModel.fromJson(Map<String, dynamic>.from(data as Map));
+        }
+      }
+    } catch (e) {
+      if (kDebugMode) print('[ApiService] getHeatById error: $e');
+    }
+    return null;
+  }
+
+  /// Create Heat record: POST /heats
+  Future<CowHeatModel> createHeat(Map<String, dynamic> data) async {
+    final response = await _dio.post('/heats', data: data);
+
+    if (response.statusCode == 200 || response.statusCode == 201) {
+      if (response.data != null && response.data is Map) {
+        final resData = response.data as Map;
+        final itemData = (resData['data'] is Map) ? resData['data'] : resData;
+        return CowHeatModel.fromJson(Map<String, dynamic>.from(itemData as Map));
+      }
+    }
+
+    throw DioException(
+      requestOptions: response.requestOptions,
+      response: response,
+      message: response.data?['message']?.toString() ?? 'Failed to create heat record.',
+    );
+  }
+
+  /// Update Heat record: POST /heats/:id/update
+  Future<CowHeatModel> updateHeat(String id, Map<String, dynamic> data) async {
+    final cleanId = id.trim();
+    Response response;
+    try {
+      response = await _dio.post('/heats/$cleanId/update', data: data);
+    } on DioException catch (e) {
+      if (e.response?.statusCode == 404 || e.response?.statusCode == 405) {
+        response = await _dio.post('/heats/$cleanId', data: data);
+      } else {
+        rethrow;
+      }
+    }
+
+    if (response.statusCode == 200 || response.statusCode == 201) {
+      if (response.data != null && response.data is Map) {
+        final resData = response.data as Map;
+        final itemData = (resData['data'] is Map) ? resData['data'] : resData;
+        return CowHeatModel.fromJson(Map<String, dynamic>.from(itemData as Map));
+      }
+    }
+
+    throw DioException(
+      requestOptions: response.requestOptions,
+      response: response,
+      message: response.data?['message']?.toString() ?? 'Failed to update heat record.',
+    );
+  }
+
+  /// Delete Heat record: POST /heats/:id/delete
+  Future<bool> deleteHeat(String id) async {
+    final cleanId = id.trim();
+    try {
+      final response = await _dio.post('/heats/$cleanId/delete');
+      return response.statusCode == 200 || response.statusCode == 204;
+    } on DioException catch (e) {
+      if (e.response?.statusCode == 404 || e.response?.statusCode == 405) {
+        final fallback = await _dio.post('/heats/$cleanId');
+        return fallback.statusCode == 200 || fallback.statusCode == 204;
+      }
+      rethrow;
+    }
+  }
+
+  // ===========================================================================
+  // COW MATING MANAGEMENT APIS (/api/v1/matings)
+  // ===========================================================================
+
+  /// List Paginated Cow Mating Records:
+  /// GET /matings?gaushalaId={gaushalaId}&cowId={cowId}&status={status}&matingType={type}&isRepeatBreederAlert={bool}&startDate={date}&endDate={date}&search={query}&page={page}&limit={limit}
+  Future<MatingPaginatedResult> getMatings({
+    required String gaushalaId,
+    String? cowId,
+    String? status,
+    String? matingType,
+    bool? isRepeatBreederAlert,
+    DateTime? startDate,
+    DateTime? endDate,
+    String? search,
+    int page = 1,
+    int limit = 10,
+  }) async {
+    final cleanGId = gaushalaId.trim();
+    final Map<String, dynamic> queryParams = {
+      'page': page,
+      'limit': limit,
+    };
+
+    if (cleanGId.isNotEmpty && cleanGId != 'all') {
+      queryParams['gaushalaId'] = cleanGId;
+    }
+    if (cowId != null && cowId.trim().isNotEmpty) {
+      queryParams['cowId'] = cowId.trim();
+    }
+    if (status != null && status.trim().isNotEmpty && status != 'ALL') {
+      queryParams['status'] = status.trim();
+    }
+    if (matingType != null && matingType.trim().isNotEmpty && matingType != 'ALL') {
+      queryParams['matingType'] = matingType.trim();
+    }
+    if (isRepeatBreederAlert != null) {
+      queryParams['isRepeatBreederAlert'] = isRepeatBreederAlert;
+    }
+    if (search != null && search.trim().isNotEmpty) {
+      queryParams['search'] = search.trim();
+    }
+    if (startDate != null) {
+      queryParams['startDate'] = startDate.toIso8601String().substring(0, 10);
+    }
+    if (endDate != null) {
+      queryParams['endDate'] = endDate.toIso8601String().substring(0, 10);
+    }
+
+    try {
+      final response = await _dio.get(
+        '/matings',
+        queryParameters: queryParams,
+      );
+
+      if (response.statusCode == 200 && response.data != null) {
+        final resData = response.data;
+        List<CowMatingModel> items = [];
+        int total = 0;
+        int resPage = page;
+        int resLimit = limit;
+        int totalPages = 1;
+
+        if (resData is Map) {
+          final dataSection = resData['data'];
+          if (dataSection is List) {
+            items = dataSection
+                .whereType<Map>()
+                .map((m) => CowMatingModel.fromJson(Map<String, dynamic>.from(m)))
+                .toList();
+          } else if (dataSection is Map) {
+            final subList = dataSection['matings'] ?? dataSection['items'] ?? dataSection['data'];
+            if (subList is List) {
+              items = subList
+                  .whereType<Map>()
+                  .map((m) => CowMatingModel.fromJson(Map<String, dynamic>.from(m)))
+                  .toList();
+            }
+          }
+
+          if (resData['pagination'] is Map) {
+            final p = resData['pagination'] as Map;
+            total = int.tryParse(p['total']?.toString() ?? '') ?? items.length;
+            resPage = int.tryParse(p['page']?.toString() ?? '') ?? page;
+            resLimit = int.tryParse(p['limit']?.toString() ?? '') ?? limit;
+            totalPages = int.tryParse(p['totalPages']?.toString() ?? '') ?? ((total / resLimit).ceil());
+          } else {
+            total = int.tryParse(resData['total']?.toString() ?? resData['count']?.toString() ?? '') ?? items.length;
+            totalPages = total > 0 ? (total / resLimit).ceil() : 1;
+          }
+        } else if (resData is List) {
+          items = resData
+              .whereType<Map>()
+              .map((m) => CowMatingModel.fromJson(Map<String, dynamic>.from(m)))
+              .toList();
+          total = items.length;
+          totalPages = 1;
+        }
+
+        return MatingPaginatedResult(
+          items: items,
+          total: total,
+          page: resPage,
+          limit: resLimit,
+          totalPages: totalPages > 0 ? totalPages : 1,
+        );
+      }
+    } catch (e) {
+      if (kDebugMode) print('[ApiService] getMatings error: $e');
+    }
+
+    return MatingPaginatedResult(
+      items: const [],
+      total: 0,
+      page: page,
+      limit: limit,
+      totalPages: 1,
+    );
+  }
+
+  /// Repeat Breeder Alerts: GET /matings/alerts/repeat-breeders?gaushalaId={gaushalaId}
+  Future<List<CowMatingModel>> getRepeatBreederAlerts({required String gaushalaId}) async {
+    final cleanGId = gaushalaId.trim();
+    if (cleanGId.isEmpty) return const [];
+
+    try {
+      final response = await _dio.get(
+        '/matings/alerts/repeat-breeders',
+        queryParameters: {'gaushalaId': cleanGId},
+      );
+
+      if (response.statusCode == 200 && response.data != null) {
+        final resData = response.data;
+        List rawList = [];
+        if (resData is Map) {
+          rawList = (resData['data'] is List)
+              ? resData['data'] as List
+              : (resData['repeatBreeders'] is List ? resData['repeatBreeders'] as List : []);
+        } else if (resData is List) {
+          rawList = resData;
+        }
+
+        return rawList
+            .whereType<Map>()
+            .map((m) => CowMatingModel.fromJson(Map<String, dynamic>.from(m)))
+            .toList();
+      }
+    } catch (e) {
+      if (kDebugMode) print('[ApiService] getRepeatBreederAlerts error: $e');
+    }
+    return const [];
+  }
+
+  /// Pending PD Alerts: GET /matings/alerts/pending-pd?gaushalaId={gaushalaId}
+  Future<List<CowMatingModel>> getPendingPDAlerts({required String gaushalaId}) async {
+    final cleanGId = gaushalaId.trim();
+    if (cleanGId.isEmpty) return const [];
+
+    try {
+      final response = await _dio.get(
+        '/matings/alerts/pending-pd',
+        queryParameters: {'gaushalaId': cleanGId},
+      );
+
+      if (response.statusCode == 200 && response.data != null) {
+        final resData = response.data;
+        List rawList = [];
+        if (resData is Map) {
+          rawList = (resData['data'] is List)
+              ? resData['data'] as List
+              : (resData['pendingPDs'] is List ? resData['pendingPDs'] as List : []);
+        } else if (resData is List) {
+          rawList = resData;
+        }
+
+        return rawList
+            .whereType<Map>()
+            .map((m) => CowMatingModel.fromJson(Map<String, dynamic>.from(m)))
+            .toList();
+      }
+    } catch (e) {
+      if (kDebugMode) print('[ApiService] getPendingPDAlerts error: $e');
+    }
+    return const [];
+  }
+
+  /// Single Mating Record: GET /matings/:id
+  Future<CowMatingModel?> getMatingById(String id) async {
+    final cleanId = id.trim();
+    if (cleanId.isEmpty) return null;
+
+    try {
+      final response = await _dio.get('/matings/$cleanId');
+      if (response.statusCode == 200 && response.data != null) {
+        final resData = response.data;
+        if (resData is Map) {
+          final data = (resData['data'] is Map) ? resData['data'] : resData;
+          return CowMatingModel.fromJson(Map<String, dynamic>.from(data as Map));
+        }
+      }
+    } catch (e) {
+      if (kDebugMode) print('[ApiService] getMatingById error: $e');
+    }
+    return null;
+  }
+
+  /// Create Mating Record: POST /matings
+  Future<CowMatingModel> createMating(Map<String, dynamic> data) async {
+    final response = await _dio.post('/matings', data: data);
+
+    if (response.statusCode == 200 || response.statusCode == 201) {
+      if (response.data != null && response.data is Map) {
+        final resData = response.data as Map;
+        final itemData = (resData['data'] is Map) ? resData['data'] : resData;
+        return CowMatingModel.fromJson(Map<String, dynamic>.from(itemData as Map));
+      }
+    }
+
+    throw DioException(
+      requestOptions: response.requestOptions,
+      response: response,
+      message: response.data?['message']?.toString() ?? 'Failed to create mating record.',
+    );
+  }
+
+  /// Record Pregnancy Diagnosis (PD) Status: POST /matings/:id/pd-status
+  Future<CowMatingModel> updatePDStatus(
+    String id, {
+    required String pdResult,
+    required String pdDate,
+    String? pdPerformedBy,
+    String? remarks,
+  }) async {
+    final cleanId = id.trim();
+    final body = {
+      'pdResult': pdResult,
+      'pdDate': pdDate,
+      if (pdPerformedBy != null && pdPerformedBy.trim().isNotEmpty) 'pdPerformedBy': pdPerformedBy.trim(),
+      if (remarks != null && remarks.trim().isNotEmpty) 'remarks': remarks.trim(),
+    };
+
+    final response = await _dio.post('/matings/$cleanId/pd-status', data: body);
+
+    if (response.statusCode == 200 || response.statusCode == 201) {
+      if (response.data != null && response.data is Map) {
+        final resData = response.data as Map;
+        final itemData = (resData['data'] is Map) ? resData['data'] : resData;
+        return CowMatingModel.fromJson(Map<String, dynamic>.from(itemData as Map));
+      }
+    }
+
+    throw DioException(
+      requestOptions: response.requestOptions,
+      response: response,
+      message: response.data?['message']?.toString() ?? 'Failed to update pregnancy diagnosis result.',
+    );
+  }
+
+  /// Record Calving: POST /matings/:id/calving
+  Future<CowMatingModel> recordCalving(
+    String id, {
+    required String actualCalvingDate,
+    String? remarks,
+  }) async {
+    final cleanId = id.trim();
+    final body = {
+      'actualCalvingDate': actualCalvingDate,
+      if (remarks != null && remarks.trim().isNotEmpty) 'remarks': remarks.trim(),
+    };
+
+    final response = await _dio.post('/matings/$cleanId/calving', data: body);
+
+    if (response.statusCode == 200 || response.statusCode == 201) {
+      if (response.data != null && response.data is Map) {
+        final resData = response.data as Map;
+        final itemData = (resData['data'] is Map) ? resData['data'] : resData;
+        return CowMatingModel.fromJson(Map<String, dynamic>.from(itemData as Map));
+      }
+    }
+
+    throw DioException(
+      requestOptions: response.requestOptions,
+      response: response,
+      message: response.data?['message']?.toString() ?? 'Failed to record calving.',
+    );
+  }
+
+  /// Update Mating Record: POST /matings/:id/update
+  Future<CowMatingModel> updateMating(String id, Map<String, dynamic> data) async {
+    final cleanId = id.trim();
+    Response response;
+    try {
+      response = await _dio.post('/matings/$cleanId/update', data: data);
+    } on DioException catch (e) {
+      if (e.response?.statusCode == 404 || e.response?.statusCode == 405) {
+        response = await _dio.post('/matings/$cleanId', data: data);
+      } else {
+        rethrow;
+      }
+    }
+
+    if (response.statusCode == 200 || response.statusCode == 201) {
+      if (response.data != null && response.data is Map) {
+        final resData = response.data as Map;
+        final itemData = (resData['data'] is Map) ? resData['data'] : resData;
+        return CowMatingModel.fromJson(Map<String, dynamic>.from(itemData as Map));
+      }
+    }
+
+    throw DioException(
+      requestOptions: response.requestOptions,
+      response: response,
+      message: response.data?['message']?.toString() ?? 'Failed to update mating record.',
+    );
+  }
+
+  /// Delete Mating Record: POST /matings/:id/delete
+  Future<bool> deleteMating(String id) async {
+    final cleanId = id.trim();
+    try {
+      final response = await _dio.post('/matings/$cleanId/delete');
+      return response.statusCode == 200 || response.statusCode == 204;
+    } on DioException catch (e) {
+      if (e.response?.statusCode == 404 || e.response?.statusCode == 405) {
+        final fallback = await _dio.post('/matings/$cleanId');
+        return fallback.statusCode == 200 || fallback.statusCode == 204;
+      }
+      rethrow;
+    }
   }
 }
 

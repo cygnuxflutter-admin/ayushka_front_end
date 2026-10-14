@@ -330,6 +330,7 @@ class WorkerController extends GetxController {
     required String departmentId,
     required DateTime joiningDate,
     String? gaushalaId,
+    bool showSnackbar = true,
   }) async {
     final gId = (gaushalaId != null && gaushalaId.isNotEmpty) ? gaushalaId : currentGaushalaId;
     if (gId.isEmpty) {
@@ -356,10 +357,12 @@ class WorkerController extends GetxController {
         joiningDate: joiningDate,
       );
 
-      CustomSnackbar.showSuccess(
-        title: 'Worker Added',
-        message: 'Worker "${newWorker.name}" was added successfully.',
-      );
+      if (showSnackbar) {
+        CustomSnackbar.showSuccess(
+          title: 'Worker Added',
+          message: 'Worker "${newWorker.name}" was added successfully.',
+        );
+      }
 
       fetchWorkers();
       fetchDepartmentSummary();
@@ -385,6 +388,7 @@ class WorkerController extends GetxController {
     required String name,
     required String departmentId,
     required bool isActive,
+    bool showSnackbar = true,
   }) async {
     final trimmedName = name.trim();
     if (trimmedName.isEmpty) {
@@ -410,10 +414,12 @@ class WorkerController extends GetxController {
         workers[index] = updated;
       }
 
-      CustomSnackbar.showSuccess(
-        title: 'Worker Updated',
-        message: 'Worker "${updated.name}" details updated successfully.',
-      );
+      if (showSnackbar) {
+        CustomSnackbar.showSuccess(
+          title: 'Worker Updated',
+          message: 'Worker "${updated.name}" details updated successfully.',
+        );
+      }
 
       fetchDepartmentSummary();
       if (Get.isRegistered<DepartmentController>()) {
@@ -566,8 +572,10 @@ class WorkerController extends GetxController {
     }
     final Rxn<DepartmentModel> selectedDept = Rxn<DepartmentModel>(initialDept);
 
-    Get.dialog(
-      Dialog(
+    showDialog<void>(
+      context: context,
+      barrierDismissible: true,
+      builder: (dialogContext) => Dialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 480),
@@ -606,11 +614,7 @@ class WorkerController extends GetxController {
                       IconButton(
                         icon: const Icon(Icons.close_rounded, size: 20),
                         onPressed: () {
-                          if (Get.isDialogOpen ?? false) {
-                            Get.back();
-                          } else if (context.mounted) {
-                            Navigator.of(context, rootNavigator: true).pop();
-                          }
+                          Navigator.of(dialogContext).pop();
                         },
                       ),
                     ],
@@ -704,11 +708,7 @@ class WorkerController extends GetxController {
                         variant: ButtonVariant.outlined,
                         width: 100,
                         onPressed: () {
-                          if (Get.isDialogOpen ?? false) {
-                            Get.back();
-                          } else if (context.mounted) {
-                            Navigator.of(context, rootNavigator: true).pop();
-                          }
+                          Navigator.of(dialogContext).pop();
                         },
                       ),
                       const SizedBox(width: 12),
@@ -729,18 +729,24 @@ class WorkerController extends GetxController {
                                 return;
                               }
 
+                              final workerName = nameController.text.trim();
                               final ok = await createWorker(
-                                name: nameController.text,
+                                name: workerName,
                                 departmentId: selectedDept.value!.id,
                                 joiningDate: joiningDate.value,
                                 gaushalaId: selectedGaushala.value!.id,
+                                showSnackbar: false,
                               );
                               if (ok) {
-                                if (Get.isDialogOpen ?? false) {
-                                  Get.back();
+                                if (dialogContext.mounted) {
+                                  Navigator.of(dialogContext).pop();
                                 } else if (context.mounted) {
                                   Navigator.of(context, rootNavigator: true).pop();
                                 }
+                                CustomSnackbar.showSuccess(
+                                  title: 'Worker Added',
+                                  message: 'Worker "$workerName" was added successfully.',
+                                );
                               }
                             }
                           },
@@ -783,8 +789,10 @@ class WorkerController extends GetxController {
     final initialDept = deptCtrl.departments.firstWhereOrNull((d) => d.id == worker.departmentId);
     final Rxn<DepartmentModel> selectedDept = Rxn<DepartmentModel>(initialDept);
 
-    Get.dialog(
-      Dialog(
+    showDialog<void>(
+      context: context,
+      barrierDismissible: true,
+      builder: (dialogContext) => Dialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 480),
@@ -823,11 +831,7 @@ class WorkerController extends GetxController {
                       IconButton(
                         icon: const Icon(Icons.close_rounded, size: 20),
                         onPressed: () {
-                          if (Get.isDialogOpen ?? false) {
-                            Get.back();
-                          } else if (context.mounted) {
-                            Navigator.of(context, rootNavigator: true).pop();
-                          }
+                          Navigator.of(dialogContext).pop();
                         },
                       ),
                     ],
@@ -900,11 +904,7 @@ class WorkerController extends GetxController {
                         variant: ButtonVariant.outlined,
                         width: 100,
                         onPressed: () {
-                          if (Get.isDialogOpen ?? false) {
-                            Get.back();
-                          } else if (context.mounted) {
-                            Navigator.of(context, rootNavigator: true).pop();
-                          }
+                          Navigator.of(dialogContext).pop();
                         },
                       ),
                       const SizedBox(width: 12),
@@ -921,18 +921,24 @@ class WorkerController extends GetxController {
                                 return;
                               }
 
+                              final workerName = nameController.text.trim();
                               final ok = await updateWorker(
                                 worker.id,
-                                name: nameController.text,
+                                name: workerName,
                                 departmentId: selectedDept.value!.id,
                                 isActive: isActive.value,
+                                showSnackbar: false,
                               );
                               if (ok) {
-                                if (Get.isDialogOpen ?? false) {
-                                  Get.back();
+                                if (dialogContext.mounted) {
+                                  Navigator.of(dialogContext).pop();
                                 } else if (context.mounted) {
                                   Navigator.of(context, rootNavigator: true).pop();
                                 }
+                                CustomSnackbar.showSuccess(
+                                  title: 'Worker Updated',
+                                  message: 'Worker "$workerName" details updated successfully.',
+                                );
                               }
                             }
                           },

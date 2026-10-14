@@ -7,6 +7,7 @@ import '../../../core/values/permission_constants.dart';
 import '../../../core/widgets/logout_confirmation_dialog.dart';
 import '../../../data/models/user_model.dart';
 import '../../../data/services/permission_service.dart';
+import '../../../data/services/storage_service.dart';
 import '../../../routes/app_routes.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 
@@ -193,7 +194,7 @@ class WebSidebar extends StatelessWidget {
                                           const SizedBox(width: 5),
                                           const Expanded(
                                             child: Text(
-                                              'ORGANIC DAIRY',
+                                              'Gir Dairy',
                                               maxLines: 1,
                                               overflow: TextOverflow.ellipsis,
                                               style: TextStyle(
@@ -247,9 +248,15 @@ class WebSidebar extends StatelessWidget {
                         : null;
 
                     Widget buildNavItems() {
-                      final bool isAdminUser = perm != null
-                          ? perm.isAdmin
-                          : (currentUser == null || currentUser!.isAdmin);
+                      final activeUser = currentUser ??
+                          (Get.isRegistered<StorageService>()
+                              ? Get.find<StorageService>().getUser()
+                              : null);
+                      final bool isSuperAdminUser = activeUser?.isSuperAdmin ??
+                          (perm != null ? perm.isSuperAdmin : false);
+                      final bool isAdminUser = isSuperAdminUser ||
+                          (activeUser?.isAdmin ?? false) ||
+                          (perm != null && perm.isAdmin);
                       bool hasAccess(String m, String s) =>
                           isAdminUser || (perm != null && perm.hasMenuAccess(m, s));
                       bool hasAnyAccess(String m, List<String> subs) =>
@@ -259,7 +266,8 @@ class WebSidebar extends StatelessWidget {
 
                   // Evaluate visible master sub-items
                   final List<_SidebarSubNavItem> masterItems = [];
-                  if (hasAccess(PermissionModules.role, PermissionSubModules.roleList)) {
+                  // Roles module is strictly visible ONLY to Super Administrators
+                  if (isSuperAdminUser) {
                     masterItems.add(
                       _SidebarSubNavItem(
                         icon: PhosphorIconsRegular.shieldCheck,
@@ -304,7 +312,8 @@ class WebSidebar extends StatelessWidget {
                       ),
                     );
                   }
-                  if (hasAccess(PermissionModules.gaushala, PermissionSubModules.gaushalaList)) {
+                  // Gaushalas module is strictly visible ONLY to Super Administrators
+                  if (isSuperAdminUser) {
                     masterItems.add(
                       _SidebarSubNavItem(
                         icon: PhosphorIconsRegular.barn,
@@ -455,7 +464,7 @@ class WebSidebar extends StatelessWidget {
                         const SizedBox(height: 3),
                         _SidebarNavItem(
                           icon: PhosphorIconsRegular.firstAid,
-                          label: 'Cow Treatments',
+                          label: 'Cattle Treatment & Veterinary',
                           isSelected: currentRoute == AppRoutes.treatments || currentRoute == AppRoutes.treatmentDetails,
                           isCollapsed: collapsed,
                           badge: 'DOSES',
@@ -487,25 +496,44 @@ class WebSidebar extends StatelessWidget {
                           },
                         ),
                       ],
-                      if (isAdminUser ||
-                          (isModVisible(PermissionModules.treatment) &&
-                              hasAccess(PermissionModules.treatment, PermissionSubModules.treatmentList))) ...[
+                      if (isModVisible(PermissionModules.cowHeat) &&
+                          hasAnyAccess(PermissionModules.cowHeat, [
+                            PermissionSubModules.heatList,
+                          ])) ...[
                         const SizedBox(height: 3),
                         _SidebarNavItem(
-                          icon: PhosphorIconsRegular.heartbeat,
-                          label: 'Breeding & Health',
-                          isSelected: false,
+                          icon: PhosphorIconsRegular.fire,
+                          label: 'Cow Heat Monitoring',
+                          isSelected: currentRoute == AppRoutes.heats,
                           isCollapsed: collapsed,
+                          badge: 'ESTRUS',
+                          badgeColor: const Color(0xFFF59E0B),
                           onTap: () {
-                            Get.snackbar(
-                              'Health Records',
-                              'Vaccination schedules and breeding cycles.',
-                              maxWidth: 400,
-                            );
+                            if (currentRoute != AppRoutes.heats) {
+                              Get.offNamed(AppRoutes.heats);
+                            }
                           },
                         ),
                       ],
-
+                      if (isModVisible(PermissionModules.cowMating) &&
+                          hasAnyAccess(PermissionModules.cowMating, [
+                            PermissionSubModules.matingList,
+                          ])) ...[
+                        const SizedBox(height: 3),
+                        _SidebarNavItem(
+                          icon: PhosphorIconsRegular.heartStraight,
+                          label: 'Cow Mating & Breeding',
+                          isSelected: currentRoute == AppRoutes.matings,
+                          isCollapsed: collapsed,
+                          badge: 'AI/PD',
+                          badgeColor: const Color(0xFF10B981),
+                          onTap: () {
+                            if (currentRoute != AppRoutes.matings) {
+                              Get.offNamed(AppRoutes.matings);
+                            }
+                          },
+                        ),
+                      ],
                       // Section 2: Masters (Expandable on hover - Admin & Super Admin only)
                       if (isAdminUser && masterItems.isNotEmpty) ...[
                         const SizedBox(height: 10),
@@ -525,25 +553,6 @@ class WebSidebar extends StatelessWidget {
                               currentRoute == AppRoutes.types ||
                               currentRoute == AppRoutes.feedItems,
                           children: masterItems,
-                        ),
-                      ],
-
-                      // Section 3: Preferences (Admin Only)
-                      if (isAdminUser) ...[
-                        const SizedBox(height: 10),
-                        _SectionHeader(title: 'PREFERENCES', isCollapsed: collapsed),
-                        _SidebarNavItem(
-                          icon: PhosphorIconsRegular.slidersHorizontal,
-                          label: 'Farm Settings',
-                          isSelected: false,
-                          isCollapsed: collapsed,
-                          onTap: () {
-                            Get.snackbar(
-                              'Settings',
-                              'Farm parameters and user permissions.',
-                              maxWidth: 400,
-                            );
-                          },
                         ),
                       ],
                     ],

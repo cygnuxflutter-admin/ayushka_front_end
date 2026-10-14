@@ -230,12 +230,22 @@ class AppTheme {
           return Colors.white;
         }),
         checkmarkColor: Colors.white,
-        labelStyle: const TextStyle(
-          fontFamily: fontFamily,
-          fontSize: 12,
-          fontWeight: FontWeight.w500,
-          color: AppColors.textPrimaryLight,
-        ),
+        labelStyle: WidgetStateTextStyle.resolveWith((states) {
+          if (states.contains(WidgetState.selected)) {
+            return const TextStyle(
+              fontFamily: fontFamily,
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: Colors.white,
+            );
+          }
+          return const TextStyle(
+            fontFamily: fontFamily,
+            fontSize: 12,
+            fontWeight: FontWeight.w500,
+            color: AppColors.textPrimaryLight,
+          );
+        }),
         secondaryLabelStyle: const TextStyle(
           fontFamily: fontFamily,
           fontSize: 12,
@@ -473,12 +483,22 @@ class AppTheme {
           return AppColors.surfaceDark;
         }),
         checkmarkColor: Colors.white,
-        labelStyle: const TextStyle(
-          fontFamily: fontFamily,
-          fontSize: 12,
-          fontWeight: FontWeight.w500,
-          color: AppColors.textPrimaryDark,
-        ),
+        labelStyle: WidgetStateTextStyle.resolveWith((states) {
+          if (states.contains(WidgetState.selected)) {
+            return const TextStyle(
+              fontFamily: fontFamily,
+              fontSize: 12,
+              fontWeight: FontWeight.w600,
+              color: Colors.white,
+            );
+          }
+          return const TextStyle(
+            fontFamily: fontFamily,
+            fontSize: 12,
+            fontWeight: FontWeight.w500,
+            color: AppColors.textPrimaryDark,
+          );
+        }),
         secondaryLabelStyle: const TextStyle(
           fontFamily: fontFamily,
           fontSize: 12,

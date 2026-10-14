@@ -418,8 +418,10 @@ class TypeScreen extends GetView<TypeController> {
                       _buildGaushalaFilterDropdown(context, isDark),
                       const SizedBox(width: 12),
                     ],
+                    _buildTagFilterDropdown(context, isDark),
+                    const SizedBox(width: 12),
                     SizedBox(
-                      width: 260,
+                      width: 240,
                       height: 38,
                       child: TextField(
                         onChanged: (val) => controller.searchQuery.value = val,
@@ -466,8 +468,8 @@ class TypeScreen extends GetView<TypeController> {
             if (controller.isLoading.value) {
               return const CustomTableShimmer(
                 rowCount: 6,
-                columnFlexes: [5, 4, 5, 4],
-                headers: ['#', 'TYPE NAME', 'GAUSHALA', 'SYSTEM ID', 'CREATED AT'],
+                columnFlexes: [4, 3, 4, 4, 3],
+                headers: ['#', 'TYPE NAME', 'APPLIES TO', 'GAUSHALA', 'SYSTEM ID', 'CREATED AT', 'ACTIONS'],
               );
             }
 
@@ -536,10 +538,12 @@ class TypeScreen extends GetView<TypeController> {
                   child: Row(
                     children: [
                       SizedBox(width: 56.5, child: _buildTableHeaderCell('#')),
-                      Expanded(flex: 5, child: _buildTableHeaderCell('TYPE NAME')),
+                      Expanded(flex: 4, child: _buildTableHeaderCell('TYPE NAME')),
+                      Expanded(flex: 3, child: _buildTableHeaderCell('APPLIES TO')),
                       Expanded(flex: 4, child: _buildTableHeaderCell('GAUSHALA')),
-                      Expanded(flex: 5, child: _buildTableHeaderCell('SYSTEM ID')),
-                      Expanded(flex: 4, child: _buildTableHeaderCell('CREATED AT')),
+                      Expanded(flex: 4, child: _buildTableHeaderCell('SYSTEM ID')),
+                      Expanded(flex: 3, child: _buildTableHeaderCell('CREATED AT')),
+                      SizedBox(width: 90, child: _buildTableHeaderCell('ACTIONS', alignCenter: true)),
                     ],
                   ),
                 ),
@@ -799,12 +803,80 @@ class TypeScreen extends GetView<TypeController> {
     });
   }
 
-  Widget _buildTableHeaderCell(String title, {bool alignRight = false}) {
+  Widget _buildTagFilterDropdown(BuildContext context, bool isDark, {bool isExpanded = false}) {
+    final items = [
+      {'val': 'all', 'label': 'All Tags'},
+      {'val': 'both', 'label': 'Both (M & F)'},
+      {'val': 'isFemale', 'label': 'Female Only'},
+      {'val': 'isMale', 'label': 'Male Only'},
+    ];
+
+    return Obx(() {
+      final current = controller.selectedTagFilter.value;
+      return Container(
+        height: 38,
+        width: isExpanded ? double.infinity : null,
+        padding: const EdgeInsets.symmetric(horizontal: 10),
+        decoration: BoxDecoration(
+          color: isDark ? AppColors.cardDark : AppColors.backgroundLight,
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(color: isDark ? AppColors.borderDark : AppColors.borderLight),
+        ),
+        child: DropdownButtonHideUnderline(
+          child: DropdownButton<String>(
+            value: items.any((i) => i['val'] == current) ? current : 'all',
+            icon: const Icon(Icons.arrow_drop_down_rounded, size: 20),
+            isDense: true,
+            style: TextStyle(
+              fontSize: 12.5,
+              fontWeight: FontWeight.w600,
+              color: isDark ? AppColors.textPrimaryDark : AppColors.textPrimaryLight,
+            ),
+            dropdownColor: isDark ? AppColors.surfaceDark : AppColors.surfaceLight,
+            items: items.map((i) {
+              return DropdownMenuItem<String>(
+                value: i['val'],
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Icon(
+                      i['val'] == 'both'
+                          ? PhosphorIconsRegular.genderNeuter
+                          : (i['val'] == 'isFemale'
+                              ? PhosphorIconsRegular.genderFemale
+                              : (i['val'] == 'isMale'
+                                  ? PhosphorIconsRegular.genderMale
+                                  : PhosphorIconsRegular.funnelSimple)),
+                      size: 14,
+                      color: i['val'] == 'both'
+                          ? const Color(0xFF0D9488)
+                          : (i['val'] == 'isFemale'
+                              ? AppColors.primary
+                              : (i['val'] == 'isMale'
+                                  ? Colors.blue.shade600
+                                  : AppColors.textSecondaryLight)),
+                    ),
+                    const SizedBox(width: 6),
+                    Text(i['label']!),
+                  ],
+                ),
+              );
+            }).toList(),
+            onChanged: (val) {
+              if (val != null) controller.setTagFilter(val);
+            },
+          ),
+        ),
+      );
+    });
+  }
+
+  Widget _buildTableHeaderCell(String title, {bool alignRight = false, bool alignCenter = false}) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
       child: Text(
         title,
-        textAlign: alignRight ? TextAlign.right : TextAlign.left,
+        textAlign: alignRight ? TextAlign.right : (alignCenter ? TextAlign.center : TextAlign.left),
         style: const TextStyle(
           fontSize: 11,
           fontWeight: FontWeight.bold,
@@ -826,6 +898,8 @@ class TypeScreen extends GetView<TypeController> {
           _buildGaushalaFilterDropdown(context, isDark, isExpanded: true),
           const SizedBox(height: 12),
         ],
+        _buildTagFilterDropdown(context, isDark, isExpanded: true),
+        const SizedBox(height: 12),
         TextField(
           onChanged: (val) => controller.searchQuery.value = val,
           decoration: InputDecoration(
@@ -928,9 +1002,17 @@ class TypeScreen extends GetView<TypeController> {
                     backgroundColor: AppColors.primary.withValues(alpha: 0.15),
                     child: const Icon(PhosphorIconsRegular.tag, color: AppColors.primary, size: 20),
                   ),
-                  title: Text(
-                    type.typeName,
-                    style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                  title: Row(
+                    children: [
+                      Flexible(
+                        child: Text(
+                          type.typeName,
+                          style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      _buildTagBadge(type),
+                    ],
                   ),
                   subtitle: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -1127,7 +1209,7 @@ class _HoverableTypeTableRowState extends State<_HoverableTypeTableRow> {
 
             // Type Name Badge
             Expanded(
-              flex: 5,
+              flex: 4,
               child: Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                 child: Row(
@@ -1173,6 +1255,18 @@ class _HoverableTypeTableRowState extends State<_HoverableTypeTableRow> {
                       ),
                     ),
                   ],
+                ),
+              ),
+            ),
+
+            // Applies To (Tag / Gender)
+            Expanded(
+              flex: 3,
+              child: Padding(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                child: Align(
+                  alignment: Alignment.centerLeft,
+                  child: _buildTagBadge(type),
                 ),
               ),
             ),
@@ -1231,7 +1325,7 @@ class _HoverableTypeTableRowState extends State<_HoverableTypeTableRow> {
 
             // System ID (with copy feedback)
             Expanded(
-              flex: 5,
+              flex: 4,
               child: Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                 child: Row(
@@ -1296,7 +1390,7 @@ class _HoverableTypeTableRowState extends State<_HoverableTypeTableRow> {
 
             // Created At
             Expanded(
-              flex: 4,
+              flex: 3,
               child: Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
                 child: Text(
@@ -1309,6 +1403,34 @@ class _HoverableTypeTableRowState extends State<_HoverableTypeTableRow> {
                     fontWeight: _isHovered ? FontWeight.w500 : FontWeight.normal,
                   ),
                 ),
+              ),
+            ),
+
+            // Actions
+            SizedBox(
+              width: 90,
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  if (controller.canEditType)
+                    IconButton(
+                      icon: const Icon(Icons.edit_outlined, size: 17),
+                      tooltip: 'Edit Type',
+                      hoverColor: AppColors.info.withValues(alpha: 0.12),
+                      color: AppColors.info,
+                      visualDensity: VisualDensity.compact,
+                      onPressed: () => controller.openEditTypeDialog(context, type),
+                    ),
+                  if (controller.canDeleteType)
+                    IconButton(
+                      icon: const Icon(Icons.delete_outline_rounded, size: 17),
+                      tooltip: 'Delete Type',
+                      hoverColor: AppColors.error.withValues(alpha: 0.12),
+                      color: AppColors.error,
+                      visualDensity: VisualDensity.compact,
+                      onPressed: () => controller.confirmDeleteType(context, type),
+                    ),
+                ],
               ),
             ),
           ],
@@ -1368,6 +1490,54 @@ class _HoverableListCardState extends State<_HoverableListCard> {
 // -------------------------------------------------------------
 // HELPERS
 // -------------------------------------------------------------
+Widget _buildTagBadge(TypeModel type) {
+  Color color;
+  IconData icon;
+  String text;
+
+  final t = type.tag.toLowerCase();
+  if (t == 'isfemale' || (type.isFemale && !type.isMale)) {
+    color = AppColors.primary;
+    icon = PhosphorIconsRegular.genderFemale;
+    text = 'Female';
+  } else if (t == 'ismale' || (!type.isFemale && type.isMale)) {
+    color = Colors.blue.shade600;
+    icon = PhosphorIconsRegular.genderMale;
+    text = 'Male';
+  } else {
+    color = const Color(0xFF0D9488); // Teal
+    icon = PhosphorIconsRegular.genderNeuter;
+    text = 'Both';
+  }
+
+  return Container(
+    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3.5),
+    decoration: BoxDecoration(
+      color: color.withValues(alpha: 0.12),
+      borderRadius: BorderRadius.circular(6),
+      border: Border.all(
+        color: color.withValues(alpha: 0.35),
+        width: 1.0,
+      ),
+    ),
+    child: Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Icon(icon, size: 12.5, color: color),
+        const SizedBox(width: 4),
+        Text(
+          text,
+          style: TextStyle(
+            fontSize: 11,
+            fontWeight: FontWeight.w700,
+            color: color,
+          ),
+        ),
+      ],
+    ),
+  );
+}
+
 String formatDate(DateTime? dt) {
   if (dt == null) return '-';
   final local = dt.toLocal();

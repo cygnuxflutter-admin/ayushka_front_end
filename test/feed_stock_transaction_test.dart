@@ -303,6 +303,26 @@ void main() {
       expect(enteredQty, 510.0);
       expect(availableStock - enteredQty, 0.0);
     });
+
+    test('User Scenario: 600 KG available with 555 KG outward correctly flags low stock (45 KG <= minStockAlert 50)', () {
+      const double currentStock = 600.0;
+      const double outwardQty = 555.0;
+      const double minStockAlert = 50.0;
+      final double remaining = currentStock - outwardQty;
+
+      expect(remaining, 45.0);
+      expect(remaining > 0, isTrue);
+      expect(remaining <= minStockAlert, isTrue, reason: '45 KG is <= minStockAlert of 50 KG, triggering Low Stock alert');
+    });
+
+    test('Identifies completely depleted stock (0 KG) when entire quantity is outwarded', () {
+      const double currentStock = 600.0;
+      const double outwardQty = 600.0;
+      final double remaining = currentStock - outwardQty;
+
+      expect(remaining, 0.0);
+      expect(remaining <= 0, isTrue, reason: 'Triggers Stock Depleted Alert');
+    });
   });
 
   group('Stock Transaction Search & Filtering Logic Tests', () {

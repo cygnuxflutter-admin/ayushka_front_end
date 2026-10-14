@@ -15,6 +15,7 @@ import 'widgets/dashboard_kpi_strip.dart';
 import 'widgets/mobile_dashboard_view.dart';
 import 'widgets/mobile_drawer.dart';
 import 'widgets/smart_alerts_center.dart';
+import 'widgets/unassigned_shed_alert_card.dart';
 import 'widgets/web_sidebar.dart';
 
 /// Production-ready Smart Alerts Center & Dashboard for Ayushka Admin Portal.
@@ -250,6 +251,16 @@ class DashboardScreen extends GetView<DashboardController> {
         // 1. Ultra-Creative Forest Green Hero Station Banner
         DashboardHeroBanner(controller: controller),
         const SizedBox(height: 20),
+
+        // 1.5. Dynamic Housing Alert: Cattle Without Assigned Shed
+        Obx(
+          () => controller.unassignedShedCows.isNotEmpty
+              ? Padding(
+                  padding: const EdgeInsets.only(bottom: 20),
+                  child: UnassignedShedAlertCard(controller: controller),
+                )
+              : const SizedBox.shrink(),
+        ),
 
         // 2. Interactive KPI Header Strip with Live Metric Status
         Obx(

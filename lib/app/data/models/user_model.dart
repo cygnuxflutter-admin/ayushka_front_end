@@ -39,8 +39,13 @@ class UserModel {
   /// Returns true if this user is a Super Administrator (highest platform authority).
   bool get isSuperAdmin {
     final r = role.toLowerCase().trim().replaceAll(' ', '').replaceAll('_', '').replaceAll('-', '');
-    if (r == 'superadmin') return true;
-    if (username?.toLowerCase().replaceAll(' ', '').replaceAll('_', '') == 'superadmin') return true;
+    if (r == 'superadmin' || r.contains('superadmin')) return true;
+    final u = username?.toLowerCase().trim().replaceAll(' ', '').replaceAll('_', '').replaceAll('-', '');
+    if (u != null && (u == 'superadmin' || u.contains('superadmin'))) return true;
+    final e = email.toLowerCase().trim();
+    if (e.contains('superadmin')) return true;
+    final n = name.toLowerCase().trim().replaceAll(' ', '').replaceAll('_', '').replaceAll('-', '');
+    if (n == 'superadmin' || n.contains('superadmin')) return true;
     return false;
   }
 
@@ -87,7 +92,9 @@ class UserModel {
         json['gaushala'] ??
         json['gaushalas'] ??
         json['defaultGaushala'] ??
-        json['default_gaushala'];
+        json['default_gaushala'] ??
+        json['assignedGaushala'] ??
+        json['assigned_gaushala'];
     if (rawGaushala is List && rawGaushala.isNotEmpty) {
       final firstG = rawGaushala.first;
       if (firstG is Map) {
@@ -108,7 +115,12 @@ class UserModel {
         gName = json['gaushalaName']?.toString();
       } else if (json['gaushala_name'] != null) {
         gName = json['gaushala_name']?.toString();
+      } else if (gId != null && !RegExp(r'^[0-9a-fA-F]{24}$').hasMatch(gId)) {
+        gName = gId;
       }
+    }
+    if (gId == null && gName != null) {
+      gId = gName;
     }
 
     final bool active = json['isActive'] != null

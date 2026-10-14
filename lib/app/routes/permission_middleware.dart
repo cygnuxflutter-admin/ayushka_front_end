@@ -35,15 +35,14 @@ class PermissionGuardMiddleware extends GetMiddleware {
       return const RouteSettings(name: AppRoutes.auth);
     }
 
-    // 2. Permission check
-    if (!Get.isRegistered<PermissionService>()) {
-      return null;
-    }
-    final permissionService = Get.find<PermissionService>();
+    final storageUser = storageService.getUser();
+    final permService = Get.isRegistered<PermissionService>() ? Get.find<PermissionService>() : null;
+    final bool isSuperAdmin = (storageUser?.isSuperAdmin ?? false) || (permService?.isSuperAdmin ?? false);
+    final bool isAdmin = isSuperAdmin || (storageUser?.isAdmin ?? false) || (permService?.isAdmin ?? false);
 
     // SuperAdmin only route check
     if (superAdminOnly) {
-      if (!permissionService.isSuperAdmin) {
+      if (!isSuperAdmin) {
         return RouteSettings(
           name: '${AppRoutes.forbidden}?route=${Uri.encodeComponent(route ?? '')}',
         );
@@ -52,15 +51,24 @@ class PermissionGuardMiddleware extends GetMiddleware {
     }
 
     // Admins bypass normal module permission restrictions
-    if (permissionService.isAdmin) {
+    if (isAdmin) {
       return null;
     }
 
     if (adminOnly) {
-      return RouteSettings(
-        name: '${AppRoutes.forbidden}?route=${Uri.encodeComponent(route ?? '')}',
-      );
+      if (!isAdmin) {
+        return RouteSettings(
+          name: '${AppRoutes.forbidden}?route=${Uri.encodeComponent(route ?? '')}',
+        );
+      }
+      return null;
     }
+
+    // 2. Permission check
+    if (permService == null) {
+      return null;
+    }
+    final permissionService = permService;
 
     if (requiredModule != null && requiredSubModule != null) {
       final allowed = permissionService.hasPermission(
@@ -122,6 +130,7 @@ class RoutePermissionRegistry {
           requiredModule: PermissionModules.role,
           requiredSubModule: PermissionSubModules.roleList,
           requiredAction: PermissionAction.view,
+          superAdminOnly: true,
         );
       case AppRoutes.users:
         return PermissionGuardMiddleware(
@@ -187,6 +196,18 @@ class RoutePermissionRegistry {
         return PermissionGuardMiddleware(
           requiredModule: PermissionModules.milkMgmt,
           requiredSubModule: PermissionSubModules.milkProduction,
+          requiredAction: PermissionAction.view,
+        );
+      case AppRoutes.heats:
+        return PermissionGuardMiddleware(
+          requiredModule: PermissionModules.cowHeat,
+          requiredSubModule: PermissionSubModules.heatList,
+          requiredAction: PermissionAction.view,
+        );
+      case AppRoutes.matings:
+        return PermissionGuardMiddleware(
+          requiredModule: PermissionModules.cowMating,
+          requiredSubModule: PermissionSubModules.matingList,
           requiredAction: PermissionAction.view,
         );
       default:

@@ -70,12 +70,17 @@ class CustomSnackbar {
     required IconData icon,
     required Duration duration,
   }) {
+    // Guard against headless or test environments where overlay context is not mounted
+    if (Get.overlayContext == null && Get.context == null) {
+      return;
+    }
+
     if (Get.isSnackbarOpen) {
       Get.closeCurrentSnackbar();
     }
 
     // Adapt width so desktop/web widescreen doesn't stretch 2000px
-    final double screenWidth = Get.width;
+    final double screenWidth = Get.context != null ? Get.width : 400.0;
     final double? maxWidth = screenWidth > AppConstants.mobileBreakpoint ? 420 : null;
 
     Get.rawSnackbar(

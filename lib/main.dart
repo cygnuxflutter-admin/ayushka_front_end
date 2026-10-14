@@ -32,8 +32,16 @@ void main() async {
   final gaushalaService = Get.put(GaushalaSessionService());
 
   if (storageService.hasToken) {
-    await permissionService.initPermissions();
-    await gaushalaService.initSession(user: storageService.getUser());
+    try {
+      await Future.wait([
+        permissionService.initPermissions(),
+        gaushalaService.initSession(user: storageService.getUser()),
+      ]).timeout(const Duration(seconds: 4));
+    } catch (e) {
+      if (kDebugMode) {
+        print('[App Init] Init timeout/error: $e');
+      }
+    }
     Get.put(NotificationController(), permanent: true);
   }
 

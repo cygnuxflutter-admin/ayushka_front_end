@@ -37,7 +37,7 @@ class DashboardKpiStrip extends StatelessWidget {
       ),
       _KpiCardData(
         index: 1,
-        title: 'Milk Drops Detected',
+        title: 'Milk Yield Dropped',
         count: counts.milkVariances,
         subtitle: counts.milkVariances > 0
             ? '±10% yield drop detected'
@@ -73,6 +73,26 @@ class DashboardKpiStrip extends StatelessWidget {
         bgColor: const Color(0xFFECFDF5),
         borderColor: const Color(0xFFA7F3D0),
         darkBgColor: const Color(0xFF132A1F),
+      ),
+      _KpiCardData(
+        index: 4,
+        title: 'Heat & Breeding Alerts',
+        count: counts.activeHeats +
+            counts.repeatHeatAlerts +
+            counts.repeatBreederAlerts +
+            counts.pendingPDChecks,
+        subtitle: (counts.activeHeats +
+                    counts.repeatHeatAlerts +
+                    counts.repeatBreederAlerts +
+                    counts.pendingPDChecks) >
+                0
+            ? '${counts.activeHeats} Heat • ${counts.pendingPDChecks} PD • ${(counts.repeatHeatAlerts + counts.repeatBreederAlerts)} Repeat'
+            : 'Estrus & breeding cycles normal',
+        icon: PhosphorIconsRegular.flame,
+        accentColor: const Color(0xFFF43F5E),
+        bgColor: const Color(0xFFFFF1F2),
+        borderColor: const Color(0xFFFECDD3),
+        darkBgColor: const Color(0xFF33141E),
       ),
     ];
 

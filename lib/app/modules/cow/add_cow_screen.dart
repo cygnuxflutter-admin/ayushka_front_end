@@ -961,9 +961,11 @@ class AddCowScreen extends GetView<AddCowController> {
     bool searchable = false,
     bool enabled = true,
     bool Function()? isEnabled,
+    Widget Function(BuildContext, T, bool, bool)? customItemBuilder,
   }) {
     return Obx(() {
       final active = isEnabled != null ? isEnabled() : enabled;
+      final currentList = items.toList();
       return CustomDropdownSearch<T>(
         label: label,
         isRequired: isRequired,
@@ -971,9 +973,10 @@ class AddCowScreen extends GetView<AddCowController> {
         hint: hint,
         enabled: active,
         selectedItem: selectedValue(),
-        items: items,
+        items: currentList,
         itemAsString: itemLabel,
         searchable: searchable,
+        customItemBuilder: customItemBuilder,
         onChanged: (selected) {
           if (selected != null) {
             onSelected(selected);
@@ -1032,9 +1035,12 @@ class AddCowScreen extends GetView<AddCowController> {
       context: context,
       label: 'Cow Type',
       isRequired: true,
-      isEnabled: () => controller.isFemale.value,
       icon: PhosphorIconsRegular.tag,
-      hint: 'Select cow type',
+      hint: controller.isLoadingTypes.value
+          ? 'Loading types...'
+          : (controller.types.isEmpty
+              ? 'No types for ${controller.isFemale.value ? 'Female' : 'Male'}'
+              : 'Select cow type'),
       searchable: false,
       selectedValue: () => controller.selectedType.value,
       items: controller.types,
@@ -1045,15 +1051,15 @@ class AddCowScreen extends GetView<AddCowController> {
   }
 
   // -------------------------------------------------------------------
-  // SHED DROPDOWN (required)
+  // SHED DROPDOWN (optional - can be assigned later from Dashboard)
   // -------------------------------------------------------------------
   Widget _buildShedDropdown(BuildContext context) {
     return _buildDropdownField<ShedModel>(
       context: context,
-      label: 'Shed',
-      isRequired: true,
+      label: 'Shed (Optional)',
+      isRequired: false,
       icon: PhosphorIconsRegular.warehouse,
-      hint: 'Select shed',
+      hint: 'Select shed (or assign later from dashboard)',
       searchable: false,
       selectedValue: () => controller.selectedShed.value,
       items: controller.sheds,
@@ -1066,19 +1072,65 @@ class AddCowScreen extends GetView<AddCowController> {
   // -------------------------------------------------------------------
   // DAM / MOTHER DROPDOWN
   // -------------------------------------------------------------------
+  // DAM / MOTHER DROPDOWN
+  // -------------------------------------------------------------------
   Widget _buildDamDropdown(BuildContext context) {
     return _buildDropdownField<CowModel>(
       context: context,
       label: 'Dam / Mother',
       isRequired: false,
       icon: PhosphorIconsRegular.genderFemale,
-      hint: 'Select dam / mother (optional)',
+      hint: controller.damCows.isEmpty
+          ? 'No dam / mother available'
+          : 'Select dam / mother (optional)',
       searchable: true,
       selectedValue: () => controller.selectedDam.value,
       items: controller.damCows,
       itemLabel: (c) => c.calfName != null && c.calfName!.trim().isNotEmpty
           ? '${c.tagId} (${c.calfName!.trim()})'
           : c.tagId,
+      customItemBuilder: (ctx, item, isDisabled, isSelected) {
+        final isDark = Theme.of(ctx).brightness == Brightness.dark;
+        return Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+          color: isSelected
+              ? AppColors.primary.withValues(alpha: isDark ? 0.16 : 0.08)
+              : Colors.transparent,
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(5),
+                decoration: BoxDecoration(
+                  color: AppColors.primary.withValues(alpha: 0.12),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  PhosphorIconsRegular.genderFemale,
+                  size: 13,
+                  color: AppColors.primary,
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  item.calfName != null && item.calfName!.trim().isNotEmpty
+                      ? '${item.tagId} (${item.calfName!.trim()})'
+                      : item.tagId,
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+                    color: isSelected
+                        ? AppColors.primary
+                        : (isDark ? AppColors.textPrimaryDark : AppColors.textPrimaryLight),
+                  ),
+                ),
+              ),
+              if (isSelected)
+                const Icon(PhosphorIconsRegular.check, size: 16, color: AppColors.primary),
+            ],
+          ),
+        );
+      },
       onSelected: (c) {
         controller.selectedDam.value = c;
         controller.damIdController.text = c.id;
@@ -1099,13 +1151,57 @@ class AddCowScreen extends GetView<AddCowController> {
       label: 'Sire / Father',
       isRequired: false,
       icon: PhosphorIconsRegular.genderMale,
-      hint: 'Select sire / father (optional)',
+      hint: controller.sireCows.isEmpty
+          ? 'No sire / father available'
+          : 'Select sire / father (optional)',
       searchable: true,
       selectedValue: () => controller.selectedSire.value,
       items: controller.sireCows,
       itemLabel: (c) => c.calfName != null && c.calfName!.trim().isNotEmpty
           ? '${c.tagId} (${c.calfName!.trim()})'
           : c.tagId,
+      customItemBuilder: (ctx, item, isDisabled, isSelected) {
+        final isDark = Theme.of(ctx).brightness == Brightness.dark;
+        return Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+          color: isSelected
+              ? Colors.blue.withValues(alpha: isDark ? 0.16 : 0.08)
+              : Colors.transparent,
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(5),
+                decoration: BoxDecoration(
+                  color: Colors.blue.withValues(alpha: 0.12),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  PhosphorIconsRegular.genderMale,
+                  size: 13,
+                  color: Colors.blue.shade700,
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  item.calfName != null && item.calfName!.trim().isNotEmpty
+                      ? '${item.tagId} (${item.calfName!.trim()})'
+                      : item.tagId,
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: isSelected ? FontWeight.w600 : FontWeight.normal,
+                    color: isSelected
+                        ? Colors.blue.shade700
+                        : (isDark ? AppColors.textPrimaryDark : AppColors.textPrimaryLight),
+                  ),
+                ),
+              ),
+              if (isSelected)
+                Icon(PhosphorIconsRegular.check, size: 16, color: Colors.blue.shade700),
+            ],
+          ),
+        );
+      },
       onSelected: (c) {
         controller.selectedSire.value = c;
         controller.sireIdController.text = c.id;

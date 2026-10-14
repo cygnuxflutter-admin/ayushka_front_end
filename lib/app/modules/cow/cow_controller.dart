@@ -108,6 +108,7 @@ class CowController extends GetxController {
   final Rxn<String> selectedGaushalaId = Rxn<String>();
   final RxString selectedGenderFilter = 'all'.obs; // 'all' | 'female' | 'male'
   final RxString searchQuery = ''.obs;
+  final TextEditingController searchController = TextEditingController();
 
   // Pagination states
   final RxInt currentPage = 1.obs;
@@ -162,6 +163,12 @@ class CowController extends GetxController {
     _initData();
   }
 
+  @override
+  void onClose() {
+    searchController.dispose();
+    super.onClose();
+  }
+
   void _loadUser() {
     currentUser.value = _storageService.getUser();
   }
@@ -210,6 +217,7 @@ class CowController extends GetxController {
   /// Fetches gaushalas for dropdown filter.
   Future<void> fetchGaushalas() async {
     await _gaushalaService.fetchGaushalas(forceReload: true);
+    gaushalas.assignAll(_gaushalaService.gaushalas);
   }
 
   /// Fetches cows list via GET /api/v1/cows?gaushalaId=...
@@ -471,18 +479,13 @@ class CowController extends GetxController {
       return;
     }
 
-    // Role-based permission check: non-admins cannot switch to other gaushalas
+    // Role-based permission check: only Super Admins can switch gaushalas
     if (!canChangeGaushala) {
-      final userGId = currentUser.value?.gaushalaId;
-      final allowedMatch = findGaushala(userGId);
-      final allowedId = allowedMatch?.id ?? userGId;
-      if (allowedId != null && allowedId != gaushalaId) {
-        CustomSnackbar.showWarning(
-          title: 'Access Restricted',
-          message: 'Only Administrators have permission to switch gaushala stations.',
-        );
-        return;
-      }
+      CustomSnackbar.showWarning(
+        title: 'Access Restricted',
+        message: 'Only Super Administrators have permission to switch gaushala stations.',
+      );
+      return;
     }
 
     if (selectedGaushalaId.value == gaushalaId) {
@@ -502,8 +505,15 @@ class CowController extends GetxController {
     currentPage.value = 1;
   }
 
+  /// Clear text search input and query
+  void clearSearch() {
+    searchController.clear();
+    searchQuery.value = '';
+  }
+
   /// Clear text search, reset gender filter, and restore gaushala filter to main AppBar gaushala
   void clearFilters() {
+    searchController.clear();
     searchQuery.value = '';
     if (selectedGenderFilter.value != 'all') {
       selectedGenderFilter.value = 'all';
@@ -724,6 +734,135 @@ class CowController extends GetxController {
       } finally {
         isDeleting.value = false;
       }
+    }
+  }
+
+  /// Confirm and toggle cattle active/inactive status with confirmation dialog.
+  Future<void> confirmToggleCowStatus(BuildContext context, CowModel cow) async {
+    if (!canEditCow) {
+      CustomSnackbar.showWarning(
+        title: 'Access Denied',
+        message: 'You do not have permission to change cattle status.',
+      );
+      return;
+    }
+    if (cow.isDeleted || cow.isDelete || cow.isDead || cow.isDied) return;
+    if (updatingStatusCowIds.contains(cow.id)) return;
+
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final willBeActive = !cow.isActive;
+    final actionColor = willBeActive ? AppColors.primary : const Color(0xFFD97706);
+
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogCtx) => AlertDialog(
+        backgroundColor: isDark ? AppColors.cardDark : AppColors.cardLight,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        title: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: actionColor.withValues(alpha: 0.12),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                willBeActive
+                    ? Icons.check_circle_outline_rounded
+                    : Icons.power_settings_new_rounded,
+                color: actionColor,
+                size: 22,
+              ),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                willBeActive ? 'Activate Cattle' : 'Deactivate Cattle',
+                style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+              ),
+            ),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              willBeActive
+                  ? 'Are you sure you want to activate cattle with Tag ID "${cow.tagId}"?'
+                  : 'Are you sure you want to deactivate cattle with Tag ID "${cow.tagId}"?',
+              style: const TextStyle(fontSize: 13),
+            ),
+            if (cow.calfName != null && cow.calfName!.trim().isNotEmpty) ...[
+              const SizedBox(height: 6),
+              Text(
+                'Alias: ${cow.calfName!.trim()}',
+                style: TextStyle(
+                  fontSize: 12,
+                  color: isDark ? AppColors.textSecondaryDark : AppColors.textSecondaryLight,
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ],
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+              decoration: BoxDecoration(
+                color: actionColor.withValues(alpha: 0.08),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(
+                  color: actionColor.withValues(alpha: 0.25),
+                  width: 1,
+                ),
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.info_outline_rounded,
+                    size: 16,
+                    color: actionColor,
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      willBeActive
+                          ? 'This cattle record will be marked as Active in the herd registry.'
+                          : 'This cattle record will be marked as InActive in the herd registry.',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: willBeActive
+                            ? (isDark ? const Color(0xFFA5D6A7) : const Color(0xFF2E7D32))
+                            : (isDark ? const Color(0xFFFFCC80) : const Color(0xFFB45309)),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogCtx).pop(false),
+            child: const Text('Cancel'),
+          ),
+          CustomButton(
+            text: willBeActive ? 'Activate' : 'Deactivate',
+            icon: willBeActive
+                ? Icons.check_circle_outline_rounded
+                : Icons.power_settings_new_rounded,
+            backgroundColor: actionColor,
+            textColor: Colors.white,
+            width: 125,
+            height: 38,
+            onPressed: () => Navigator.of(dialogCtx).pop(true),
+          ),
+        ],
+      ),
+    );
+
+    if (confirmed == true) {
+      await toggleCowStatus(cow);
     }
   }
 
@@ -1743,7 +1882,7 @@ class CowController extends GetxController {
                                     if (val == 'status') {
                                       Navigator.of(ctx).pop();
                                       WidgetsBinding.instance.addPostFrameCallback((_) {
-                                        toggleCowStatus(cow);
+                                        confirmToggleCowStatus(context, cow);
                                       });
                                     } else if (val == 'died') {
                                       Navigator.of(ctx).pop();

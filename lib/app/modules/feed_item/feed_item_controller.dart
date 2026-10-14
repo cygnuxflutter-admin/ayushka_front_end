@@ -353,6 +353,15 @@ class FeedItemController extends GetxController {
   Future<void> fetchGaushalas() async {
     isLoadingGaushalas.value = true;
     try {
+      if (!isSuperAdmin) {
+        final assigned = _gaushalaService.selectedGaushala.value ?? _gaushalaService.getUserDefaultGaushala();
+        if (assigned != null) {
+          gaushalas.assignAll([assigned]);
+        } else {
+          gaushalas.clear();
+        }
+        return;
+      }
       final result = await _apiService.getGaushalas();
       gaushalas.assignAll(result);
     } catch (e) {

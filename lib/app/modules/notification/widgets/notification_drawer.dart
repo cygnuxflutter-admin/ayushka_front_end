@@ -245,7 +245,7 @@ class NotificationDrawer extends StatelessWidget {
                       Text(
                         controller.filterOnlyUnread.value == true
                             ? 'You have read all pending dose notifications!'
-                            : 'All cow treatments and multi-dose schedules are currently up-to-date.',
+                            : 'All cattle treatments and multi-dose schedules are currently up-to-date.',
                         textAlign: TextAlign.center,
                         style: TextStyle(
                           fontSize: 13,

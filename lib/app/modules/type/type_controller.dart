@@ -53,6 +53,7 @@ class TypeController extends GetxController {
   final RxBool isLoadingGaushalas = false.obs;
   final RxString searchQuery = ''.obs;
   final Rxn<String> selectedGaushalaFilter = Rxn<String>();
+  final RxString selectedTagFilter = 'all'.obs; // 'all', 'both', 'isFemale', 'isMale'
 
   bool get canChangeGaushala => _gaushalaService.canChangeGaushala;
   bool get isSuperAdmin => _gaushalaService.isSuperAdmin;
@@ -79,6 +80,7 @@ class TypeController extends GetxController {
   List<TypeModel> get filteredTypes {
     final query = searchQuery.value.trim().toLowerCase();
     final filterGId = selectedGaushalaFilter.value;
+    final tagFilter = selectedTagFilter.value.trim().toLowerCase();
 
     return types.where((t) {
       // 1. Gaushala Filter
@@ -91,13 +93,26 @@ class TypeController extends GetxController {
         }
       }
 
-      // 2. Search Query Filter
+      // 2. Tag / Gender Filter
+      if (tagFilter != 'all') {
+        if (tagFilter == 'isfemale') {
+          if (!t.isForFemale) return false;
+        } else if (tagFilter == 'ismale') {
+          if (!t.isForMale) return false;
+        } else if (tagFilter == 'both') {
+          if (!t.isForBoth) return false;
+        }
+      }
+
+      // 3. Search Query Filter
       if (query.isEmpty) return true;
       final nameMatches = t.typeName.toLowerCase().contains(query);
       final idMatches = t.id.toLowerCase().contains(query);
+      final tagMatches = t.tagDisplayName.toLowerCase().contains(query) ||
+          t.tag.toLowerCase().contains(query);
       final gaushalaMatches = (t.gaushalaName?.toLowerCase().contains(query) ?? false) ||
           gaushalas.any((g) => g.id == t.gaushalaId && g.gaushalaName.toLowerCase() == query);
-      return nameMatches || idMatches || gaushalaMatches;
+      return nameMatches || idMatches || tagMatches || gaushalaMatches;
     }).toList();
   }
 
@@ -161,8 +176,15 @@ class TypeController extends GetxController {
     fetchTypes(gaushalaId: gaushalaId, showLoading: true);
   }
 
+  void setTagFilter(String tag) {
+    selectedTagFilter.value = tag;
+    currentPage.value = 1;
+    mobileLimit.value = 10;
+  }
+
   void clearFilters() {
     searchQuery.value = '';
+    selectedTagFilter.value = 'all';
     currentPage.value = 1;
     mobileLimit.value = 10;
   }
@@ -281,6 +303,15 @@ class TypeController extends GetxController {
   Future<void> fetchGaushalas() async {
     isLoadingGaushalas.value = true;
     try {
+      if (!isSuperAdmin) {
+        final assigned = _gaushalaService.selectedGaushala.value ?? _gaushalaService.getUserDefaultGaushala();
+        if (assigned != null) {
+          gaushalas.assignAll([assigned]);
+        } else {
+          gaushalas.clear();
+        }
+        return;
+      }
       final result = await _apiService.getGaushalas();
       gaushalas.assignAll(result);
     } catch (e) {
@@ -305,7 +336,12 @@ class TypeController extends GetxController {
   }
 
   /// Creates a new type via POST /api/v1/types
-  Future<bool> createType(String typeName, {String? gaushalaId}) async {
+  Future<bool> createType(
+    String typeName, {
+    String? gaushalaId,
+    String? tag,
+    bool showSnackbar = true,
+  }) async {
     final trimmed = typeName.trim();
     if (trimmed.isEmpty) {
       CustomSnackbar.showError(
@@ -329,13 +365,19 @@ class TypeController extends GetxController {
 
     isSubmitting.value = true;
     try {
-      final newType = await _apiService.createType(trimmed, gaushalaId: targetGaushalaId);
+      final newType = await _apiService.createType(
+        trimmed,
+        gaushalaId: targetGaushalaId,
+        tag: tag ?? 'both',
+      );
       _cachedTypes.insert(0, newType);
       types.insert(0, newType);
-      CustomSnackbar.showSuccess(
-        title: 'Type Created',
-        message: 'Type "${newType.typeName}" was added successfully.',
-      );
+      if (showSnackbar) {
+        CustomSnackbar.showSuccess(
+          title: 'Type Created',
+          message: 'Type "${newType.typeName}" was added successfully.',
+        );
+      }
       return true;
     } catch (e) {
       return false;
@@ -345,7 +387,13 @@ class TypeController extends GetxController {
   }
 
   /// Updates an existing type via POST /api/v1/types/:id/update
-  Future<bool> updateType(String id, String typeName, {String? gaushalaId}) async {
+  Future<bool> updateType(
+    String id,
+    String typeName, {
+    String? gaushalaId,
+    String? tag,
+    bool showSnackbar = true,
+  }) async {
     final trimmed = typeName.trim();
     if (trimmed.isEmpty) {
       CustomSnackbar.showError(
@@ -357,7 +405,12 @@ class TypeController extends GetxController {
 
     isSubmitting.value = true;
     try {
-      final updated = await _apiService.updateType(id, trimmed, gaushalaId: gaushalaId);
+      final updated = await _apiService.updateType(
+        id,
+        trimmed,
+        gaushalaId: gaushalaId,
+        tag: tag,
+      );
       final index = types.indexWhere((t) => t.id == id);
       if (index != -1) {
         types[index] = updated;
@@ -366,10 +419,12 @@ class TypeController extends GetxController {
       if (cacheIndex != -1) {
         _cachedTypes[cacheIndex] = updated;
       }
-      CustomSnackbar.showSuccess(
-        title: 'Type Updated',
-        message: 'Type updated to "${updated.typeName}" successfully.',
-      );
+      if (showSnackbar) {
+        CustomSnackbar.showSuccess(
+          title: 'Type Updated',
+          message: 'Type updated to "${updated.typeName}" successfully.',
+        );
+      }
       return true;
     } catch (e) {
       return false;
@@ -430,6 +485,96 @@ class TypeController extends GetxController {
     });
   }
 
+  /// Reusable Tag / Applicable Gender Selector widget
+  Widget buildTagSelector(RxString selectedTag, {bool isDark = false}) {
+    final options = [
+      {
+        'value': 'both',
+        'label': 'Both',
+        'sub': 'Male & Female',
+        'icon': PhosphorIconsRegular.genderNeuter,
+        'color': const Color(0xFF0D9488),
+      },
+      {
+        'value': 'isFemale',
+        'label': 'Female',
+        'sub': 'Female Only',
+        'icon': PhosphorIconsRegular.genderFemale,
+        'color': AppColors.primary,
+      },
+      {
+        'value': 'isMale',
+        'label': 'Male',
+        'sub': 'Male Only',
+        'icon': PhosphorIconsRegular.genderMale,
+        'color': Colors.blue.shade600,
+      },
+    ];
+
+    return Obx(() {
+      return Row(
+        children: options.map((opt) {
+          final val = opt['value'] as String;
+          final isSelected = selectedTag.value == val;
+          final color = opt['color'] as Color;
+
+          return Expanded(
+            child: Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 4.0),
+              child: InkWell(
+                borderRadius: BorderRadius.circular(10),
+                onTap: () => selectedTag.value = val,
+                child: AnimatedContainer(
+                  duration: const Duration(milliseconds: 150),
+                  padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 8),
+                  decoration: BoxDecoration(
+                    color: isSelected ? color.withValues(alpha: 0.12) : Colors.transparent,
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(
+                      color: isSelected
+                          ? color
+                          : (isDark ? AppColors.borderDark : AppColors.borderLight),
+                      width: isSelected ? 1.6 : 1.0,
+                    ),
+                  ),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        opt['icon'] as IconData,
+                        size: 20,
+                        color: isSelected ? color : (isDark ? AppColors.textMutedDark : AppColors.textMutedLight),
+                      ),
+                      const SizedBox(height: 4),
+                      Text(
+                        opt['label'] as String,
+                        style: TextStyle(
+                          fontSize: 12.5,
+                          fontWeight: isSelected ? FontWeight.bold : FontWeight.w600,
+                          color: isSelected ? color : (isDark ? AppColors.textPrimaryDark : AppColors.textPrimaryLight),
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        opt['sub'] as String,
+                        style: TextStyle(
+                          fontSize: 10,
+                          color: isSelected
+                              ? color.withValues(alpha: 0.85)
+                              : (isDark ? AppColors.textMutedDark : AppColors.textMutedLight),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          );
+        }).toList(),
+      );
+    });
+  }
+
   /// Open Dialog to Add a New Type
   void openAddTypeDialog(BuildContext context) {
     if (!canAddType) {
@@ -441,6 +586,7 @@ class TypeController extends GetxController {
     }
     final formKey = GlobalKey<FormState>();
     final nameController = TextEditingController();
+    final selectedTag = 'both'.obs;
 
     if (gaushalas.isEmpty) {
       fetchGaushalas();
@@ -460,137 +606,152 @@ class TypeController extends GetxController {
     final Rxn<GaushalaModel> selectedGaushala = Rxn<GaushalaModel>(defaultGaushala);
 
     Get.dialog(
-      Dialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 460),
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.all(24.0),
-            child: Form(
-              key: formKey,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      Builder(
+        builder: (dialogContext) {
+          void closeDialog() {
+            if (Navigator.of(dialogContext).canPop()) {
+              Navigator.of(dialogContext).pop();
+            } else if (context.mounted && Navigator.of(context, rootNavigator: true).canPop()) {
+              Navigator.of(context, rootNavigator: true).pop();
+            } else if (Get.isDialogOpen ?? false) {
+              Get.back();
+            }
+          }
+
+          return Dialog(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 460),
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.all(24.0),
+                child: Form(
+                  key: formKey,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Container(
-                            padding: const EdgeInsets.all(8),
-                            decoration: BoxDecoration(
-                              color: AppColors.primary.withValues(alpha: 0.12),
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: const Icon(
-                              PhosphorIconsRegular.tag,
-                              color: AppColors.primary,
-                              size: 20,
-                            ),
+                          Row(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.all(8),
+                                decoration: BoxDecoration(
+                                  color: AppColors.primary.withValues(alpha: 0.12),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: const Icon(
+                                  PhosphorIconsRegular.tag,
+                                  color: AppColors.primary,
+                                  size: 20,
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              const Text(
+                                'Add New Type',
+                                style: TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ],
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.close_rounded, size: 20),
+                            onPressed: closeDialog,
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      const Text(
+                        'Register a new cattle classification type in the system.',
+                        style: TextStyle(fontSize: 12, color: AppColors.textSecondaryLight),
+                      ),
+                      const SizedBox(height: 20),
+                      _buildGaushalaDropdown(
+                        context: context,
+                        selectedGaushala: selectedGaushala,
+                      ),
+                      const SizedBox(height: 16),
+                      CustomTextField(
+                        controller: nameController,
+                        label: 'Type Name',
+                        hint: 'e.g. Milking, Dry, Pregnant, Heifer, Calf',
+                        prefixIcon: const Icon(Icons.label_outline_rounded, size: 20),
+                        validator: (val) {
+                          if (val == null || val.trim().isEmpty) {
+                            return 'Type name is required';
+                          }
+                          if (val.trim().length < 2) {
+                            return 'Type name must be at least 2 characters';
+                          }
+                          return null;
+                        },
+                      ),
+                      const SizedBox(height: 16),
+                      const Text(
+                        'Applicable Gender / Tag *',
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      buildTagSelector(selectedTag),
+                      const SizedBox(height: 24),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        children: [
+                          TextButton(
+                            onPressed: closeDialog,
+                            child: const Text('Cancel'),
                           ),
                           const SizedBox(width: 12),
-                          const Text(
-                            'Add New Type',
-                            style: TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
+                          Obx(
+                            () => CustomButton(
+                              text: 'Create Type',
+                              icon: Icons.add_rounded,
+                              isLoading: isSubmitting.value,
+                              width: 155,
+                              height: 42,
+                              onPressed: () async {
+                                if (formKey.currentState?.validate() ?? false) {
+                                  if (selectedGaushala.value == null) {
+                                    CustomSnackbar.showError(
+                                      title: 'Validation Error',
+                                      message: 'Please select a Gaushala for this type.',
+                                    );
+                                    return;
+                                  }
+                                  final typeName = nameController.text.trim();
+                                  final success = await createType(
+                                    typeName,
+                                    gaushalaId: selectedGaushala.value!.id,
+                                    tag: selectedTag.value,
+                                    showSnackbar: false,
+                                  );
+                                  if (success) {
+                                    closeDialog();
+                                    CustomSnackbar.showSuccess(
+                                      title: 'Type Created',
+                                      message: 'Type "$typeName" was added successfully.',
+                                    );
+                                  }
+                                }
+                              },
                             ),
                           ),
                         ],
                       ),
-                      IconButton(
-                        icon: const Icon(Icons.close_rounded, size: 20),
-                        onPressed: () {
-                          if (Get.isDialogOpen ?? false) {
-                            Get.back();
-                          } else if (context.mounted) {
-                            Navigator.of(context, rootNavigator: true).pop();
-                          }
-                        },
-                      ),
                     ],
                   ),
-                  const SizedBox(height: 8),
-                  const Text(
-                    'Register a new cattle classification type in the system.',
-                    style: TextStyle(fontSize: 12, color: AppColors.textSecondaryLight),
-                  ),
-                  const SizedBox(height: 20),
-                  _buildGaushalaDropdown(
-                    context: context,
-                    selectedGaushala: selectedGaushala,
-                  ),
-                  const SizedBox(height: 16),
-                  CustomTextField(
-                    controller: nameController,
-                    label: 'Type Name',
-                    hint: 'e.g. Milking, Dry, Pregnant, Heifer, Calf',
-                    prefixIcon: const Icon(Icons.label_outline_rounded, size: 20),
-                    validator: (val) {
-                      if (val == null || val.trim().isEmpty) {
-                        return 'Type name is required';
-                      }
-                      if (val.trim().length < 2) {
-                        return 'Type name must be at least 2 characters';
-                      }
-                      return null;
-                    },
-                  ),
-                  const SizedBox(height: 24),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.end,
-                    children: [
-                      TextButton(
-                        onPressed: () {
-                          if (Get.isDialogOpen ?? false) {
-                            Get.back();
-                          } else if (context.mounted) {
-                            Navigator.of(context, rootNavigator: true).pop();
-                          }
-                        },
-                        child: const Text('Cancel'),
-                      ),
-                      const SizedBox(width: 12),
-                      Obx(
-                        () => CustomButton(
-                          text: 'Create Type',
-                          icon: Icons.add_rounded,
-                          isLoading: isSubmitting.value,
-                          width: 155,
-                          height: 42,
-                          onPressed: () async {
-                            if (formKey.currentState?.validate() ?? false) {
-                              if (selectedGaushala.value == null) {
-                                CustomSnackbar.showError(
-                                  title: 'Validation Error',
-                                  message: 'Please select a Gaushala for this type.',
-                                );
-                                return;
-                              }
-                              final success = await createType(
-                                nameController.text,
-                                gaushalaId: selectedGaushala.value!.id,
-                              );
-                              if (success) {
-                                if (Get.isDialogOpen ?? false) {
-                                  Get.back();
-                                } else if (context.mounted) {
-                                  Navigator.of(context, rootNavigator: true).pop();
-                                }
-                              }
-                            }
-                          },
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
+                ),
               ),
             ),
-          ),
-        ),
+          );
+        },
       ),
       barrierDismissible: false,
     );
@@ -614,6 +775,7 @@ class TypeController extends GetxController {
 
     final formKey = GlobalKey<FormState>();
     final nameController = TextEditingController(text: type.typeName);
+    final selectedTag = RxString(type.tag.isNotEmpty ? type.tag : 'both');
 
     if (gaushalas.isEmpty) {
       fetchGaushalas();
@@ -627,131 +789,146 @@ class TypeController extends GetxController {
     final Rxn<GaushalaModel> selectedGaushala = Rxn<GaushalaModel>(initialGaushala);
 
     Get.dialog(
-      Dialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 460),
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.all(24.0),
-            child: Form(
-              key: formKey,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      Builder(
+        builder: (dialogContext) {
+          void closeDialog() {
+            if (Navigator.of(dialogContext).canPop()) {
+              Navigator.of(dialogContext).pop();
+            } else if (context.mounted && Navigator.of(context, rootNavigator: true).canPop()) {
+              Navigator.of(context, rootNavigator: true).pop();
+            } else if (Get.isDialogOpen ?? false) {
+              Get.back();
+            }
+          }
+
+          return Dialog(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 460),
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.all(24.0),
+                child: Form(
+                  key: formKey,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Container(
-                            padding: const EdgeInsets.all(8),
-                            decoration: BoxDecoration(
-                              color: AppColors.info.withValues(alpha: 0.12),
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: const Icon(
-                              Icons.edit_rounded,
-                              color: AppColors.info,
-                              size: 20,
-                            ),
+                          Row(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.all(8),
+                                decoration: BoxDecoration(
+                                  color: AppColors.info.withValues(alpha: 0.12),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: const Icon(
+                                  Icons.edit_rounded,
+                                  color: AppColors.info,
+                                  size: 20,
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              const Text(
+                                'Edit Type',
+                                style: TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ],
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.close_rounded, size: 20),
+                            onPressed: closeDialog,
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'Update the classification name and tag for "${type.typeName}".',
+                        style: const TextStyle(fontSize: 12, color: AppColors.textSecondaryLight),
+                      ),
+                      const SizedBox(height: 20),
+                      _buildGaushalaDropdown(
+                        context: context,
+                        selectedGaushala: selectedGaushala,
+                      ),
+                      const SizedBox(height: 16),
+                      CustomTextField(
+                        controller: nameController,
+                        label: 'Type Name',
+                        hint: 'e.g. Milking, Dry, Pregnant',
+                        prefixIcon: const Icon(Icons.label_outline_rounded, size: 20),
+                        validator: (val) {
+                          if (val == null || val.trim().isEmpty) {
+                            return 'Type name is required';
+                          }
+                          if (val.trim().length < 2) {
+                            return 'Type name must be at least 2 characters';
+                          }
+                          return null;
+                        },
+                      ),
+                      const SizedBox(height: 16),
+                      const Text(
+                        'Applicable Gender / Tag *',
+                        style: TextStyle(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      buildTagSelector(selectedTag),
+                      const SizedBox(height: 24),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        children: [
+                          TextButton(
+                            onPressed: closeDialog,
+                            child: const Text('Cancel'),
                           ),
                           const SizedBox(width: 12),
-                          const Text(
-                            'Edit Type',
-                            style: TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
+                          Obx(
+                            () => CustomButton(
+                              text: 'Save Changes',
+                              icon: Icons.check_rounded,
+                              isLoading: isSubmitting.value,
+                              width: 155,
+                              height: 42,
+                              onPressed: () async {
+                                if (formKey.currentState?.validate() ?? false) {
+                                  final typeName = nameController.text.trim();
+                                  final success = await updateType(
+                                    type.id,
+                                    typeName,
+                                    gaushalaId: selectedGaushala.value?.id,
+                                    tag: selectedTag.value,
+                                    showSnackbar: false,
+                                  );
+                                  if (success) {
+                                    closeDialog();
+                                    CustomSnackbar.showSuccess(
+                                      title: 'Type Updated',
+                                      message: 'Type updated to "$typeName" successfully.',
+                                    );
+                                  }
+                                }
+                              },
                             ),
                           ),
                         ],
                       ),
-                      IconButton(
-                        icon: const Icon(Icons.close_rounded, size: 20),
-                        onPressed: () {
-                          if (Get.isDialogOpen ?? false) {
-                            Get.back();
-                          } else if (context.mounted) {
-                            Navigator.of(context, rootNavigator: true).pop();
-                          }
-                        },
-                      ),
                     ],
                   ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Update the classification name for "${type.typeName}".',
-                    style: const TextStyle(fontSize: 12, color: AppColors.textSecondaryLight),
-                  ),
-                  const SizedBox(height: 20),
-                  _buildGaushalaDropdown(
-                    context: context,
-                    selectedGaushala: selectedGaushala,
-                  ),
-                  const SizedBox(height: 16),
-                  CustomTextField(
-                    controller: nameController,
-                    label: 'Type Name',
-                    hint: 'e.g. Milking, Dry, Pregnant',
-                    prefixIcon: const Icon(Icons.label_outline_rounded, size: 20),
-                    validator: (val) {
-                      if (val == null || val.trim().isEmpty) {
-                        return 'Type name is required';
-                      }
-                      if (val.trim().length < 2) {
-                        return 'Type name must be at least 2 characters';
-                      }
-                      return null;
-                    },
-                  ),
-                  const SizedBox(height: 24),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.end,
-                    children: [
-                      TextButton(
-                        onPressed: () {
-                          if (Get.isDialogOpen ?? false) {
-                            Get.back();
-                          } else if (context.mounted) {
-                            Navigator.of(context, rootNavigator: true).pop();
-                          }
-                        },
-                        child: const Text('Cancel'),
-                      ),
-                      const SizedBox(width: 12),
-                      Obx(
-                        () => CustomButton(
-                          text: 'Save Changes',
-                          icon: Icons.check_rounded,
-                          isLoading: isSubmitting.value,
-                          width: 155,
-                          height: 42,
-                          onPressed: () async {
-                            if (formKey.currentState?.validate() ?? false) {
-                              final success = await updateType(
-                                type.id,
-                                nameController.text,
-                                gaushalaId: selectedGaushala.value?.id,
-                              );
-                              if (success) {
-                                if (Get.isDialogOpen ?? false) {
-                                  Get.back();
-                                } else if (context.mounted) {
-                                  Navigator.of(context, rootNavigator: true).pop();
-                                }
-                              }
-                            }
-                          },
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
+                ),
               ),
             ),
-          ),
-        ),
+          );
+        },
       ),
       barrierDismissible: false,
     );
@@ -767,45 +944,49 @@ class TypeController extends GetxController {
       return;
     }
     Get.dialog(
-      AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Row(
-          children: const [
-            Icon(Icons.warning_amber_rounded, color: AppColors.error),
-            SizedBox(width: 10),
-            Text('Delete Type'),
-          ],
-        ),
-        content: Text(
-          'Are you sure you want to delete the type "${type.typeName}"? This action cannot be undone.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () {
-              if (context.mounted) {
-                Navigator.of(context, rootNavigator: true).pop();
-              } else {
-                Get.back();
-              }
-            },
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.error,
-              foregroundColor: Colors.white,
+      Builder(
+        builder: (dialogContext) {
+          void closeDialog() {
+            if (Navigator.of(dialogContext).canPop()) {
+              Navigator.of(dialogContext).pop();
+            } else if (context.mounted && Navigator.of(context, rootNavigator: true).canPop()) {
+              Navigator.of(context, rootNavigator: true).pop();
+            } else if (Get.isDialogOpen ?? false) {
+              Get.back();
+            }
+          }
+
+          return AlertDialog(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            title: Row(
+              children: const [
+                Icon(Icons.warning_amber_rounded, color: AppColors.error),
+                SizedBox(width: 10),
+                Text('Delete Type'),
+              ],
             ),
-            onPressed: () {
-              if (context.mounted) {
-                Navigator.of(context, rootNavigator: true).pop();
-              } else {
-                Get.back();
-              }
-              deleteType(type.id);
-            },
-            child: const Text('Delete'),
-          ),
-        ],
+            content: Text(
+              'Are you sure you want to delete the type "${type.typeName}"? This action cannot be undone.',
+            ),
+            actions: [
+              TextButton(
+                onPressed: closeDialog,
+                child: const Text('Cancel'),
+              ),
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.error,
+                  foregroundColor: Colors.white,
+                ),
+                onPressed: () {
+                  closeDialog();
+                  deleteType(type.id);
+                },
+                child: const Text('Delete'),
+              ),
+            ],
+          );
+        },
       ),
     );
   }

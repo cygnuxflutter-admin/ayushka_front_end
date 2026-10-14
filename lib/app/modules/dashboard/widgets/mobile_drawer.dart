@@ -8,6 +8,7 @@ import '../../../data/models/gaushala_model.dart';
 import '../../../data/models/user_model.dart';
 import '../../../data/services/gaushala_session_service.dart';
 import '../../../data/services/permission_service.dart';
+import '../../../data/services/storage_service.dart';
 import '../../../routes/app_routes.dart';
 import 'package:phosphor_flutter/phosphor_flutter.dart';
 
@@ -26,6 +27,7 @@ class MobileDrawer extends StatelessWidget {
   void _showGaushalaPicker(BuildContext context) {
     if (!Get.isRegistered<GaushalaSessionService>()) return;
     final gaushalaService = Get.find<GaushalaSessionService>();
+    if (!gaushalaService.canChangeGaushala) return;
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     showModalBottomSheet(
@@ -415,9 +417,15 @@ class MobileDrawer extends StatelessWidget {
                       : null;
 
                   Widget buildNavItems() {
-                    final bool isAdminUser = perm != null
-                        ? perm.isAdmin
-                        : (currentUser == null || currentUser!.isAdmin);
+                    final activeUser = currentUser ??
+                        (Get.isRegistered<StorageService>()
+                            ? Get.find<StorageService>().getUser()
+                            : null);
+                    final bool isSuperAdminUser = activeUser?.isSuperAdmin ??
+                        (perm != null ? perm.isSuperAdmin : false);
+                    final bool isAdminUser = isSuperAdminUser ||
+                        (activeUser?.isAdmin ?? false) ||
+                        (perm != null && perm.isAdmin);
                     bool hasAccess(String m, String s) =>
                         isAdminUser || (perm != null && perm.hasMenuAccess(m, s));
                     bool hasAnyAccess(String m, List<String> subs) =>
@@ -425,8 +433,8 @@ class MobileDrawer extends StatelessWidget {
                     bool isModVisible(String m) =>
                         isAdminUser || (perm != null && perm.isModuleVisible(m));
 
-                    final bool hasRoleMaster = isModVisible(PermissionModules.role) &&
-                        hasAccess(PermissionModules.role, PermissionSubModules.roleList);
+                    // Roles is strictly visible ONLY to Super Administrators
+                    final bool hasRoleMaster = isSuperAdminUser;
                     final bool hasUserMaster = isModVisible(PermissionModules.user) &&
                         hasAccess(PermissionModules.user, PermissionSubModules.userList);
                     final bool hasWorkerMaster = isModVisible(PermissionModules.workerMgmt) &&
@@ -434,8 +442,8 @@ class MobileDrawer extends StatelessWidget {
                           PermissionSubModules.workerList,
                           PermissionSubModules.departmentList,
                         ]);
-                    final bool hasGaushalaMaster = isModVisible(PermissionModules.gaushala) &&
-                        hasAccess(PermissionModules.gaushala, PermissionSubModules.gaushalaList);
+                    // Gaushalas is strictly visible ONLY to Super Administrators
+                    final bool hasGaushalaMaster = isSuperAdminUser;
                     final bool hasShedMaster = isModVisible(PermissionModules.shed) &&
                         hasAnyAccess(PermissionModules.shed, [
                           PermissionSubModules.shedList,
@@ -503,6 +511,36 @@ class MobileDrawer extends StatelessWidget {
                           }
                         },
                       ),
+                    if (isModVisible(PermissionModules.cowHeat) &&
+                        hasAnyAccess(PermissionModules.cowHeat, [
+                          PermissionSubModules.heatList,
+                        ]))
+                      _DrawerItem(
+                        icon: PhosphorIconsRegular.fire,
+                        label: 'Cow Heat Monitoring',
+                        isSelected: currentRoute == AppRoutes.heats,
+                        onTap: () {
+                          Get.back();
+                          if (currentRoute != AppRoutes.heats) {
+                            Get.offNamed(AppRoutes.heats);
+                          }
+                        },
+                      ),
+                    if (isModVisible(PermissionModules.cowMating) &&
+                        hasAnyAccess(PermissionModules.cowMating, [
+                          PermissionSubModules.matingList,
+                        ]))
+                      _DrawerItem(
+                        icon: PhosphorIconsRegular.heartStraight,
+                        label: 'Cow Mating & Breeding',
+                        isSelected: currentRoute == AppRoutes.matings,
+                        onTap: () {
+                          Get.back();
+                          if (currentRoute != AppRoutes.matings) {
+                            Get.offNamed(AppRoutes.matings);
+                          }
+                        },
+                      ),
                     if (isModVisible(PermissionModules.treatment) &&
                         hasAnyAccess(PermissionModules.treatment, [
                           PermissionSubModules.treatmentList,
@@ -510,7 +548,7 @@ class MobileDrawer extends StatelessWidget {
                         ]))
                       _DrawerItem(
                         icon: PhosphorIconsRegular.firstAid,
-                        label: 'Cow Treatments',
+                        label: 'Cattle Treatment & Veterinary',
                         isSelected: currentRoute == AppRoutes.treatments || currentRoute == AppRoutes.treatmentDetails,
                         onTap: () {
                           Get.back();
@@ -546,18 +584,6 @@ class MobileDrawer extends StatelessWidget {
                           if (currentRoute != AppRoutes.feedTransactions) {
                             Get.offNamed(AppRoutes.feedTransactions);
                           }
-                        },
-                      ),
-                    if (isAdminUser ||
-                        (isModVisible(PermissionModules.treatment) &&
-                            hasAccess(PermissionModules.treatment, PermissionSubModules.treatmentList)))
-                      _DrawerItem(
-                        icon: PhosphorIconsRegular.heartbeat,
-                        label: 'Health & Breeding',
-                        isSelected: false,
-                        onTap: () {
-                          Get.back();
-                          Get.snackbar('Health Records', 'Vaccination and medical records station.', maxWidth: 400);
                         },
                       ),
                     // Section 2: Master Catalogs (Admin & Super Admin only)

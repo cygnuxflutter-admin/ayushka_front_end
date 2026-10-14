@@ -1407,7 +1407,7 @@ class FeedStockTransactionScreen extends GetView<FeedStockTransactionController>
             ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 420),
               child: Text(
-                'Record fresh inward stock from purchases/donations or issue stock for daily cattle feeding.',
+                'Record fresh inward stock from purchases or issue stock for daily cattle feeding.',
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   fontSize: 13,
@@ -1600,14 +1600,11 @@ class _HoverableStockMetricCardState extends State<_HoverableStockMetricCard> {
 }
 
 /// Interactive, hoverable data table row for Feed Stock Transactions.
-/// Incorporates the interactive animation design from Herd & Cattle (`_HoverableCowTableRow`):
+/// Matches standard list animation across all modules (Feed Item, Cattle, Shed):
+/// - Clean transparent default background (no alternating zebra striping)
 /// - Smooth background tint and 3.5px primary left accent bar on hover
-/// - AnimatedDefaultTextStyle on row index (#) transitioning to bold and primary color
-/// - AnimatedContainer on Item Code & Category badges with subtle box-shadow glow
-/// - AnimatedContainer on Type & Reason chips with elevated shadow
-/// - Animated typography transitions across Date, Item name, Financials, and Destination
-/// - Glowing warning badge for 0 stock audit records
-/// - Action buttons (View Details eye & View Voucher receipt) illuminating on hover
+/// - Primary color highlight on row index (#) and Item Name
+/// - Stable, static badges and action buttons preventing visual noise
 class _HoverableStockTransactionTableRow extends StatefulWidget {
   final int index;
   final FeedStockTransactionModel tx;
@@ -1657,11 +1654,7 @@ class _HoverableStockTransactionTableRowState
                 ? (isDark
                     ? AppColors.surfaceDark.withValues(alpha: 0.85)
                     : AppColors.primary.withValues(alpha: 0.045))
-                : (widget.index.isEven
-                    ? Colors.transparent
-                    : (isDark
-                        ? Colors.white.withValues(alpha: 0.015)
-                        : const Color(0xFFFAFCF9))),
+                : Colors.transparent,
             border: Border(
               top: BorderSide(
                 color: isDark ? AppColors.borderDark : AppColors.borderLight,
@@ -1706,16 +1699,13 @@ class _HoverableStockTransactionTableRowState
                     crossAxisAlignment: CrossAxisAlignment.start,
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      AnimatedDefaultTextStyle(
-                        duration: const Duration(milliseconds: 160),
+                      Text(
+                        dateStr,
                         style: TextStyle(
                           fontSize: 12,
-                          fontWeight: _isHovered ? FontWeight.bold : FontWeight.w600,
-                          color: _isHovered
-                              ? (isDark ? Colors.white : AppColors.primary)
-                              : (isDark ? AppColors.textPrimaryDark : AppColors.textPrimaryLight),
+                          fontWeight: FontWeight.w600,
+                          color: isDark ? AppColors.textPrimaryDark : AppColors.textPrimaryLight,
                         ),
-                        child: Text(dateStr),
                       ),
                       if (timeStr.isNotEmpty) ...[
                         const SizedBox(height: 2),
@@ -1743,45 +1733,31 @@ class _HoverableStockTransactionTableRowState
                     crossAxisAlignment: CrossAxisAlignment.start,
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      AnimatedDefaultTextStyle(
-                        duration: const Duration(milliseconds: 160),
+                      Text(
+                        tx.itemName,
+                        overflow: TextOverflow.ellipsis,
                         style: TextStyle(
                           fontSize: 13,
                           fontWeight: FontWeight.bold,
                           color: _isHovered
-                              ? (isDark ? Colors.white : Colors.black87)
+                              ? (isDark ? AppColors.primaryLight : AppColors.primary)
                               : (isDark ? AppColors.textPrimaryDark : AppColors.textPrimaryLight),
-                        ),
-                        child: Text(
-                          tx.itemName,
-                          overflow: TextOverflow.ellipsis,
                         ),
                       ),
                       const SizedBox(height: 3),
                       Row(
                         children: [
                           if (tx.itemCode.isNotEmpty) ...[
-                            AnimatedContainer(
-                              duration: const Duration(milliseconds: 160),
-                              curve: Curves.easeInOut,
+                            Container(
                               padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                               margin: const EdgeInsets.only(right: 6),
                               decoration: BoxDecoration(
-                                color: AppColors.primary.withValues(alpha: _isHovered ? 0.20 : 0.12),
+                                color: AppColors.primary.withValues(alpha: 0.12),
                                 borderRadius: BorderRadius.circular(5),
                                 border: Border.all(
-                                  color: AppColors.primary.withValues(alpha: _isHovered ? 0.50 : 0.25),
+                                  color: AppColors.primary.withValues(alpha: 0.25),
                                   width: 1.0,
                                 ),
-                                boxShadow: _isHovered
-                                    ? [
-                                        BoxShadow(
-                                          color: AppColors.primary.withValues(alpha: 0.16),
-                                          blurRadius: 6,
-                                          offset: const Offset(0, 2),
-                                        ),
-                                      ]
-                                    : [],
                               ),
                               child: Row(
                                 mainAxisSize: MainAxisSize.min,
@@ -1802,15 +1778,13 @@ class _HoverableStockTransactionTableRowState
                             ),
                           ],
                           Flexible(
-                            child: AnimatedContainer(
-                              duration: const Duration(milliseconds: 160),
-                              curve: Curves.easeInOut,
+                            child: Container(
                               padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                               decoration: BoxDecoration(
-                                color: tx.categoryEnum.color.withValues(alpha: _isHovered ? 0.18 : 0.10),
+                                color: tx.categoryEnum.color.withValues(alpha: 0.10),
                                 borderRadius: BorderRadius.circular(5),
                                 border: Border.all(
-                                  color: tx.categoryEnum.color.withValues(alpha: _isHovered ? 0.45 : 0.25),
+                                  color: tx.categoryEnum.color.withValues(alpha: 0.25),
                                   width: 0.8,
                                 ),
                               ),
@@ -1841,26 +1815,15 @@ class _HoverableStockTransactionTableRowState
                     alignment: Alignment.centerLeft,
                     child: FittedBox(
                       fit: BoxFit.scaleDown,
-                      child: AnimatedContainer(
-                        duration: const Duration(milliseconds: 160),
-                        curve: Curves.easeInOut,
+                      child: Container(
                         padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4.5),
                         decoration: BoxDecoration(
-                          color: tx.typeEnum.color.withValues(alpha: _isHovered ? 0.22 : 0.12),
+                          color: tx.typeEnum.color.withValues(alpha: 0.12),
                           borderRadius: BorderRadius.circular(6),
                           border: Border.all(
-                            color: tx.typeEnum.color.withValues(alpha: _isHovered ? 0.55 : 0.25),
+                            color: tx.typeEnum.color.withValues(alpha: 0.25),
                             width: 1.0,
                           ),
-                          boxShadow: _isHovered
-                              ? [
-                                  BoxShadow(
-                                    color: tx.typeEnum.color.withValues(alpha: 0.18),
-                                    blurRadius: 6,
-                                    offset: const Offset(0, 2),
-                                  ),
-                                ]
-                              : [],
                         ),
                         child: Row(
                           mainAxisSize: MainAxisSize.min,
@@ -1892,26 +1855,15 @@ class _HoverableStockTransactionTableRowState
                     alignment: Alignment.centerLeft,
                     child: FittedBox(
                       fit: BoxFit.scaleDown,
-                      child: AnimatedContainer(
-                        duration: const Duration(milliseconds: 160),
-                        curve: Curves.easeInOut,
+                      child: Container(
                         padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                         decoration: BoxDecoration(
-                          color: tx.reasonEnum.color.withValues(alpha: _isHovered ? 0.18 : 0.10),
+                          color: tx.reasonEnum.color.withValues(alpha: 0.10),
                           borderRadius: BorderRadius.circular(6),
                           border: Border.all(
-                            color: tx.reasonEnum.color.withValues(alpha: _isHovered ? 0.45 : 0.20),
+                            color: tx.reasonEnum.color.withValues(alpha: 0.20),
                             width: 0.8,
                           ),
-                          boxShadow: _isHovered
-                              ? [
-                                  BoxShadow(
-                                    color: tx.reasonEnum.color.withValues(alpha: 0.14),
-                                    blurRadius: 5,
-                                    offset: const Offset(0, 1.5),
-                                  ),
-                                ]
-                              : [],
                         ),
                         child: Text(
                           tx.reasonEnum.label,
@@ -1934,17 +1886,14 @@ class _HoverableStockTransactionTableRowState
                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 14),
                   child: Align(
                     alignment: Alignment.centerLeft,
-                    child: AnimatedDefaultTextStyle(
-                      duration: const Duration(milliseconds: 160),
+                    child: Text(
+                      '${tx.isInward ? '+' : '-'}${tx.quantity.toStringAsFixed(1)} ${tx.unit}',
                       style: TextStyle(
                         fontSize: 13,
                         fontWeight: FontWeight.bold,
                         color: tx.isInward
                             ? (isDark ? AppColors.primaryLight : AppColors.primary)
                             : const Color(0xFFF59E0B),
-                      ),
-                      child: Text(
-                        '${tx.isInward ? '+' : '-'}${tx.quantity.toStringAsFixed(1)} ${tx.unit}',
                       ),
                     ),
                   ),
@@ -1961,17 +1910,12 @@ class _HoverableStockTransactionTableRowState
                           crossAxisAlignment: CrossAxisAlignment.start,
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
-                            AnimatedDefaultTextStyle(
-                              duration: const Duration(milliseconds: 160),
+                            Text(
+                              '₹${NumberFormat('#,##,###.##').format(tx.totalAmount)}',
                               style: TextStyle(
                                 fontSize: 12.5,
                                 fontWeight: FontWeight.bold,
-                                color: _isHovered
-                                    ? (isDark ? Colors.white : Colors.black87)
-                                    : (isDark ? AppColors.textPrimaryDark : AppColors.textPrimaryLight),
-                              ),
-                              child: Text(
-                                '₹${NumberFormat('#,##,###.##').format(tx.totalAmount)}',
+                                color: isDark ? AppColors.textPrimaryDark : AppColors.textPrimaryLight,
                               ),
                             ),
                             const SizedBox(height: 1),
@@ -2006,35 +1950,27 @@ class _HoverableStockTransactionTableRowState
                       ? Row(
                           mainAxisSize: MainAxisSize.min,
                           children: [
-                            AnimatedContainer(
-                              duration: const Duration(milliseconds: 160),
+                            Container(
                               padding: const EdgeInsets.all(4),
                               decoration: BoxDecoration(
-                                color: _isHovered
-                                    ? AppColors.primary.withValues(alpha: 0.12)
-                                    : Colors.transparent,
+                                color: AppColors.primary.withValues(alpha: 0.08),
                                 borderRadius: BorderRadius.circular(4),
                               ),
-                              child: Icon(
+                              child: const Icon(
                                 PhosphorIconsRegular.warehouse,
                                 size: 14,
-                                color: _isHovered ? AppColors.primary : Colors.grey,
+                                color: AppColors.primary,
                               ),
                             ),
                             const SizedBox(width: 4),
                             Flexible(
-                              child: AnimatedDefaultTextStyle(
-                                duration: const Duration(milliseconds: 160),
+                              child: Text(
+                                '${tx.shedName!} (${tx.shedNumber ?? ''})',
+                                overflow: TextOverflow.ellipsis,
                                 style: TextStyle(
                                   fontSize: 12,
-                                  fontWeight: _isHovered ? FontWeight.bold : FontWeight.w600,
-                                  color: _isHovered
-                                      ? (isDark ? Colors.white : Colors.black87)
-                                      : (isDark ? AppColors.textPrimaryDark : AppColors.textPrimaryLight),
-                                ),
-                                child: Text(
-                                  '${tx.shedName!} (${tx.shedNumber ?? ''})',
-                                  overflow: TextOverflow.ellipsis,
+                                  fontWeight: FontWeight.w600,
+                                  color: isDark ? AppColors.textPrimaryDark : AppColors.textPrimaryLight,
                                 ),
                               ),
                             ),
@@ -2045,18 +1981,13 @@ class _HoverableStockTransactionTableRowState
                               crossAxisAlignment: CrossAxisAlignment.start,
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
-                                AnimatedDefaultTextStyle(
-                                  duration: const Duration(milliseconds: 160),
+                                Text(
+                                  tx.supplierOrDonorName,
+                                  overflow: TextOverflow.ellipsis,
                                   style: TextStyle(
                                     fontSize: 12,
-                                    fontWeight: _isHovered ? FontWeight.bold : FontWeight.w600,
-                                    color: _isHovered
-                                        ? (isDark ? Colors.white : Colors.black87)
-                                        : (isDark ? AppColors.textPrimaryDark : AppColors.textPrimaryLight),
-                                  ),
-                                  child: Text(
-                                    tx.supplierOrDonorName,
-                                    overflow: TextOverflow.ellipsis,
+                                    fontWeight: FontWeight.w600,
+                                    color: isDark ? AppColors.textPrimaryDark : AppColors.textPrimaryLight,
                                   ),
                                 ),
                                 if (tx.billOrReceiptNo.isNotEmpty) ...[
@@ -2113,26 +2044,15 @@ class _HoverableStockTransactionTableRowState
                       const SizedBox(width: 4),
                       Flexible(
                         child: tx.stockAfter <= 0
-                            ? AnimatedContainer(
-                                duration: const Duration(milliseconds: 160),
-                                curve: Curves.easeInOut,
+                            ? Container(
                                 padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                                 decoration: BoxDecoration(
-                                  color: AppColors.error.withValues(alpha: _isHovered ? 0.20 : 0.12),
+                                  color: AppColors.error.withValues(alpha: 0.12),
                                   borderRadius: BorderRadius.circular(5),
                                   border: Border.all(
-                                    color: AppColors.error.withValues(alpha: _isHovered ? 0.60 : 0.35),
+                                    color: AppColors.error.withValues(alpha: 0.35),
                                     width: 1.0,
                                   ),
-                                  boxShadow: _isHovered
-                                      ? [
-                                          BoxShadow(
-                                            color: AppColors.error.withValues(alpha: 0.20),
-                                            blurRadius: 6,
-                                            offset: const Offset(0, 1),
-                                          ),
-                                        ]
-                                      : [],
                                 ),
                                 child: Row(
                                   mainAxisSize: MainAxisSize.min,
@@ -2157,22 +2077,15 @@ class _HoverableStockTransactionTableRowState
                                   ],
                                 ),
                               )
-                            : AnimatedDefaultTextStyle(
-                                duration: const Duration(milliseconds: 160),
+                            : Text(
+                                '${tx.stockAfter.toStringAsFixed(1)} ${tx.unit}',
+                                overflow: TextOverflow.ellipsis,
                                 style: TextStyle(
                                   fontSize: 11.5,
                                   fontWeight: FontWeight.bold,
-                                  color: _isHovered
-                                      ? (tx.isInward
-                                          ? (isDark ? AppColors.primaryLight : AppColors.primary)
-                                          : const Color(0xFFD97706))
-                                      : (tx.isInward
-                                          ? (isDark ? AppColors.primaryLight : AppColors.primary)
-                                          : const Color(0xFFF59E0B)),
-                                ),
-                                child: Text(
-                                  '${tx.stockAfter.toStringAsFixed(1)} ${tx.unit}',
-                                  overflow: TextOverflow.ellipsis,
+                                  color: tx.isInward
+                                      ? (isDark ? AppColors.primaryLight : AppColors.primary)
+                                      : const Color(0xFFF59E0B),
                                 ),
                               ),
                       ),
@@ -2186,77 +2099,41 @@ class _HoverableStockTransactionTableRowState
                 flex: 3,
                 child: Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 14),
-                  child: AnimatedDefaultTextStyle(
-                    duration: const Duration(milliseconds: 160),
+                  child: Text(
+                    tx.recordedByName ?? 'Admin',
+                    overflow: TextOverflow.ellipsis,
                     style: TextStyle(
                       fontSize: 12,
-                      fontWeight: _isHovered ? FontWeight.w600 : FontWeight.normal,
-                      color: _isHovered
-                          ? (isDark ? Colors.white : Colors.black87)
-                          : (isDark ? AppColors.textPrimaryDark : AppColors.textPrimaryLight),
-                    ),
-                    child: Text(
-                      tx.recordedByName ?? 'Admin',
-                      overflow: TextOverflow.ellipsis,
+                      fontWeight: FontWeight.normal,
+                      color: isDark ? AppColors.textPrimaryDark : AppColors.textPrimaryLight,
                     ),
                   ),
                 ),
               ),
 
-              // 10. ACTIONS (Details Eye + Voucher Receipt matching Herd & Cattle)
+              // 10. ACTIONS (Details Eye)
               SizedBox(
                 width: 100,
                 child: Padding(
                   padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
                   child: Align(
                     alignment: Alignment.centerRight,
-                    child: FittedBox(
-                      fit: BoxFit.scaleDown,
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Tooltip(
-                            message: 'View Details',
-                            waitDuration: const Duration(milliseconds: 300),
-                            child: InkWell(
-                              borderRadius: BorderRadius.circular(6),
-                              mouseCursor: SystemMouseCursors.click,
-                              hoverColor: AppColors.primary.withValues(alpha: 0.12),
-                              onTap: widget.onView,
-                              child: Padding(
-                                padding: const EdgeInsets.all(5),
-                                child: Icon(
-                                  PhosphorIconsRegular.eye,
-                                  size: 17,
-                                  color: _isHovered
-                                      ? AppColors.primary
-                                      : (isDark ? AppColors.textSecondaryDark : AppColors.textSecondaryLight),
-                                ),
-                              ),
-                            ),
+                    child: Tooltip(
+                      message: 'View Details',
+                      waitDuration: const Duration(milliseconds: 300),
+                      child: InkWell(
+                        borderRadius: BorderRadius.circular(6),
+                        mouseCursor: SystemMouseCursors.click,
+                        hoverColor: AppColors.primary.withValues(alpha: 0.12),
+                        onTap: widget.onView,
+                        child: Padding(
+                          padding: const EdgeInsets.all(5),
+                          child: Icon(
+                            PhosphorIconsRegular.eye,
+                            size: 17,
+                            color: isDark ? AppColors.textSecondaryDark : AppColors.textSecondaryLight,
                           ),
-                          const SizedBox(width: 4),
-                          Tooltip(
-                            message: 'View Voucher / Receipt',
-                            waitDuration: const Duration(milliseconds: 300),
-                            child: InkWell(
-                              borderRadius: BorderRadius.circular(6),
-                              mouseCursor: SystemMouseCursors.click,
-                              hoverColor: AppColors.secondary.withValues(alpha: 0.12),
-                              onTap: widget.onView,
-                              child: Padding(
-                                padding: const EdgeInsets.all(5),
-                                child: Icon(
-                                  PhosphorIconsRegular.receipt,
-                                  size: 17,
-                                  color: _isHovered
-                                      ? AppColors.secondary
-                                      : (isDark ? AppColors.textSecondaryDark : AppColors.textSecondaryLight),
-                                ),
-                              ),
-                            ),
-                          ),
-                        ],
+                        ),
                       ),
                     ),
                   ),
@@ -2271,8 +2148,6 @@ class _HoverableStockTransactionTableRowState
 }
 
 /// Interactive, hoverable card for Mobile and Tablet Feed Stock Transactions.
-/// Emulates cattle mobile card polish with smooth elevation lift, border highlight,
-/// glowing shadow, and stock audit warning badges.
 class _HoverableTransactionMobileCard extends StatefulWidget {
   final FeedStockTransactionModel tx;
   final bool isDark;
@@ -2311,30 +2186,22 @@ class _HoverableTransactionMobileCardState
         child: AnimatedContainer(
           duration: const Duration(milliseconds: 160),
           curve: Curves.easeInOut,
-          transform: Matrix4.translationValues(0, _isHovered ? -2 : 0, 0),
           padding: const EdgeInsets.all(14),
           decoration: BoxDecoration(
-            color: isDark ? AppColors.cardDark : AppColors.cardLight,
+            color: Theme.of(context).cardColor,
             borderRadius: BorderRadius.circular(12),
             border: Border.all(
               color: _isHovered
-                  ? tx.typeEnum.color
+                  ? (isDark ? AppColors.primaryLight : AppColors.primary.withValues(alpha: 0.4))
                   : (isDark ? AppColors.borderDark : AppColors.borderLight),
-              width: _isHovered ? 1.5 : 1.0,
+              width: _isHovered ? 1.2 : 1.0,
             ),
             boxShadow: [
-              if (_isHovered)
-                BoxShadow(
-                  color: tx.typeEnum.color.withValues(alpha: 0.16),
-                  blurRadius: 10,
-                  offset: const Offset(0, 4),
-                )
-              else
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.03),
-                  blurRadius: 6,
-                  offset: const Offset(0, 2),
-                ),
+              BoxShadow(
+                color: Colors.black.withValues(alpha: _isHovered ? 0.08 : 0.03),
+                blurRadius: _isHovered ? 8 : 3,
+                offset: Offset(0, _isHovered ? 3 : 1),
+              ),
             ],
           ),
           child: Column(

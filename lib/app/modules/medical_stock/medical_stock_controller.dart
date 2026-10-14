@@ -208,6 +208,11 @@ class MedicalStockController extends GetxController {
   final RxDouble outwardRequestedQuantity = 0.0.obs;
   final RxBool outwardHasExcessStockError = false.obs;
 
+  /// Manual Multi-Batch Selection Mode & per-batch allocations
+  final RxBool outwardIsManualBatchMode = false.obs;
+  final RxMap<String, double> outwardManualAllocations = <String, double>{}.obs;
+  final Map<String, TextEditingController> _outwardBatchControllers = {};
+
   // -------------------------------------------------------------
   // TAB 4: BATCHES & EXPIRY TRACKER
   // -------------------------------------------------------------
@@ -311,6 +316,10 @@ class MedicalStockController extends GetxController {
     outwardDoctorController.dispose();
     outwardPrescribedForController.dispose();
     outwardNotesController.dispose();
+    for (final c in _outwardBatchControllers.values) {
+      c.dispose();
+    }
+    _outwardBatchControllers.clear();
     super.onClose();
   }
 
@@ -1198,7 +1207,7 @@ class MedicalStockController extends GetxController {
   }
 
   // -------------------------------------------------------------
-  // TAB 3: STOCK OUTWARD / DISPENSING (REAL-TIME FEFO ENGINE)
+  // TAB 3: STOCK OUTWARD / DISPENSING (REAL-TIME FEFO & MANUAL MULTI-BATCH ENGINE)
   // -------------------------------------------------------------
   void onOutwardItemChanged(MedicalItemModel? newItem) {
     if (newItem != null) {
@@ -1210,13 +1219,23 @@ class MedicalStockController extends GetxController {
       }
     }
     outwardSelectedItem.value = newItem;
+    outwardManualAllocations.clear();
+    for (final c in _outwardBatchControllers.values) {
+      c.dispose();
+    }
+    _outwardBatchControllers.clear();
     _computeFefoPreview();
+    if (outwardIsManualBatchMode.value) {
+      _populateManualAllocationsFromFefo();
+    }
   }
 
   void _onOutwardQuantityChanged() {
     final qty = double.tryParse(outwardQuantityController.text.trim()) ?? 0.0;
     outwardRequestedQuantity.value = qty;
-    _computeFefoPreview();
+    if (!outwardIsManualBatchMode.value) {
+      _computeFefoPreview();
+    }
   }
 
   double get outwardItemAvailableStock {
@@ -1283,6 +1302,163 @@ class MedicalStockController extends GetxController {
     outwardFefoPreviews.assignAll(previews);
   }
 
+  // -------------------------------------------------------------
+  // MULTI-BATCH MANUAL SELECTION HELPERS
+  // -------------------------------------------------------------
+  String getBatchKey(MedicalBatchModel b) =>
+      b.id.isNotEmpty ? b.id : '${b.itemId}_${b.batchNumber.trim().toUpperCase()}';
+
+  TextEditingController getBatchQtyController(MedicalBatchModel batch) {
+    final key = getBatchKey(batch);
+    if (!_outwardBatchControllers.containsKey(key)) {
+      final alloc = outwardManualAllocations[key] ?? 0.0;
+      final text = alloc > 0 ? (alloc % 1 == 0 ? alloc.toInt().toString() : alloc.toString()) : '';
+      _outwardBatchControllers[key] = TextEditingController(text: text);
+    }
+    return _outwardBatchControllers[key]!;
+  }
+
+  bool isBatchSelected(MedicalBatchModel batch) {
+    final key = getBatchKey(batch);
+    return outwardManualAllocations.containsKey(key) && ((outwardManualAllocations[key] ?? 0.0) > 0);
+  }
+
+  double getBatchAllocatedQuantity(MedicalBatchModel batch) {
+    final key = getBatchKey(batch);
+    return outwardManualAllocations[key] ?? 0.0;
+  }
+
+  double get totalManualAllocatedQuantity {
+    return outwardManualAllocations.values.fold<double>(0.0, (sum, q) => sum + q);
+  }
+
+  int get selectedBatchesCount {
+    return outwardManualAllocations.values.where((q) => q > 0).length;
+  }
+
+  void toggleBatchSelection(MedicalBatchModel batch) {
+    final key = getBatchKey(batch);
+    if (outwardManualAllocations.containsKey(key) && (outwardManualAllocations[key] ?? 0.0) > 0) {
+      outwardManualAllocations.remove(key);
+      if (_outwardBatchControllers.containsKey(key)) {
+        _outwardBatchControllers[key]!.clear();
+      }
+    } else {
+      final currentTotal = totalManualAllocatedQuantity;
+      final needed = outwardRequestedQuantity.value - currentTotal;
+      double toAlloc = 0.0;
+      if (needed > 0) {
+        toAlloc = min(batch.availableQuantity, needed);
+      } else {
+        toAlloc = min(batch.availableQuantity, 1.0);
+      }
+      outwardManualAllocations[key] = toAlloc;
+      final ctrl = getBatchQtyController(batch);
+      ctrl.text = toAlloc % 1 == 0 ? toAlloc.toInt().toString() : toAlloc.toString();
+    }
+    _syncManualAllocationsToRequestedQuantity();
+  }
+
+  void updateBatchAllocation(MedicalBatchModel batch, double qty) {
+    final key = getBatchKey(batch);
+    final clamped = qty.clamp(0.0, batch.availableQuantity);
+    if (clamped <= 0) {
+      outwardManualAllocations.remove(key);
+      if (_outwardBatchControllers.containsKey(key) && qty <= 0) {
+        _outwardBatchControllers[key]!.clear();
+      }
+    } else {
+      outwardManualAllocations[key] = clamped;
+    }
+    _syncManualAllocationsToRequestedQuantity();
+  }
+
+  void setBatchMaxAllocation(MedicalBatchModel batch) {
+    final key = getBatchKey(batch);
+    outwardManualAllocations[key] = batch.availableQuantity;
+    final ctrl = getBatchQtyController(batch);
+    ctrl.text = batch.availableQuantity % 1 == 0
+        ? batch.availableQuantity.toInt().toString()
+        : batch.availableQuantity.toString();
+    _syncManualAllocationsToRequestedQuantity();
+  }
+
+  void _syncManualAllocationsToRequestedQuantity() {
+    if (outwardIsManualBatchMode.value) {
+      final total = totalManualAllocatedQuantity;
+      outwardRequestedQuantity.value = total;
+      final text = total > 0 ? (total % 1 == 0 ? total.toInt().toString() : total.toString()) : '';
+      if (outwardQuantityController.text != text) {
+        outwardQuantityController.text = text;
+      }
+      outwardHasExcessStockError.value = false;
+    }
+  }
+
+  void setOutwardBatchMode(bool isManual) {
+    outwardIsManualBatchMode.value = isManual;
+    if (isManual) {
+      _populateManualAllocationsFromFefo();
+    } else {
+      _computeFefoPreview();
+    }
+  }
+
+  void _populateManualAllocationsFromFefo() {
+    outwardManualAllocations.clear();
+    for (final c in _outwardBatchControllers.values) {
+      c.clear();
+    }
+    for (final p in outwardFefoPreviews) {
+      if (p.deductedQuantity > 0) {
+        final key = getBatchKey(p.batch);
+        outwardManualAllocations[key] = p.deductedQuantity;
+        final ctrl = getBatchQtyController(p.batch);
+        ctrl.text = p.deductedQuantity % 1 == 0
+            ? p.deductedQuantity.toInt().toString()
+            : p.deductedQuantity.toString();
+      }
+    }
+    if (outwardManualAllocations.isEmpty && outwardRequestedQuantity.value > 0) {
+      final item = outwardSelectedItem.value;
+      if (item != null) {
+        final activeBatches = item.fefoBatches.isNotEmpty
+            ? item.fefoBatches
+            : getBatchesForItem(item.id).where((b) => b.availableQuantity > 0 && !b.isExpired).toList();
+        double remaining = outwardRequestedQuantity.value;
+        for (final b in activeBatches) {
+          if (remaining <= 0) break;
+          final deduct = min(b.availableQuantity, remaining);
+          final key = getBatchKey(b);
+          outwardManualAllocations[key] = deduct;
+          final ctrl = getBatchQtyController(b);
+          ctrl.text = deduct % 1 == 0 ? deduct.toInt().toString() : deduct.toString();
+          remaining -= deduct;
+        }
+      }
+    }
+    _syncManualAllocationsToRequestedQuantity();
+  }
+
+  void selectAllBatches() {
+    final item = outwardSelectedItem.value;
+    if (item == null) return;
+    final activeBatches = item.fefoBatches.isNotEmpty
+        ? item.fefoBatches
+        : getBatchesForItem(item.id).where((b) => b.availableQuantity > 0 && !b.isExpired).toList();
+    for (final b in activeBatches) {
+      setBatchMaxAllocation(b);
+    }
+  }
+
+  void deselectAllBatches() {
+    outwardManualAllocations.clear();
+    for (final c in _outwardBatchControllers.values) {
+      c.clear();
+    }
+    _syncManualAllocationsToRequestedQuantity();
+  }
+
   void clearOutwardForm() {
     outwardSelectedItem.value = null;
     outwardQuantityController.clear();
@@ -1295,6 +1471,12 @@ class MedicalStockController extends GetxController {
     outwardDate.value = DateTime.now();
     outwardFefoPreviews.clear();
     outwardHasExcessStockError.value = false;
+    outwardIsManualBatchMode.value = false;
+    outwardManualAllocations.clear();
+    for (final c in _outwardBatchControllers.values) {
+      c.dispose();
+    }
+    _outwardBatchControllers.clear();
   }
 
   Future<MedicalStockOutwardResponse?> submitStockOutward() async {
@@ -1307,11 +1489,15 @@ class MedicalStockController extends GetxController {
       return null;
     }
 
-    final reqQty = outwardRequestedQuantity.value;
+    final isManual = outwardIsManualBatchMode.value;
+    final reqQty = isManual ? totalManualAllocatedQuantity : outwardRequestedQuantity.value;
+
     if (reqQty <= 0) {
       CustomSnackbar.showWarning(
         title: 'Invalid Quantity',
-        message: 'Please enter a positive quantity to dispense.',
+        message: isManual
+            ? 'Please select at least one batch and enter a quantity to dispense.'
+            : 'Please enter a positive quantity to dispense.',
       );
       return null;
     }
@@ -1323,6 +1509,37 @@ class MedicalStockController extends GetxController {
         message: 'Requested quantity ($reqQty ${item.unit}) exceeds available safe stock ($availStock ${item.unit}).',
       );
       return null;
+    }
+
+    List<MedicalOutwardBatchDto>? customBatches;
+    if (isManual) {
+      final activeBatches = item.fefoBatches.isNotEmpty
+          ? item.fefoBatches
+          : getBatchesForItem(item.id).where((b) => b.availableQuantity > 0 && !b.isExpired).toList();
+
+      final list = <MedicalOutwardBatchDto>[];
+      for (final b in activeBatches) {
+        final key = getBatchKey(b);
+        final qty = outwardManualAllocations[key] ?? 0.0;
+        if (qty > 0) {
+          list.add(
+            MedicalOutwardBatchDto(
+              batchId: b.id.isNotEmpty ? b.id : null,
+              batchNumber: b.batchNumber,
+              quantity: qty,
+            ),
+          );
+        }
+      }
+
+      if (list.isEmpty) {
+        CustomSnackbar.showWarning(
+          title: 'Batches Required',
+          message: 'Please select at least one batch and specify the deduction quantity.',
+        );
+        return null;
+      }
+      customBatches = list;
     }
 
     isSubmitting.value = true;
@@ -1338,6 +1555,7 @@ class MedicalStockController extends GetxController {
         prescribedFor: outwardPrescribedForController.text.trim(),
         notes: outwardNotesController.text.trim(),
         transactionDate: outwardDate.value,
+        batches: customBatches,
       );
 
       final response = await _apiService.recordMedicalStockOutward(request);

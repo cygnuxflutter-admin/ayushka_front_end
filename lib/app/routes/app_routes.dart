@@ -18,6 +18,8 @@ abstract class AppRoutes {
   static const String medicalStock = '/medical-stock';
   static const String treatments = '/treatments';
   static const String treatmentDetails = '/treatment-details';
+  static const String heats = '/heats';
+  static const String matings = '/matings';
   static const String workers = '/workers';
   static const String departments = '/departments';
   static const String milk = '/milk';

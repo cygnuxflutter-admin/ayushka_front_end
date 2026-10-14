@@ -628,11 +628,9 @@ class WorkerScreen extends GetView<WorkerController> {
                             worker: worker,
                             isDark: isDark,
                             canEdit: controller.canEditWorker,
-                            canDelete: controller.canDeleteWorker,
                             onEdit: () => controller.openEditWorkerDialog(context, worker),
                             onMarkLeft: () => controller.openMarkLeftDialog(context, worker),
                             onToggleStatus: () => controller.toggleWorkerStatus(worker),
-                            onDelete: () => controller.confirmDeleteWorker(context, worker),
                           );
                         },
                       ),
@@ -674,7 +672,7 @@ class WorkerScreen extends GetView<WorkerController> {
                               _buildHeaderCell('JOINING DATE', flex: 3),
                               _buildHeaderCell('LEAVING DATE', flex: 3),
                               _buildHeaderCell('STATUS', flex: 2),
-                              _buildHeaderCell('ACTIONS', width: 130, alignment: Alignment.centerRight),
+                              _buildHeaderCell('ACTIONS', width: 100, alignment: Alignment.centerRight),
                             ],
                           ),
                         ),
@@ -691,11 +689,9 @@ class WorkerScreen extends GetView<WorkerController> {
                             worker: worker,
                             isDark: isDark,
                             canEdit: controller.canEditWorker,
-                            canDelete: controller.canDeleteWorker,
                             onEdit: () => controller.openEditWorkerDialog(context, worker),
                             onMarkLeft: () => controller.openMarkLeftDialog(context, worker),
                             onToggleStatus: () => controller.toggleWorkerStatus(worker),
-                            onDelete: () => controller.confirmDeleteWorker(context, worker),
                           );
                         }),
                       ],
@@ -1066,9 +1062,7 @@ class _HoverableWorkerTableRow extends StatefulWidget {
   final VoidCallback onEdit;
   final VoidCallback onMarkLeft;
   final VoidCallback onToggleStatus;
-  final VoidCallback onDelete;
   final bool canEdit;
-  final bool canDelete;
 
   const _HoverableWorkerTableRow({
     super.key,
@@ -1079,9 +1073,7 @@ class _HoverableWorkerTableRow extends StatefulWidget {
     required this.onEdit,
     required this.onMarkLeft,
     required this.onToggleStatus,
-    required this.onDelete,
     this.canEdit = true,
-    this.canDelete = true,
   });
 
   @override
@@ -1331,7 +1323,7 @@ class _HoverableWorkerTableRowState extends State<_HoverableWorkerTableRow> {
 
             // Actions
             SizedBox(
-              width: 130,
+              width: 100,
               child: Row(
                 mainAxisAlignment: MainAxisAlignment.end,
                 children: [
@@ -1403,31 +1395,6 @@ class _HoverableWorkerTableRowState extends State<_HoverableWorkerTableRow> {
                         ),
                       ),
                     ),
-
-                  // Delete (Soft delete)
-                  if (widget.canDelete) ...[
-                    const SizedBox(width: 4),
-                    Tooltip(
-                      message: 'Delete Worker',
-                      waitDuration: const Duration(milliseconds: 300),
-                      child: InkWell(
-                        borderRadius: BorderRadius.circular(6),
-                        mouseCursor: SystemMouseCursors.click,
-                        hoverColor: AppColors.error.withValues(alpha: 0.12),
-                        onTap: widget.onDelete,
-                        child: Padding(
-                          padding: const EdgeInsets.all(6),
-                          child: Icon(
-                            PhosphorIconsRegular.trash,
-                            size: 17,
-                            color: _isHovered
-                                ? AppColors.error
-                                : (isDark ? AppColors.textSecondaryDark : AppColors.textSecondaryLight),
-                          ),
-                        ),
-                      ),
-                    ),
-                  ],
                 ],
               ),
             ),
@@ -1447,9 +1414,7 @@ class _HoverableWorkerMobileCard extends StatefulWidget {
   final VoidCallback onEdit;
   final VoidCallback onMarkLeft;
   final VoidCallback onToggleStatus;
-  final VoidCallback onDelete;
   final bool canEdit;
-  final bool canDelete;
 
   const _HoverableWorkerMobileCard({
     super.key,
@@ -1458,9 +1423,7 @@ class _HoverableWorkerMobileCard extends StatefulWidget {
     required this.onEdit,
     required this.onMarkLeft,
     required this.onToggleStatus,
-    required this.onDelete,
     this.canEdit = true,
-    this.canDelete = true,
   });
 
   @override
@@ -1591,12 +1554,6 @@ class _HoverableWorkerMobileCardState extends State<_HoverableWorkerMobileCard> 
                     icon: const Icon(Icons.check_circle_outline_rounded, size: 18, color: AppColors.success),
                     tooltip: 'Reactivate Worker',
                     onPressed: widget.onToggleStatus,
-                  ),
-                if (widget.canDelete)
-                  IconButton(
-                    icon: const Icon(PhosphorIconsRegular.trash, size: 18, color: AppColors.error),
-                    tooltip: 'Delete Worker',
-                    onPressed: widget.onDelete,
                   ),
               ],
             ),

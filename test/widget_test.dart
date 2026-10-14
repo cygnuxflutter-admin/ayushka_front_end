@@ -501,7 +501,12 @@ void main() {
                 WebSidebar(
                   isCollapsed: true,
                   onToggle: () {},
-                  currentUser: null,
+                  currentUser: const UserModel(
+                    id: 'USR-SA',
+                    name: 'Super Admin',
+                    email: 'superadmin@ayushka.com',
+                    role: 'Superadmin',
+                  ),
                   onLogout: () {},
                 ),
               ],

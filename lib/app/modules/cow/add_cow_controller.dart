@@ -85,19 +85,13 @@ class AddCowController extends GetxController {
     _loadUser();
     _checkEditMode();
     _fetchCatalogs();
-    ever(isFemale, (bool female) {
-      if (!female) {
-        _autoSelectNaType();
-      } else {
-        if (selectedType.value != null && _isNaType(selectedType.value!)) {
-          selectedType.value = null;
-        }
-      }
-    });
     ever(selectedGaushala, (GaushalaModel? g) {
       fetchTypesForGaushala(g?.id);
       fetchShedsForGaushala(g?.id);
       fetchCowsForGaushala(g?.id);
+    });
+    ever(isFemale, (_) {
+      fetchTypesForGaushala(selectedGaushala.value?.id, forceRefresh: true);
     });
     if (Get.isRegistered<GaushalaSessionService>()) {
       ever(Get.find<GaushalaSessionService>().selectedGaushala, (GaushalaModel? g) {
@@ -151,14 +145,34 @@ class AddCowController extends GetxController {
   }
 
   String? _lastLoadedTypesGaushalaId = '';
+  String? _lastLoadedTypesTag = '';
+  final RxBool isLoadingTypes = false.obs;
 
-  Future<void> fetchTypesForGaushala(String? gaushalaId) async {
+  Future<void> fetchTypesForGaushala(String? gaushalaId, {bool forceRefresh = false}) async {
     final cleanId = (gaushalaId != null && gaushalaId.trim().isNotEmpty) ? gaushalaId.trim() : null;
-    if (_lastLoadedTypesGaushalaId == cleanId && types.isNotEmpty) return;
-    _lastLoadedTypesGaushalaId = cleanId;
+    final currentTag = isFemale.value ? 'isFemale' : 'isMale';
 
+    if (!forceRefresh &&
+        _lastLoadedTypesGaushalaId == cleanId &&
+        _lastLoadedTypesTag == currentTag &&
+        types.isNotEmpty) {
+      return;
+    }
+    _lastLoadedTypesGaushalaId = cleanId;
+    _lastLoadedTypesTag = currentTag;
+
+    if (cleanId == null) {
+      types.clear();
+      selectedType.value = null;
+      return;
+    }
+
+    isLoadingTypes.value = true;
     try {
-      final list = await _apiService.getTypes(gaushalaId: cleanId);
+      final list = await _apiService.getTypes(
+        gaushalaId: cleanId,
+        tag: currentTag,
+      );
       types.assignAll(list);
       if (isEditMode && selectedType.value == null && editingCow.value?.cowType != null) {
         final match = list.firstWhereOrNull(
@@ -168,13 +182,12 @@ class AddCowController extends GetxController {
           selectedType.value = match;
         }
       } else if (selectedType.value != null && !list.any((t) => t.id == selectedType.value!.id)) {
-        if (isFemale.value) {
-          selectedType.value = null;
-        } else {
-          _autoSelectNaType();
-        }
+        selectedType.value = null;
       }
-    } catch (_) {}
+    } catch (_) {
+    } finally {
+      isLoadingTypes.value = false;
+    }
   }
 
   String? _lastLoadedGaushalaId = '';
@@ -225,11 +238,15 @@ class AddCowController extends GetxController {
       final list = response.allCows;
       allGaushalaCows.assignAll(list);
 
-      final females = list.where((c) => c.isFemale).toList();
-      final males = list.where((c) => !c.isFemale).toList();
+      final females = response.female.isNotEmpty
+          ? response.female
+          : list.where((c) => c.isFemale).toList();
+      final males = response.male.isNotEmpty
+          ? response.male
+          : list.where((c) => !c.isFemale).toList();
 
-      damCows.assignAll(females.isNotEmpty ? females : list);
-      sireCows.assignAll(males.isNotEmpty ? males : list);
+      damCows.assignAll(females);
+      sireCows.assignAll(males);
 
       if (isEditMode) {
         if (selectedDam.value == null && editingCow.value?.dam != null) {
@@ -306,7 +323,18 @@ class AddCowController extends GetxController {
       ]);
 
       breeds.assignAll(results[0] as List<BreedModel>);
-      gaushalas.assignAll(results[1] as List<GaushalaModel>);
+      final rawGaushalas = results[1] as List<GaushalaModel>;
+      if (!canChangeGaushala && Get.isRegistered<GaushalaSessionService>()) {
+        final assigned = Get.find<GaushalaSessionService>().selectedGaushala.value ??
+            Get.find<GaushalaSessionService>().getUserDefaultGaushala();
+        if (assigned != null) {
+          gaushalas.assignAll([assigned]);
+        } else {
+          gaushalas.clear();
+        }
+      } else {
+        gaushalas.assignAll(rawGaushalas);
+      }
       types.assignAll(results[2] as List<TypeModel>);
       sheds.assignAll(results[3] as List<ShedModel>);
 
@@ -326,11 +354,6 @@ class AddCowController extends GetxController {
 
       if (isEditMode) {
         _populateEditSelections();
-      } else {
-        // If male is already selected when catalogs finish loading, auto-select N/A
-        if (!isFemale.value) {
-          _autoSelectNaType();
-        }
       }
     } catch (e) {
       catalogError.value = 'Failed to load form data. Please try again.';
@@ -389,7 +412,12 @@ class AddCowController extends GetxController {
     }
   }
 
-  bool get canChangeGaushala => currentUser.value?.isAdmin ?? false;
+  bool get canChangeGaushala {
+    if (Get.isRegistered<GaushalaSessionService>()) {
+      return Get.find<GaushalaSessionService>().canChangeGaushala;
+    }
+    return currentUser.value?.isSuperAdmin ?? false;
+  }
 
   GaushalaModel? findGaushala(String? query) {
     if (query == null || query.trim().isEmpty) return null;
@@ -413,7 +441,6 @@ class AddCowController extends GetxController {
 
   void _preselectGaushala() {
     final user = currentUser.value;
-    final isUserAdmin = canChangeGaushala;
 
     // 0. If in edit mode, strictly select the cow's gaushala
     if (isEditMode && editingCow.value?.gaushala != null) {
@@ -426,8 +453,16 @@ class AddCowController extends GetxController {
       }
     }
 
-    // 1. If non-admin user, strictly pre-select their assigned gaushala
-    if (!isUserAdmin) {
+    // 1. If non-superadmin user, strictly pre-select their assigned gaushala
+    if (!canChangeGaushala) {
+      if (Get.isRegistered<GaushalaSessionService>()) {
+        final assigned = Get.find<GaushalaSessionService>().selectedGaushala.value ??
+            Get.find<GaushalaSessionService>().getUserDefaultGaushala();
+        if (assigned != null) {
+          selectedGaushala.value = findGaushala(assigned.id) ?? assigned;
+          return;
+        }
+      }
       final userGId = user?.gaushalaId;
       final match = findGaushala(userGId);
       if (match != null) {
@@ -482,27 +517,6 @@ class AddCowController extends GetxController {
 
   void setGender(bool female) {
     isFemale.value = female;
-    if (!female) {
-      _autoSelectNaType();
-    } else {
-      if (selectedType.value != null && _isNaType(selectedType.value!)) {
-        selectedType.value = null;
-      }
-    }
-  }
-
-  void _autoSelectNaType() {
-    if (types.isEmpty) return;
-    final naType = types.firstWhereOrNull((t) => _isNaType(t)) ??
-        types.firstWhereOrNull((t) => t.typeName.toLowerCase().contains('n/a'));
-    if (naType != null) {
-      selectedType.value = naType;
-    }
-  }
-
-  bool _isNaType(TypeModel type) {
-    final clean = type.typeName.trim().toLowerCase().replaceAll(' ', '');
-    return clean == 'n/a' || clean == 'na' || clean == 'notapplicable';
   }
 
   Future<void> retryCatalogs() async {
@@ -621,22 +635,10 @@ class AddCowController extends GetxController {
       return false;
     }
 
-    if (!isFemale.value && selectedType.value == null) {
-      _autoSelectNaType();
-    }
-
     if (selectedType.value == null) {
       CustomSnackbar.showError(
         title: 'Validation Error',
-        message: isFemale.value ? 'Please select a cow type.' : 'Cow type (N/A) could not be resolved.',
-      );
-      return false;
-    }
-
-    if (selectedShed.value == null) {
-      CustomSnackbar.showError(
-        title: 'Validation Error',
-        message: 'Please select a shed.',
+        message: 'Please select a cow type.',
       );
       return false;
     }

@@ -7,14 +7,17 @@ import '../../../data/models/dashboard_alerts_model.dart';
 import '../dashboard_controller.dart';
 import '../../../routes/app_routes.dart';
 import 'administer_dose_quick_dialog.dart';
+import 'breeding_alert_card.dart';
 import 'feed_alert_card.dart';
 import 'medical_alert_card.dart';
 import 'milk_alert_card.dart';
-import 'quick_feed_inward_dialog.dart';
 import 'quick_medical_inward_dialog.dart';
 import 'treatment_alert_card.dart';
+import 'test_alert_generator_dialog.dart';
+import '../../../data/models/cow_heat_model.dart';
+import '../../../data/models/cow_mating_model.dart';
 
-/// Main interactive Smart Alerts Center component with 4 module-wise tabs and inline quick action triggers.
+/// Main interactive Smart Alerts Center component with 5 module-wise tabs and inline quick action triggers.
 class SmartAlertsCenter extends StatefulWidget {
   final DashboardController controller;
 
@@ -31,6 +34,7 @@ class _SmartAlertsCenterState extends State<SmartAlertsCenter> {
   final TextEditingController _searchCtrl = TextEditingController();
   String _searchQuery = '';
   int _medicalFilterIndex = 0; // 0: All, 1: Low Stock, 2: Expiring
+  int _breedingFilterIndex = 0; // 0: All, 1: Active Heat, 2: Repeat Heat, 3: Due PD, 4: Repeat Breeders
 
   @override
   void dispose() {
@@ -67,13 +71,13 @@ class _SmartAlertsCenterState extends State<SmartAlertsCenter> {
   }
 
   void _openQuickFeedInwardDialog(BuildContext context, FeedStockAlertItem alert) {
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (ctx) => QuickFeedInwardDialog(
-        alert: alert,
-        onConfirm: widget.controller.quickFeedInward,
-      ),
+    Get.toNamed(
+      AppRoutes.feedTransactions,
+      arguments: {
+        'type': 'INWARD',
+        'itemId': alert.itemId,
+        'itemName': alert.itemName,
+      },
     );
   }
 
@@ -160,6 +164,14 @@ class _SmartAlertsCenterState extends State<SmartAlertsCenter> {
                     ),
                   ),
                   IconButton(
+                    icon: const Icon(
+                      PhosphorIconsRegular.flask,
+                      size: 20,
+                    ),
+                    tooltip: 'Alert Simulator (Generate Live Test Records)',
+                    onPressed: () => TestAlertGeneratorDialog.show(context, widget.controller),
+                  ),
+                  IconButton(
                     icon: Icon(
                       Icons.refresh_rounded,
                       size: 20,
@@ -231,6 +243,25 @@ class _SmartAlertsCenterState extends State<SmartAlertsCenter> {
                       _searchCtrl.clear();
                     },
                   ),
+                  const SizedBox(width: 8),
+                  _AlertsTabButton(
+                    label: 'Heat & Breeding',
+                    count: counts.activeHeats +
+                        counts.repeatHeatAlerts +
+                        counts.repeatBreederAlerts +
+                        counts.pendingPDChecks,
+                    isSelected: selectedTab == 4,
+                    icon: PhosphorIconsRegular.flame,
+                    badgeColor: const Color(0xFFF43F5E),
+                    onTap: () {
+                      widget.controller.changeTab(4);
+                      setState(() {
+                        _searchQuery = '';
+                        _breedingFilterIndex = 0;
+                      });
+                      _searchCtrl.clear();
+                    },
+                  ),
                 ],
               ),
             ),
@@ -283,6 +314,12 @@ class _SmartAlertsCenterState extends State<SmartAlertsCenter> {
                     const SizedBox(width: 10),
                     _buildMedicalSegmentFilter(isDark),
                   ],
+
+                  // Breeding Sub-Filter (shown only on Heat & Breeding Tab)
+                  if (selectedTab == 4 && !isMobile) ...[
+                    const SizedBox(width: 10),
+                    _buildBreedingSegmentFilter(isDark),
+                  ],
                 ],
               ),
             ),
@@ -292,6 +329,16 @@ class _SmartAlertsCenterState extends State<SmartAlertsCenter> {
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
                 child: _buildMedicalSegmentFilter(isDark),
+              ),
+
+            // If mobile and breeding tab, display sub-filter on second row
+            if (selectedTab == 4 && isMobile)
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+                child: SingleChildScrollView(
+                  scrollDirection: Axis.horizontal,
+                  child: _buildBreedingSegmentFilter(isDark),
+                ),
               ),
 
             // Tab Content Body
@@ -361,6 +408,51 @@ class _SmartAlertsCenterState extends State<SmartAlertsCenter> {
     );
   }
 
+  Widget _buildBreedingSegmentFilter(bool isDark) {
+    return Container(
+      padding: const EdgeInsets.all(3),
+      decoration: BoxDecoration(
+        color: isDark ? AppColors.cardDark : const Color(0xFFF1F5F9),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          _SegmentFilterButton(
+            label: 'All',
+            isSelected: _breedingFilterIndex == 0,
+            isDark: isDark,
+            onTap: () => setState(() => _breedingFilterIndex = 0),
+          ),
+          _SegmentFilterButton(
+            label: 'Active Heat',
+            isSelected: _breedingFilterIndex == 1,
+            isDark: isDark,
+            onTap: () => setState(() => _breedingFilterIndex = 1),
+          ),
+          _SegmentFilterButton(
+            label: 'Repeat Heat',
+            isSelected: _breedingFilterIndex == 2,
+            isDark: isDark,
+            onTap: () => setState(() => _breedingFilterIndex = 2),
+          ),
+          _SegmentFilterButton(
+            label: 'Due PD',
+            isSelected: _breedingFilterIndex == 3,
+            isDark: isDark,
+            onTap: () => setState(() => _breedingFilterIndex = 3),
+          ),
+          _SegmentFilterButton(
+            label: 'Repeat Breeders',
+            isSelected: _breedingFilterIndex == 4,
+            isDark: isDark,
+            onTap: () => setState(() => _breedingFilterIndex = 4),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildSelectedTabContent(BuildContext context, int tabIndex) {
     switch (tabIndex) {
       case 0:
@@ -371,6 +463,8 @@ class _SmartAlertsCenterState extends State<SmartAlertsCenter> {
         return _buildMedicalTab(context);
       case 3:
         return _buildFeedTab(context);
+      case 4:
+        return _buildHeatBreedingTab(context);
       default:
         return const SizedBox.shrink();
     }
@@ -501,6 +595,81 @@ class _SmartAlertsCenterState extends State<SmartAlertsCenter> {
     );
   }
 
+  Widget _buildHeatBreedingTab(BuildContext context) {
+    // 1. Filter Heat Alerts
+    final activeHeats = widget.controller.activeHeats.where((h) {
+      if (_breedingFilterIndex != 0 && _breedingFilterIndex != 1) return false;
+      if (_searchQuery.isEmpty) return true;
+      return h.cowTagId.toLowerCase().contains(_searchQuery) ||
+          (h.cowCalfName?.toLowerCase().contains(_searchQuery) ?? false) ||
+          h.cowId.toLowerCase().contains(_searchQuery);
+    }).toList();
+
+    final repeatHeats = widget.controller.repeatHeatAlerts.where((h) {
+      if (_breedingFilterIndex != 0 && _breedingFilterIndex != 2) return false;
+      if (_searchQuery.isEmpty) return true;
+      return h.cowTagId.toLowerCase().contains(_searchQuery) ||
+          (h.cowCalfName?.toLowerCase().contains(_searchQuery) ?? false) ||
+          h.cowId.toLowerCase().contains(_searchQuery);
+    }).toList();
+
+    // 2. Filter Mating Alerts
+    final duePDs = widget.controller.pendingPDMatings.where((m) {
+      if (_breedingFilterIndex != 0 && _breedingFilterIndex != 3) return false;
+      if (_searchQuery.isEmpty) return true;
+      return m.cowTagId.toLowerCase().contains(_searchQuery) ||
+          (m.cowCalfName?.toLowerCase().contains(_searchQuery) ?? false) ||
+          m.cowId.toLowerCase().contains(_searchQuery) ||
+          (m.bullDisplayName.toLowerCase().contains(_searchQuery));
+    }).toList();
+
+    final repeatBreeders = widget.controller.repeatBreederAlerts.where((m) {
+      if (_breedingFilterIndex != 0 && _breedingFilterIndex != 4) return false;
+      if (_searchQuery.isEmpty) return true;
+      return m.cowTagId.toLowerCase().contains(_searchQuery) ||
+          (m.cowCalfName?.toLowerCase().contains(_searchQuery) ?? false) ||
+          m.cowId.toLowerCase().contains(_searchQuery) ||
+          (m.bullDisplayName.toLowerCase().contains(_searchQuery));
+    }).toList();
+
+    // Deduplicate heat alerts if same id
+    final Map<String, CowHeatModel> uniqueHeats = {};
+    for (final h in [...repeatHeats, ...activeHeats]) {
+      uniqueHeats[h.id] = h;
+    }
+
+    final Map<String, CowMatingModel> uniqueMatings = {};
+    for (final m in [...repeatBreeders, ...duePDs]) {
+      uniqueMatings[m.id] = m;
+    }
+
+    if (uniqueHeats.isEmpty && uniqueMatings.isEmpty) {
+      return _buildEmptyState(
+        icon: PhosphorIconsRegular.flame,
+        statusTag: 'REPRODUCTION STABLE',
+        title: 'All Breeding & Heat Cycles Up to Date',
+        subtitle: 'No cows in active standing heat, repeat estrus, or due for pregnancy diagnosis checks today.',
+        actionLabel: 'Open Cow Heat Records',
+        onAction: () => Get.toNamed(AppRoutes.heats),
+        secondaryActionLabel: 'Add Live Breeding Alert (API)',
+        onSecondaryAction: () => widget.controller.generateTestHeatAlert(),
+      );
+    }
+
+    return Column(
+      children: [
+        ...uniqueHeats.values.map((h) => BreedingAlertCard.heat(
+              heat: h,
+              onActionCompleted: widget.controller.fetchAlertsSummary,
+            )),
+        ...uniqueMatings.values.map((m) => BreedingAlertCard.mating(
+              mating: m,
+              onActionCompleted: widget.controller.fetchAlertsSummary,
+            )),
+      ],
+    );
+  }
+
   Widget _buildEmptyState({
     required IconData icon,
     required String statusTag,
@@ -508,6 +677,8 @@ class _SmartAlertsCenterState extends State<SmartAlertsCenter> {
     required String subtitle,
     required String actionLabel,
     required VoidCallback onAction,
+    String? secondaryActionLabel,
+    VoidCallback? onSecondaryAction,
   }) {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
@@ -617,49 +788,97 @@ class _SmartAlertsCenterState extends State<SmartAlertsCenter> {
           ),
           const SizedBox(height: 20),
 
-          // Action Link
-          Material(
-            color: Colors.transparent,
-            child: InkWell(
-              onTap: onAction,
-              borderRadius: BorderRadius.circular(10),
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 9),
-                decoration: BoxDecoration(
-                  color: isDark ? Colors.white.withValues(alpha: 0.08) : Colors.white,
+          // Action Links
+          Wrap(
+            spacing: 12,
+            runSpacing: 10,
+            alignment: WrapAlignment.center,
+            children: [
+              Material(
+                color: Colors.transparent,
+                child: InkWell(
+                  onTap: onAction,
                   borderRadius: BorderRadius.circular(10),
-                  border: Border.all(
-                    color: isDark ? Colors.white.withValues(alpha: 0.15) : AppColors.borderLight,
-                  ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.03),
-                      blurRadius: 6,
-                      offset: const Offset(0, 2),
-                    ),
-                  ],
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Text(
-                      actionLabel,
-                      style: const TextStyle(
-                        fontSize: 12.5,
-                        fontWeight: FontWeight.bold,
-                        color: AppColors.primary,
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 9),
+                    decoration: BoxDecoration(
+                      color: isDark ? Colors.white.withValues(alpha: 0.08) : Colors.white,
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(
+                        color: isDark ? Colors.white.withValues(alpha: 0.15) : AppColors.borderLight,
                       ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withValues(alpha: 0.03),
+                          blurRadius: 6,
+                          offset: const Offset(0, 2),
+                        ),
+                      ],
                     ),
-                    const SizedBox(width: 6),
-                    const Icon(
-                      Icons.arrow_forward_rounded,
-                      size: 14,
-                      color: AppColors.primary,
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          actionLabel,
+                          style: const TextStyle(
+                            fontSize: 12.5,
+                            fontWeight: FontWeight.bold,
+                            color: AppColors.primary,
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                        const Icon(
+                          Icons.arrow_forward_rounded,
+                          size: 14,
+                          color: AppColors.primary,
+                        ),
+                      ],
                     ),
-                  ],
+                  ),
                 ),
               ),
-            ),
+              if (secondaryActionLabel != null && onSecondaryAction != null)
+                Material(
+                  color: Colors.transparent,
+                  child: InkWell(
+                    onTap: onSecondaryAction,
+                    borderRadius: BorderRadius.circular(10),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 9),
+                      decoration: BoxDecoration(
+                        color: AppColors.primary,
+                        borderRadius: BorderRadius.circular(10),
+                        boxShadow: [
+                          BoxShadow(
+                            color: AppColors.primary.withValues(alpha: 0.25),
+                            blurRadius: 6,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(
+                            PhosphorIconsRegular.plusCircle,
+                            size: 15,
+                            color: Colors.white,
+                          ),
+                          const SizedBox(width: 6),
+                          Text(
+                            secondaryActionLabel,
+                            style: const TextStyle(
+                              fontSize: 12.5,
+                              fontWeight: FontWeight.bold,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+            ],
           ),
         ],
       ),

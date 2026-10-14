@@ -239,6 +239,15 @@ class ShedController extends GetxController {
   Future<void> fetchGaushalas() async {
     isLoadingGaushalas.value = true;
     try {
+      if (!isSuperAdmin) {
+        final assigned = _gaushalaService.selectedGaushala.value ?? _gaushalaService.getUserDefaultGaushala();
+        if (assigned != null) {
+          gaushalas.assignAll([assigned]);
+        } else {
+          gaushalas.clear();
+        }
+        return;
+      }
       final result = await _apiService.getGaushalas();
       gaushalas.assignAll(result);
     } catch (e) {
@@ -267,6 +276,7 @@ class ShedController extends GetxController {
     required String shedName,
     required String shedNumber,
     String? gaushalaId,
+    bool showSnackbar = true,
   }) async {
     final trimmedName = shedName.trim();
     final trimmedNumber = shedNumber.trim().toUpperCase();
@@ -296,10 +306,12 @@ class ShedController extends GetxController {
       );
       _cachedSheds.insert(0, newShed);
       sheds.insert(0, newShed);
-      CustomSnackbar.showSuccess(
-        title: 'Shed Created',
-        message: 'Shed "${newShed.shedName}" ($trimmedNumber) was added successfully.',
-      );
+      if (showSnackbar) {
+        CustomSnackbar.showSuccess(
+          title: 'Shed Created',
+          message: 'Shed "${newShed.shedName}" ($trimmedNumber) was added successfully.',
+        );
+      }
       fetchSheds(gaushalaId: selectedGaushalaFilter.value);
       return true;
     } catch (e) {
@@ -315,6 +327,7 @@ class ShedController extends GetxController {
     required String shedName,
     required String shedNumber,
     String? gaushalaId,
+    bool showSnackbar = true,
   }) async {
     final trimmedName = shedName.trim();
     final trimmedNumber = shedNumber.trim().toUpperCase();
@@ -351,10 +364,12 @@ class ShedController extends GetxController {
       if (listIndex != -1) {
         sheds[listIndex] = updated;
       }
-      CustomSnackbar.showSuccess(
-        title: 'Shed Updated',
-        message: 'Shed "${updated.shedName}" was updated successfully.',
-      );
+      if (showSnackbar) {
+        CustomSnackbar.showSuccess(
+          title: 'Shed Updated',
+          message: 'Shed "${updated.shedName}" was updated successfully.',
+        );
+      }
       return true;
     } catch (e) {
       return false;
@@ -432,164 +447,167 @@ class ShedController extends GetxController {
       fetchGaushalas();
     }
 
-    GaushalaModel? defaultGaushala;
-    final userGId = _gaushalaService.getUserDefaultGaushala()?.id ?? currentUser.value?.gaushalaId ?? _gaushalaService.selectedGaushala.value?.id;
-    if (userGId != null && userGId.isNotEmpty) {
-      defaultGaushala = gaushalas.firstWhereOrNull((g) => g.id == userGId);
+    GaushalaModel? defaultGaushala = _gaushalaService.selectedGaushala.value ?? _gaushalaService.getUserDefaultGaushala();
+    if (defaultGaushala != null) {
+      defaultGaushala = gaushalas.firstWhereOrNull((g) => g.id == defaultGaushala!.id) ?? defaultGaushala;
     }
-    defaultGaushala ??= _gaushalaService.getUserDefaultGaushala() ?? _gaushalaService.selectedGaushala.value;
-    if (defaultGaushala == null && gaushalas.length == 1) {
+    if (defaultGaushala == null && gaushalas.isNotEmpty) {
       defaultGaushala = gaushalas.first;
     }
     final Rxn<GaushalaModel> selectedGaushala = Rxn<GaushalaModel>(defaultGaushala);
 
     Get.dialog(
-      Dialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 460),
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.all(24.0),
-            child: Form(
-              key: formKey,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      Builder(
+        builder: (dialogContext) {
+          void closeDialog() {
+            if (Navigator.of(dialogContext).canPop()) {
+              Navigator.of(dialogContext).pop();
+            } else if (context.mounted && Navigator.of(context, rootNavigator: true).canPop()) {
+              Navigator.of(context, rootNavigator: true).pop();
+            } else if (Get.isDialogOpen ?? false) {
+              Get.back(closeOverlays: true);
+            }
+          }
+
+          return Dialog(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 460),
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.all(24.0),
+                child: Form(
+                  key: formKey,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Container(
-                            padding: const EdgeInsets.all(8),
-                            decoration: BoxDecoration(
-                              color: AppColors.primary.withValues(alpha: 0.12),
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: const Icon(
-                              PhosphorIconsRegular.warehouse,
-                              color: AppColors.primary,
-                              size: 20,
-                            ),
+                          Row(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.all(8),
+                                decoration: BoxDecoration(
+                                  color: AppColors.primary.withValues(alpha: 0.12),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: const Icon(
+                                  PhosphorIconsRegular.warehouse,
+                                  color: AppColors.primary,
+                                  size: 20,
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              const Text(
+                                'Add New Shed',
+                                style: TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ],
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.close_rounded, size: 20),
+                            onPressed: closeDialog,
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      const Text(
+                        'Define a cattle housing shed or barn unit in the farm.',
+                        style: TextStyle(fontSize: 12, color: AppColors.textSecondaryLight),
+                      ),
+                      const SizedBox(height: 20),
+                      _buildGaushalaDropdown(
+                        context: context,
+                        selectedGaushala: selectedGaushala,
+                      ),
+                      const SizedBox(height: 16),
+                      CustomTextField(
+                        controller: nameController,
+                        label: 'Shed Name',
+                        hint: 'e.g. North Shed, Milking Barn A',
+                        prefixIcon: const Icon(Icons.warehouse_outlined, size: 20),
+                        validator: (val) {
+                          if (val == null || val.trim().isEmpty) {
+                            return 'Shed name is required';
+                          }
+                          if (val.trim().length < 2) {
+                            return 'Shed name must be at least 2 characters';
+                          }
+                          return null;
+                        },
+                      ),
+                      const SizedBox(height: 16),
+                      CustomTextField(
+                        controller: numberController,
+                        label: 'Shed Number / Code',
+                        hint: 'e.g. SHED-001, SH-A1',
+                        isUpperCase: true,
+                        prefixIcon: const Icon(Icons.tag_rounded, size: 20),
+                        validator: (val) {
+                          if (val == null || val.trim().isEmpty) {
+                            return 'Shed number is required';
+                          }
+                          return null;
+                        },
+                      ),
+                      const SizedBox(height: 24),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        children: [
+                          TextButton(
+                            onPressed: closeDialog,
+                            child: const Text('Cancel'),
                           ),
                           const SizedBox(width: 12),
-                          const Text(
-                            'Add New Shed',
-                            style: TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
+                          Obx(
+                            () => CustomButton(
+                              text: 'Create Shed',
+                              icon: Icons.add_rounded,
+                              isLoading: isSubmitting.value,
+                              width: 145,
+                              height: 42,
+                              onPressed: () async {
+                                if (formKey.currentState?.validate() ?? false) {
+                                  if (selectedGaushala.value == null) {
+                                    CustomSnackbar.showError(
+                                      title: 'Validation Error',
+                                      message: 'Please select a Gaushala for this shed.',
+                                    );
+                                    return;
+                                  }
+                                  final name = nameController.text.trim();
+                                  final number = numberController.text.trim().toUpperCase();
+                                  final success = await createShed(
+                                    shedName: name,
+                                    shedNumber: number,
+                                    gaushalaId: selectedGaushala.value!.id,
+                                    showSnackbar: false,
+                                  );
+                                  if (success) {
+                                    closeDialog();
+                                    CustomSnackbar.showSuccess(
+                                      title: 'Shed Created',
+                                      message: 'Shed "$name" ($number) was added successfully.',
+                                    );
+                                  }
+                                }
+                              },
                             ),
                           ),
                         ],
                       ),
-                      IconButton(
-                        icon: const Icon(Icons.close_rounded, size: 20),
-                        onPressed: () {
-                          if (Get.isDialogOpen ?? false) {
-                            Get.back();
-                          } else if (context.mounted) {
-                            Navigator.of(context, rootNavigator: true).pop();
-                          }
-                        },
-                      ),
                     ],
                   ),
-                  const SizedBox(height: 8),
-                  const Text(
-                    'Define a cattle housing shed or barn unit in the farm.',
-                    style: TextStyle(fontSize: 12, color: AppColors.textSecondaryLight),
-                  ),
-                  const SizedBox(height: 20),
-                  _buildGaushalaDropdown(
-                    context: context,
-                    selectedGaushala: selectedGaushala,
-                  ),
-                  const SizedBox(height: 16),
-                  CustomTextField(
-                    controller: nameController,
-                    label: 'Shed Name',
-                    hint: 'e.g. North Shed, Milking Barn A',
-                    prefixIcon: const Icon(Icons.warehouse_outlined, size: 20),
-                    validator: (val) {
-                      if (val == null || val.trim().isEmpty) {
-                        return 'Shed name is required';
-                      }
-                      if (val.trim().length < 2) {
-                        return 'Shed name must be at least 2 characters';
-                      }
-                      return null;
-                    },
-                  ),
-                  const SizedBox(height: 16),
-                  CustomTextField(
-                    controller: numberController,
-                    label: 'Shed Number / Code',
-                    hint: 'e.g. SHED-001, SH-A1',
-                    isUpperCase: true,
-                    prefixIcon: const Icon(Icons.tag_rounded, size: 20),
-                    validator: (val) {
-                      if (val == null || val.trim().isEmpty) {
-                        return 'Shed number is required';
-                      }
-                      return null;
-                    },
-                  ),
-                  const SizedBox(height: 24),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.end,
-                    children: [
-                      TextButton(
-                        onPressed: () {
-                          if (Get.isDialogOpen ?? false) {
-                            Get.back();
-                          } else if (context.mounted) {
-                            Navigator.of(context, rootNavigator: true).pop();
-                          }
-                        },
-                        child: const Text('Cancel'),
-                      ),
-                      const SizedBox(width: 12),
-                      Obx(
-                        () => CustomButton(
-                          text: 'Create Shed',
-                          icon: Icons.add_rounded,
-                          isLoading: isSubmitting.value,
-                          width: 145,
-                          height: 42,
-                          onPressed: () async {
-                            if (formKey.currentState?.validate() ?? false) {
-                              if (selectedGaushala.value == null) {
-                                CustomSnackbar.showError(
-                                  title: 'Validation Error',
-                                  message: 'Please select a Gaushala for this shed.',
-                                );
-                                return;
-                              }
-                              final success = await createShed(
-                                shedName: nameController.text,
-                                shedNumber: numberController.text,
-                                gaushalaId: selectedGaushala.value!.id,
-                              );
-                              if (success) {
-                                if (Get.isDialogOpen ?? false) {
-                                  Get.back();
-                                } else if (context.mounted) {
-                                  Navigator.of(context, rootNavigator: true).pop();
-                                }
-                              }
-                            }
-                          },
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
+                ),
               ),
             ),
-          ),
-        ),
+          );
+        },
       ),
       barrierDismissible: false,
     );
@@ -629,153 +647,158 @@ class ShedController extends GetxController {
     final Rxn<GaushalaModel> selectedGaushala = Rxn<GaushalaModel>(currentGaushala);
 
     Get.dialog(
-      Dialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 460),
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.all(24.0),
-            child: Form(
-              key: formKey,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      Builder(
+        builder: (dialogContext) {
+          void closeDialog() {
+            if (Navigator.of(dialogContext).canPop()) {
+              Navigator.of(dialogContext).pop();
+            } else if (context.mounted && Navigator.of(context, rootNavigator: true).canPop()) {
+              Navigator.of(context, rootNavigator: true).pop();
+            } else if (Get.isDialogOpen ?? false) {
+              Get.back(closeOverlays: true);
+            }
+          }
+
+          return Dialog(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            insetPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 24),
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 460),
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.all(24.0),
+                child: Form(
+                  key: formKey,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Container(
-                            padding: const EdgeInsets.all(8),
-                            decoration: BoxDecoration(
-                              color: AppColors.info.withValues(alpha: 0.12),
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: const Icon(
-                              Icons.edit_rounded,
-                              color: AppColors.info,
-                              size: 20,
-                            ),
+                          Row(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.all(8),
+                                decoration: BoxDecoration(
+                                  color: AppColors.info.withValues(alpha: 0.12),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: const Icon(
+                                  Icons.edit_rounded,
+                                  color: AppColors.info,
+                                  size: 20,
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              const Text(
+                                'Edit Shed',
+                                style: TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ],
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.close_rounded, size: 20),
+                            onPressed: closeDialog,
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'Update details for "${shed.shedName}".',
+                        style: const TextStyle(fontSize: 12, color: AppColors.textSecondaryLight),
+                      ),
+                      const SizedBox(height: 20),
+                      _buildGaushalaDropdown(
+                        context: context,
+                        selectedGaushala: selectedGaushala,
+                      ),
+                      const SizedBox(height: 16),
+                      CustomTextField(
+                        controller: nameController,
+                        label: 'Shed Name',
+                        hint: 'e.g. North Shed, Milking Barn A',
+                        prefixIcon: const Icon(Icons.warehouse_outlined, size: 20),
+                        validator: (val) {
+                          if (val == null || val.trim().isEmpty) {
+                            return 'Shed name is required';
+                          }
+                          if (val.trim().length < 2) {
+                            return 'Shed name must be at least 2 characters';
+                          }
+                          return null;
+                        },
+                      ),
+                      const SizedBox(height: 16),
+                      CustomTextField(
+                        controller: numberController,
+                        label: 'Shed Number / Code',
+                        hint: 'e.g. SHED-001, SH-A1',
+                        isUpperCase: true,
+                        prefixIcon: const Icon(Icons.tag_rounded, size: 20),
+                        validator: (val) {
+                          if (val == null || val.trim().isEmpty) {
+                            return 'Shed number is required';
+                          }
+                          return null;
+                        },
+                      ),
+                      const SizedBox(height: 24),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        children: [
+                          TextButton(
+                            onPressed: closeDialog,
+                            child: const Text('Cancel'),
                           ),
                           const SizedBox(width: 12),
-                          const Text(
-                            'Edit Shed',
-                            style: TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
+                          Obx(
+                            () => CustomButton(
+                              text: 'Save Changes',
+                              icon: Icons.check_rounded,
+                              isLoading: isSubmitting.value,
+                              width: 150,
+                              height: 42,
+                              onPressed: () async {
+                                if (formKey.currentState?.validate() ?? false) {
+                                  if (selectedGaushala.value == null) {
+                                    CustomSnackbar.showError(
+                                      title: 'Validation Error',
+                                      message: 'Please select a Gaushala for this shed.',
+                                    );
+                                    return;
+                                  }
+                                  final name = nameController.text.trim();
+                                  final number = numberController.text.trim().toUpperCase();
+                                  final success = await updateShed(
+                                    shed.id,
+                                    shedName: name,
+                                    shedNumber: number,
+                                    gaushalaId: selectedGaushala.value!.id,
+                                    showSnackbar: false,
+                                  );
+                                  if (success) {
+                                    closeDialog();
+                                    CustomSnackbar.showSuccess(
+                                      title: 'Shed Updated',
+                                      message: 'Shed "$name" was updated successfully.',
+                                    );
+                                  }
+                                }
+                              },
                             ),
                           ),
                         ],
                       ),
-                      IconButton(
-                        icon: const Icon(Icons.close_rounded, size: 20),
-                        onPressed: () {
-                          if (Get.isDialogOpen ?? false) {
-                            Get.back();
-                          } else if (context.mounted) {
-                            Navigator.of(context, rootNavigator: true).pop();
-                          }
-                        },
-                      ),
                     ],
                   ),
-                  const SizedBox(height: 8),
-                  Text(
-                    'Update details for "${shed.shedName}".',
-                    style: const TextStyle(fontSize: 12, color: AppColors.textSecondaryLight),
-                  ),
-                  const SizedBox(height: 20),
-                  _buildGaushalaDropdown(
-                    context: context,
-                    selectedGaushala: selectedGaushala,
-                  ),
-                  const SizedBox(height: 16),
-                  CustomTextField(
-                    controller: nameController,
-                    label: 'Shed Name',
-                    hint: 'e.g. North Shed, Milking Barn A',
-                    prefixIcon: const Icon(Icons.warehouse_outlined, size: 20),
-                    validator: (val) {
-                      if (val == null || val.trim().isEmpty) {
-                        return 'Shed name is required';
-                      }
-                      if (val.trim().length < 2) {
-                        return 'Shed name must be at least 2 characters';
-                      }
-                      return null;
-                    },
-                  ),
-                  const SizedBox(height: 16),
-                  CustomTextField(
-                    controller: numberController,
-                    label: 'Shed Number / Code',
-                    hint: 'e.g. SHED-001, SH-A1',
-                    isUpperCase: true,
-                    prefixIcon: const Icon(Icons.tag_rounded, size: 20),
-                    validator: (val) {
-                      if (val == null || val.trim().isEmpty) {
-                        return 'Shed number is required';
-                      }
-                      return null;
-                    },
-                  ),
-                  const SizedBox(height: 24),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.end,
-                    children: [
-                      TextButton(
-                        onPressed: () {
-                          if (Get.isDialogOpen ?? false) {
-                            Get.back();
-                          } else if (context.mounted) {
-                            Navigator.of(context, rootNavigator: true).pop();
-                          }
-                        },
-                        child: const Text('Cancel'),
-                      ),
-                      const SizedBox(width: 12),
-                      Obx(
-                        () => CustomButton(
-                          text: 'Save Changes',
-                          icon: Icons.check_rounded,
-                          isLoading: isSubmitting.value,
-                          width: 150,
-                          height: 42,
-                          onPressed: () async {
-                            if (formKey.currentState?.validate() ?? false) {
-                              if (selectedGaushala.value == null) {
-                                CustomSnackbar.showError(
-                                  title: 'Validation Error',
-                                  message: 'Please select a Gaushala for this shed.',
-                                );
-                                return;
-                              }
-                              final success = await updateShed(
-                                shed.id,
-                                shedName: nameController.text,
-                                shedNumber: numberController.text,
-                                gaushalaId: selectedGaushala.value!.id,
-                              );
-                              if (success) {
-                                if (Get.isDialogOpen ?? false) {
-                                  Get.back();
-                                } else if (context.mounted) {
-                                  Navigator.of(context, rootNavigator: true).pop();
-                                }
-                              }
-                            }
-                          },
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
+                ),
               ),
             ),
-          ),
-        ),
+          );
+        },
       ),
       barrierDismissible: false,
     );
@@ -791,45 +814,49 @@ class ShedController extends GetxController {
       return;
     }
     Get.dialog(
-      AlertDialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        title: Row(
-          children: const [
-            Icon(Icons.warning_amber_rounded, color: AppColors.error),
-            SizedBox(width: 10),
-            Text('Delete Shed'),
-          ],
-        ),
-        content: Text(
-          'Are you sure you want to delete "${shed.shedName}" (${shed.shedNumber})? This action cannot be undone.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () {
-              if (context.mounted) {
-                Navigator.of(context, rootNavigator: true).pop();
-              } else {
-                Get.back();
-              }
-            },
-            child: const Text('Cancel'),
-          ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppColors.error,
-              foregroundColor: Colors.white,
+      Builder(
+        builder: (dialogContext) {
+          void closeDialog() {
+            if (Navigator.of(dialogContext).canPop()) {
+              Navigator.of(dialogContext).pop();
+            } else if (context.mounted && Navigator.of(context, rootNavigator: true).canPop()) {
+              Navigator.of(context, rootNavigator: true).pop();
+            } else if (Get.isDialogOpen ?? false) {
+              Get.back(closeOverlays: true);
+            }
+          }
+
+          return AlertDialog(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            title: Row(
+              children: const [
+                Icon(Icons.warning_amber_rounded, color: AppColors.error),
+                SizedBox(width: 10),
+                Text('Delete Shed'),
+              ],
             ),
-            onPressed: () {
-              if (context.mounted) {
-                Navigator.of(context, rootNavigator: true).pop();
-              } else {
-                Get.back();
-              }
-              deleteShed(shed.id);
-            },
-            child: const Text('Delete'),
-          ),
-        ],
+            content: Text(
+              'Are you sure you want to delete "${shed.shedName}" (${shed.shedNumber})? This action cannot be undone.',
+            ),
+            actions: [
+              TextButton(
+                onPressed: closeDialog,
+                child: const Text('Cancel'),
+              ),
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: AppColors.error,
+                  foregroundColor: Colors.white,
+                ),
+                onPressed: () {
+                  closeDialog();
+                  deleteShed(shed.id);
+                },
+                child: const Text('Delete'),
+              ),
+            ],
+          );
+        },
       ),
     );
   }

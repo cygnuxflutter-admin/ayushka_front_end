@@ -46,6 +46,11 @@ class PermissionGuard extends StatelessWidget {
     final permissionService = Get.find<PermissionService>();
 
     return Obx(() {
+      // Touch reactive properties so Obx always has an active observable dependency
+      // even when permission resolution evaluates to admin immediately.
+      permissionService.rxVersion.value;
+      permissionService.rxIsAdmin.value;
+
       final allowed = permissionService.hasPermission(
         module: moduleCode,
         subModule: subModuleCode,
@@ -88,6 +93,10 @@ class PermissionBuilder extends StatelessWidget {
     final permissionService = Get.find<PermissionService>();
 
     return Obx(() {
+      // Touch reactive properties so Obx always has an active observable dependency
+      permissionService.rxVersion.value;
+      permissionService.rxIsAdmin.value;
+
       final canView = permissionService.canView(moduleCode, subModuleCode);
       final canAdd = permissionService.canAdd(moduleCode, subModuleCode);
       final canEdit = permissionService.canEdit(moduleCode, subModuleCode);

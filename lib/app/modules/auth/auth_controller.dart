@@ -14,11 +14,38 @@ class AuthController extends GetxController {
   final StorageService _storageService = Get.find<StorageService>();
 
   final GlobalKey<FormState> formKey = GlobalKey<FormState>();
-  final TextEditingController userIdController =
-      TextEditingController();
+  
+  TextEditingController _userIdController = TextEditingController();
+  TextEditingController _passwordController = TextEditingController();
+
+  static bool _isDisposed(TextEditingController? c) {
+    if (c == null) return false;
+    try {
+      void dummy() {}
+      c.addListener(dummy);
+      c.removeListener(dummy);
+      return false;
+    } catch (_) {
+      return true;
+    }
+  }
+
+  TextEditingController get userIdController {
+    if (_isDisposed(_userIdController)) {
+      _userIdController = TextEditingController();
+      _loadSavedCredentials();
+    }
+    return _userIdController;
+  }
+
   TextEditingController get emailController => userIdController;
-  final TextEditingController passwordController =
-      TextEditingController();
+
+  TextEditingController get passwordController {
+    if (_isDisposed(_passwordController)) {
+      _passwordController = TextEditingController();
+    }
+    return _passwordController;
+  }
 
   final RxBool isLoading = false.obs;
   final RxBool rememberMe = true.obs;
@@ -27,6 +54,12 @@ class AuthController extends GetxController {
   @override
   void onInit() {
     super.onInit();
+    if (_isDisposed(_userIdController)) {
+      _userIdController = TextEditingController();
+    }
+    if (_isDisposed(_passwordController)) {
+      _passwordController = TextEditingController();
+    }
     _loadSavedCredentials();
   }
 
@@ -35,7 +68,7 @@ class AuthController extends GetxController {
     if (rememberMe.value) {
       final savedUser = _storageService.getSavedUserId();
       if (savedUser != null && savedUser.isNotEmpty && savedUser.toLowerCase() != 'admin') {
-        userIdController.text = savedUser;
+        _userIdController.text = savedUser;
       }
     }
   }
@@ -126,8 +159,16 @@ class AuthController extends GetxController {
 
   @override
   void onClose() {
-    userIdController.dispose();
-    passwordController.dispose();
+    try {
+      if (!_isDisposed(_userIdController)) {
+        _userIdController.dispose();
+      }
+    } catch (_) {}
+    try {
+      if (!_isDisposed(_passwordController)) {
+        _passwordController.dispose();
+      }
+    } catch (_) {}
     super.onClose();
   }
 }

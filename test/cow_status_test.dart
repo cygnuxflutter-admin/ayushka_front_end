@@ -70,5 +70,37 @@ void main() {
       expect(cow.statusDisplay, 'Active');
       expect(cow.canEdit, true);
     });
+
+    test('AddCowRequestModel supports male cattle with specific cow type', () {
+      const request = AddCowRequestModel(
+        breed: 'breed-1',
+        gaushalaId: 'gaushala-1',
+        type: 'type-bull-1',
+        tagId: 'BULL-001',
+        isFemale: false,
+        addedBy: 'user-1',
+      );
+
+      final json = request.toJson();
+      expect(json['tag_id'], 'BULL-001');
+      expect(json['isFemale'], false);
+      expect(json['type'], 'type-bull-1');
+    });
+
+    test('CowModel with male gender properly parses and preserves cowType', () {
+      final cow = CowModel.fromJson({
+        'id': '7',
+        'tag_id': 'BULL-002',
+        'isFemale': false,
+        'type': {
+          'id': 'type-10',
+          'typeName': 'Breeding Bull',
+        },
+      });
+
+      expect(cow.isFemale, false);
+      expect(cow.cowType, isNotNull);
+      expect(cow.cowType?.typeName, 'Breeding Bull');
+    });
   });
 }

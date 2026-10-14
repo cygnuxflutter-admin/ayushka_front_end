@@ -14,7 +14,7 @@ import '../medical_stock_controller.dart';
 import '../widgets/medical_stock_animations.dart';
 
 /// Screen C: Stock Inward (Multi-Batch Purchase Entry)
-/// Provides enterprise purchase/donation entry with dynamic multi-batch rows,
+/// Provides enterprise purchase entry with dynamic multi-batch rows,
 /// future expiry validation, auto-calculated line totals, and ledger integration.
 class StockInwardView extends StatelessWidget {
   const StockInwardView({super.key});
@@ -105,7 +105,7 @@ class StockInwardView extends StatelessWidget {
                   const SizedBox(height: 3),
                   Obx(
                     () => Text(
-                      'Record purchase receipts and donations with lot numbers, manufacturing, and future expiry dates for ${controller.activeGaushalaName}',
+                      'Record purchase receipts with lot numbers, manufacturing, and future expiry dates for ${controller.activeGaushalaName}',
                       style: const TextStyle(fontSize: 12, color: AppColors.textSecondaryLight),
                     ),
                   ),

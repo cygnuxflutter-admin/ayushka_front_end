@@ -320,7 +320,7 @@ class _ShedTransferHistoryDialogState extends State<ShedTransferHistoryDialog> {
       'Moved to milking shed',
       'Dry period segregation',
       'Medical quarantine',
-      'Calving pen',
+      'Calving',
       'Routine relocation',
       'Post-treatment recovery',
     };

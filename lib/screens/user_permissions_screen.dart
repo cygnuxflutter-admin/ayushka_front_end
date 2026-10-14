@@ -156,14 +156,6 @@ class _UserPermissionsScreenState extends State<UserPermissionsScreen> {
         subModuleCode: PermissionSubModules.shedTransfer,
         subModuleName: 'Shed Transfers',
       ),
-      // Gaushala Management
-      const PermissionItemModel(
-        moduleId: '',
-        moduleCode: PermissionModules.gaushala,
-        moduleName: 'Gaushala Management',
-        subModuleCode: PermissionSubModules.gaushalaList,
-        subModuleName: 'Gaushala Master',
-      ),
       // User Management
       const PermissionItemModel(
         moduleId: '',
@@ -313,7 +305,9 @@ class _UserPermissionsScreenState extends State<UserPermissionsScreen> {
       }
 
       setState(() {
-        _matrix = combinedMap.values.toList();
+        _matrix = combinedMap.values
+            .where((item) => item.moduleCode.toUpperCase() != PermissionModules.gaushala)
+            .toList();
         _isLoading = false;
       });
     } catch (e) {
@@ -321,7 +315,9 @@ class _UserPermissionsScreenState extends State<UserPermissionsScreen> {
         _isLoading = false;
         _errorMessage = 'Failed to load permissions: $e';
         // Fall back to template
-        _matrix = _getDefaultSystemTemplate();
+        _matrix = _getDefaultSystemTemplate()
+            .where((item) => item.moduleCode.toUpperCase() != PermissionModules.gaushala)
+            .toList();
       });
     }
   }

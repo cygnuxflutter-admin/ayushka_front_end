@@ -92,66 +92,104 @@ class _TestAlertGeneratorDialogState extends State<TestAlertGeneratorDialog> {
               ),
               const SizedBox(height: 20),
 
-              // Simulation Options Grid
-              _buildOptionTile(
-                index: 0,
-                icon: PhosphorIconsRegular.firstAidKit,
-                title: 'Critical Treatment Case & Dose',
-                description: 'Creates a treatment record marked CRITICAL with today\'s dose due for immediate triage testing.',
-                color: const Color(0xFFEF4444),
-                isDark: isDark,
-                onTrigger: () async {
-                  setState(() => _loadingIndex = 0);
-                  await widget.controller.generateTestTreatmentAlert();
-                  setState(() => _loadingIndex = null);
-                },
-              ),
-              const SizedBox(height: 10),
+              // Simulation Options Grid (Scrollable for compact heights)
+              Flexible(
+                child: SingleChildScrollView(
+                  child: Column(
+                    children: [
+                      _buildOptionTile(
+                        index: 0,
+                        icon: PhosphorIconsRegular.firstAidKit,
+                        title: 'Critical Treatment Case & Dose',
+                        description: 'Creates a treatment record marked CRITICAL with today\'s dose due for immediate triage testing.',
+                        color: const Color(0xFFEF4444),
+                        isDark: isDark,
+                        onTrigger: () async {
+                          setState(() => _loadingIndex = 0);
+                          await widget.controller.generateTestTreatmentAlert();
+                          setState(() => _loadingIndex = null);
+                        },
+                      ),
+                      const SizedBox(height: 10),
 
-              _buildOptionTile(
-                index: 1,
-                icon: PhosphorIconsRegular.dropHalfBottom,
-                title: 'Milk Variance Notification',
-                description: 'Sends a milk production alert (-14.8% drop) to verify the milk tab and dismissal workflow.',
-                color: const Color(0xFFF59E0B),
-                isDark: isDark,
-                onTrigger: () async {
-                  setState(() => _loadingIndex = 1);
-                  await widget.controller.generateTestMilkAlert();
-                  setState(() => _loadingIndex = null);
-                },
-              ),
-              const SizedBox(height: 10),
+                      _buildOptionTile(
+                        index: 1,
+                        icon: PhosphorIconsRegular.dropHalfBottom,
+                        title: 'Milk Variance Notification',
+                        description: 'Sends a milk production alert (-14.8% drop) to verify the milk tab and dismissal workflow.',
+                        color: const Color(0xFFF59E0B),
+                        isDark: isDark,
+                        onTrigger: () async {
+                          setState(() => _loadingIndex = 1);
+                          await widget.controller.generateTestMilkAlert();
+                          setState(() => _loadingIndex = null);
+                        },
+                      ),
+                      const SizedBox(height: 10),
 
-              _buildOptionTile(
-                index: 2,
-                icon: PhosphorIconsRegular.pill,
-                title: 'Low Medical Stock & Expiring Batch',
-                description: 'Registers an antibiotic SKU with 5 vials remaining (threshold: 50) and expiry within 18 days.',
-                color: const Color(0xFF6366F1),
-                isDark: isDark,
-                onTrigger: () async {
-                  setState(() => _loadingIndex = 2);
-                  await widget.controller.generateTestMedicalAlert();
-                  setState(() => _loadingIndex = null);
-                },
-              ),
-              const SizedBox(height: 10),
+                      _buildOptionTile(
+                        index: 2,
+                        icon: PhosphorIconsRegular.pill,
+                        title: 'Low Medical Stock & Expiring Batch',
+                        description: 'Registers an antibiotic SKU with 5 vials remaining (threshold: 50) and expiry within 18 days.',
+                        color: const Color(0xFF6366F1),
+                        isDark: isDark,
+                        onTrigger: () async {
+                          setState(() => _loadingIndex = 2);
+                          await widget.controller.generateTestMedicalAlert();
+                          setState(() => _loadingIndex = null);
+                        },
+                      ),
+                      const SizedBox(height: 10),
 
-              _buildOptionTile(
-                index: 3,
-                icon: PhosphorIconsRegular.plant,
-                title: 'Low Feed Stock Shortfall',
-                description: 'Inserts green fodder with 35 KG in stock against a 500 KG minimum safety buffer.',
-                color: const Color(0xFF10B981),
-                isDark: isDark,
-                onTrigger: () async {
-                  setState(() => _loadingIndex = 3);
-                  await widget.controller.generateTestFeedAlert();
-                  setState(() => _loadingIndex = null);
-                },
+                      _buildOptionTile(
+                        index: 3,
+                        icon: PhosphorIconsRegular.plant,
+                        title: 'Low Feed Stock Shortfall',
+                        description: 'Inserts green fodder with 35 KG in stock against a 500 KG minimum safety buffer.',
+                        color: const Color(0xFF10B981),
+                        isDark: isDark,
+                        onTrigger: () async {
+                          setState(() => _loadingIndex = 3);
+                          await widget.controller.generateTestFeedAlert();
+                          setState(() => _loadingIndex = null);
+                        },
+                      ),
+                      const SizedBox(height: 10),
+
+                      _buildOptionTile(
+                        index: 4,
+                        icon: PhosphorIconsRegular.flame,
+                        title: 'Active Estrus / Heat Alert',
+                        description: 'Records an active heat cycle marked STANDING (Ready for Mating) for reproduction triage.',
+                        color: const Color(0xFFF43F5E),
+                        isDark: isDark,
+                        onTrigger: () async {
+                          setState(() => _loadingIndex = 4);
+                          await widget.controller.generateTestHeatAlert();
+                          setState(() => _loadingIndex = null);
+                        },
+                      ),
+                      const SizedBox(height: 10),
+
+                      _buildOptionTile(
+                        index: 5,
+                        icon: PhosphorIconsRegular.heartStraight,
+                        title: 'Breeding Alert (Repeat Breeder / Due PD)',
+                        description: 'Inserts a repeat breeding record (Attempt #3, Pending PD) to trigger the breeding alerts.',
+                        color: const Color(0xFFE11D48),
+                        isDark: isDark,
+                        onTrigger: () async {
+                          setState(() => _loadingIndex = 5);
+                          await widget.controller.generateTestBreedingAlert();
+                          setState(() => _loadingIndex = null);
+                        },
+                      ),
+                    ],
+                  ),
+                ),
               ),
-              const SizedBox(height: 22),
+              const SizedBox(height: 18),
 
               // Bottom Actions
               Row(
@@ -162,10 +200,10 @@ class _TestAlertGeneratorDialogState extends State<TestAlertGeneratorDialog> {
                     child: const Text('Cancel'),
                   ),
                   CustomButton(
-                    text: 'Generate All 4 Alerts',
+                    text: 'Generate All 6 Alerts',
                     icon: PhosphorIconsRegular.lightning,
                     height: 40,
-                    width: 210,
+                    width: 220,
                     isLoading: _loadingIndex == 99,
                     onPressed: () async {
                       setState(() => _loadingIndex = 99);

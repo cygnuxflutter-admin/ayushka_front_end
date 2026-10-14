@@ -12,7 +12,8 @@ abstract class PermissionModules {
   static const String treatment = 'TREATMENT';
   static const String workerMgmt = 'WORKER_MGMT';
   static const String milkMgmt = 'MILK_MGMT';
-  static const String donation = 'DONATION';
+  static const String cowHeat = 'COW_HEAT';
+  static const String cowMating = 'COW_MATING';
 
   /// List of all system modules
   static const List<String> all = [
@@ -28,7 +29,8 @@ abstract class PermissionModules {
     treatment,
     workerMgmt,
     milkMgmt,
-    donation,
+    cowHeat,
+    cowMating,
   ];
 
   /// Human-readable display label for each module code
@@ -58,8 +60,10 @@ abstract class PermissionModules {
         return 'Worker & Department';
       case milkMgmt:
         return 'Milk Management';
-      case donation:
-        return 'Donation Management';
+      case cowHeat:
+        return 'Cow Heat Management';
+      case cowMating:
+        return 'Cow Mating Management';
       default:
         return moduleCode;
     }
@@ -85,8 +89,8 @@ abstract class PermissionSubModules {
   static const String workerList = 'WORKER_LIST';
   static const String milkProduction = 'MILK_PRODUCTION';
   static const String milkDistribution = 'MILK_DISTRIBUTION';
-  static const String donationList = 'DONATION_LIST';
-  static const String donationReceipt = 'DONATION_RECEIPT';
+  static const String heatList = 'HEAT_LIST';
+  static const String matingList = 'MATING_LIST';
 
   /// Human-readable display label for each sub-module code
   static String getLabel(String subModuleCode) {
@@ -125,10 +129,10 @@ abstract class PermissionSubModules {
         return 'Milk Production';
       case milkDistribution:
         return 'Milk Distribution';
-      case donationList:
-        return 'Donation Records';
-      case donationReceipt:
-        return 'Donation Receipts';
+      case heatList:
+        return 'Cow Heat Records';
+      case matingList:
+        return 'Cow Mating Records';
       default:
         return subModuleCode;
     }
@@ -166,9 +170,10 @@ abstract class PermissionSubModules {
       case milkProduction:
       case milkDistribution:
         return PermissionModules.milkMgmt;
-      case donationList:
-      case donationReceipt:
-        return PermissionModules.donation;
+      case heatList:
+        return PermissionModules.cowHeat;
+      case matingList:
+        return PermissionModules.cowMating;
       default:
         return '';
     }

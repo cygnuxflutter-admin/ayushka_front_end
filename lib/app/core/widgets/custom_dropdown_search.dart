@@ -76,7 +76,7 @@ class CustomDropdownSearch<T> extends StatelessWidget {
     }
 
     final Widget dropdownWidget = DropdownSearch<T>(
-      key: ValueKey('custom_dropdown_${label ?? hint}_${enabled}_${list.length}'),
+      key: key ?? ValueKey('custom_dropdown_${label ?? hint}_$enabled'),
       enabled: enabled,
       items: (filter, infiniteScrollProps) {
         if (filter.isEmpty) return list;

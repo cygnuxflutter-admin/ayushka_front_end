@@ -24,6 +24,7 @@ import '../../data/services/gaushala_session_service.dart';
 import '../../data/services/permission_service.dart';
 import '../../data/services/storage_service.dart';
 import '../../routes/app_routes.dart';
+import '../feed_item/feed_item_controller.dart';
 
 /// Controller managing Feed Stock Transactions (Inward & Outward)
 /// state, filters, recording actions, and receipt modals.
@@ -61,7 +62,7 @@ class FeedStockTransactionController extends GetxController {
   final RxString searchQuery = ''.obs;
   final Rxn<String> selectedGaushalaFilter = Rxn<String>();
   final RxString selectedTypeFilter = 'ALL'.obs; // ALL, INWARD, OUTWARD
-  final RxString selectedReasonFilter = 'ALL'.obs; // ALL, PURCHASE, DONATION, DAILY_FEEDING, OTHER
+  final RxString selectedReasonFilter = 'ALL'.obs; // ALL, PURCHASE, DAILY_FEEDING, OTHER
   final Rxn<String> selectedItemFilter = Rxn<String>(); // itemId or null
   final Rxn<String> selectedShedFilter = Rxn<String>(); // shedId or null
   final Rxn<DateTimeRange> selectedDateRange = Rxn<DateTimeRange>();
@@ -115,7 +116,32 @@ class FeedStockTransactionController extends GetxController {
     super.onInit();
     _loadUser();
     _bindGaushalaSession();
+    _handleIncomingArguments();
     loadInitialData();
+  }
+
+  @override
+  void onReady() {
+    super.onReady();
+    _handleIncomingArguments();
+  }
+
+  void _handleIncomingArguments() {
+    final args = Get.arguments;
+    if (args is Map) {
+      bool changed = false;
+      if (args['type'] != null && args['type'] is String) {
+        selectedTypeFilter.value = args['type'] as String;
+        changed = true;
+      }
+      if (args['itemId'] != null && args['itemId'] is String) {
+        selectedItemFilter.value = args['itemId'] as String;
+        changed = true;
+      }
+      if (changed && allTransactions.isNotEmpty) {
+        _applyFiltersAndPagination(resetPage: true);
+      }
+    }
   }
 
   void _loadUser() {
@@ -166,6 +192,15 @@ class FeedStockTransactionController extends GetxController {
 
   Future<void> loadGaushalas() async {
     try {
+      if (!canChangeGaushala) {
+        final assigned = _gaushalaService.selectedGaushala.value ?? _gaushalaService.getUserDefaultGaushala();
+        if (assigned != null) {
+          gaushalas.assignAll([assigned]);
+        } else {
+          gaushalas.clear();
+        }
+        return;
+      }
       final list = await _apiService.getGaushalas();
       gaushalas.assignAll(list);
     } catch (_) {}
@@ -173,14 +208,20 @@ class FeedStockTransactionController extends GetxController {
 
   Future<void> loadFeedItems(String? gId) async {
     try {
-      final list = await _apiService.getFeedItems(gaushalaId: gId);
+      final cleanGId = (gId != null && gId.isNotEmpty && gId != 'all')
+          ? gId
+          : (_gaushalaService.selectedGaushalaId.isNotEmpty ? _gaushalaService.selectedGaushalaId : null);
+      final list = await _apiService.getFeedItems(gaushalaId: cleanGId);
       feedItems.assignAll(list);
     } catch (_) {}
   }
 
   Future<void> loadSheds(String? gId) async {
     try {
-      final list = await _apiService.getSheds(gaushalaId: gId);
+      final cleanGId = (gId != null && gId.isNotEmpty && gId != 'all')
+          ? gId
+          : (_gaushalaService.selectedGaushalaId.isNotEmpty ? _gaushalaService.selectedGaushalaId : null);
+      final list = await _apiService.getSheds(gaushalaId: cleanGId);
       sheds.assignAll(list);
     } catch (_) {}
   }
@@ -300,7 +341,11 @@ class FeedStockTransactionController extends GetxController {
     mobileTransactions.assignAll(filtered.sublist(0, mobileCount));
   }
 
-  Future<void> fetchTransactions({bool showRefreshing = false, bool resetMobile = true}) async {
+  Future<void> fetchTransactions({
+    bool showRefreshing = false,
+    bool resetMobile = true,
+    String? gaushalaId,
+  }) async {
     if (showRefreshing) {
       isRefreshing.value = true;
     } else if (allTransactions.isEmpty) {
@@ -308,8 +353,10 @@ class FeedStockTransactionController extends GetxController {
     }
 
     try {
+      final targetGId = gaushalaId ?? selectedGaushalaFilter.value ?? _gaushalaService.selectedGaushalaId;
+      final cleanGId = (targetGId.isNotEmpty && targetGId != 'all') ? targetGId : null;
       final result = await _apiService.getFeedStockTransactions(
-        gaushalaId: selectedGaushalaFilter.value,
+        gaushalaId: cleanGId,
         page: 1,
         limit: 1000,
       );
@@ -338,11 +385,12 @@ class FeedStockTransactionController extends GetxController {
     }
   }
 
-  Future<void> refreshTransactions() async {
+  Future<void> refreshTransactions({String? gaushalaId}) async {
+    final targetGId = gaushalaId ?? selectedGaushalaFilter.value ?? _gaushalaService.selectedGaushalaId;
     await Future.wait([
-      loadFeedItems(selectedGaushalaFilter.value),
-      loadSheds(selectedGaushalaFilter.value),
-      fetchTransactions(showRefreshing: true),
+      loadFeedItems(targetGId),
+      loadSheds(targetGId),
+      fetchTransactions(showRefreshing: true, gaushalaId: targetGId),
     ]);
   }
 
@@ -541,6 +589,23 @@ class FeedStockTransactionController extends GetxController {
     final targetGaushalaId = selectedGaushalaFilter.value ?? _gaushalaService.selectedGaushalaId;
     final Rxn<GaushalaModel> selectedGaushala = Rxn<GaushalaModel>(findGaushala(targetGaushalaId));
 
+    // Fresh fetch feed items on dialog open so latest available stock is always up-to-date
+    final activeGId = selectedGaushala.value?.id ?? targetGaushalaId;
+    if (activeGId.isNotEmpty) {
+      loadFeedItems(activeGId);
+    }
+
+    Worker? itemWorker;
+    itemWorker = ever(feedItems, (List<FeedItemModel> updatedItems) {
+      if (isSubmitting.value) return;
+      if (selectedItem.value != null) {
+        final match = updatedItems.firstWhereOrNull((i) => i.id == selectedItem.value!.id);
+        if (match != null) {
+          selectedItem.value = match;
+        }
+      }
+    });
+
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     void updateCalculation() {
@@ -598,7 +663,7 @@ class FeedStockTransactionController extends GetxController {
                             ),
                             const SizedBox(height: 2),
                             Text(
-                              'Receive fresh feed or fodder stock via purchase or donation',
+                              'Receive fresh feed or fodder stock via purchase',
                               style: TextStyle(
                                 fontSize: 12,
                                 color: isDark ? AppColors.textSecondaryDark : AppColors.textSecondaryLight,
@@ -610,7 +675,13 @@ class FeedStockTransactionController extends GetxController {
                       IconButton(
                         icon: const Icon(Icons.close_rounded, size: 20),
                         tooltip: 'Close',
-                        onPressed: () => Get.back(),
+                        onPressed: () {
+                          if (Navigator.of(context, rootNavigator: true).canPop()) {
+                            Navigator.of(context, rootNavigator: true).pop();
+                          } else if (Get.isDialogOpen == true) {
+                            Get.back();
+                          }
+                        },
                       ),
                     ],
                   ),
@@ -660,8 +731,10 @@ class FeedStockTransactionController extends GetxController {
                               Expanded(
                                 child: Obx(() {
                                   final items = feedItems.where((i) {
-                                    if (selectedGaushala.value == null) return true;
-                                    return i.gaushalaId == selectedGaushala.value!.id;
+                                    final g = selectedGaushala.value;
+                                    if (g == null) return true;
+                                    if (i.gaushalaId == null || i.gaushalaId!.isEmpty) return true;
+                                    return i.gaushalaId == g.id || i.gaushalaId == g.gaushalaName;
                                   }).toList();
 
                                   return CustomDropdownSearch<FeedItemModel>(
@@ -875,7 +948,13 @@ class FeedStockTransactionController extends GetxController {
                     mainAxisAlignment: MainAxisAlignment.end,
                     children: [
                       OutlinedButton(
-                        onPressed: () => Get.back(),
+                        onPressed: () {
+                          if (Navigator.of(context, rootNavigator: true).canPop()) {
+                            Navigator.of(context, rootNavigator: true).pop();
+                          } else if (Get.isDialogOpen == true) {
+                            Get.back();
+                          }
+                        },
                         style: OutlinedButton.styleFrom(
                           padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
@@ -915,13 +994,45 @@ class FeedStockTransactionController extends GetxController {
                                       notes: notesController.text.trim(),
                                     );
 
-                                    await _apiService.recordInwardStock(req);
-                                    Get.back();
+                                    final tx = await _apiService.recordInwardStock(req);
+
+                                    // 1. Calculate updated stock
+                                    final itemIndex = feedItems.indexWhere((i) => i.id == itm.id);
+                                    final current = itemIndex != -1 ? feedItems[itemIndex] : null;
+                                    final updatedStock = (tx.stockAfter > 0)
+                                        ? tx.stockAfter
+                                        : ((current?.currentStock ?? itm.currentStock) + q);
+
+                                    // 2. Dispose reactive worker immediately
+                                    itemWorker?.dispose();
+                                    itemWorker = null;
+
+                                    // 3. Close dialog safely before showing snackbars or refreshing
+                                    if (Navigator.of(context, rootNavigator: true).canPop()) {
+                                      Navigator.of(context, rootNavigator: true).pop();
+                                    } else if (Get.isDialogOpen == true) {
+                                      Get.back();
+                                    }
+
+                                    // 4. Update in-memory item stock for instant reactivity
+                                    if (itemIndex != -1 && current != null) {
+                                      feedItems[itemIndex] = current.copyWith(currentStock: updatedStock);
+                                      feedItems.refresh();
+                                    }
+
+                                    // 5. Show success notification
                                     CustomSnackbar.showSuccess(
                                       title: 'Stock Inward Recorded',
                                       message: 'Successfully recorded +$q ${itm.unit} of ${itm.itemName}',
                                     );
-                                    refreshTransactions();
+
+                                    // 6. Refresh transactions and master lists from backend asynchronously
+                                    refreshTransactions(gaushalaId: gId);
+
+                                    // 7. Keep FeedItemController in sync if active
+                                    if (Get.isRegistered<FeedItemController>()) {
+                                      Get.find<FeedItemController>().fetchFeedItems();
+                                    }
                                   } catch (e) {
                                     CustomSnackbar.showError(
                                       title: 'Failed',
@@ -941,7 +1052,10 @@ class FeedStockTransactionController extends GetxController {
           ),
         ),
       ),
-    );
+    ).whenComplete(() {
+      itemWorker?.dispose();
+      itemWorker = null;
+    });
   }
 
   // -------------------------------------------------------------
@@ -971,6 +1085,7 @@ class FeedStockTransactionController extends GetxController {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     void validateAndClampQuantity(String val) {
+      if (isSubmitting.value) return;
       if (val.trim().isEmpty) {
         enteredQty.value = 0.0;
         return;
@@ -1001,6 +1116,26 @@ class FeedStockTransactionController extends GetxController {
       }
       enteredQty.value = n;
     }
+
+    // Fresh fetch feed items on dialog open so latest available stock is always up-to-date
+    final activeGId = selectedGaushala.value?.id ?? targetGaushalaId;
+    if (activeGId.isNotEmpty) {
+      loadFeedItems(activeGId);
+    }
+
+    Worker? itemWorker;
+    itemWorker = ever(feedItems, (List<FeedItemModel> updatedItems) {
+      if (isSubmitting.value) return;
+      if (selectedItem.value != null) {
+        final match = updatedItems.firstWhereOrNull((i) => i.id == selectedItem.value!.id);
+        if (match != null) {
+          selectedItem.value = match;
+          if (!isSubmitting.value && qtyController.text.trim().isNotEmpty) {
+            validateAndClampQuantity(qtyController.text);
+          }
+        }
+      }
+    });
 
     Get.dialog(
       Dialog(
@@ -1060,7 +1195,13 @@ class FeedStockTransactionController extends GetxController {
                       IconButton(
                         icon: const Icon(Icons.close_rounded, size: 20),
                         tooltip: 'Close',
-                        onPressed: () => Get.back(),
+                        onPressed: () {
+                          if (Navigator.of(context, rootNavigator: true).canPop()) {
+                            Navigator.of(context, rootNavigator: true).pop();
+                          } else if (Get.isDialogOpen == true) {
+                            Get.back();
+                          }
+                        },
                       ),
                     ],
                   ),
@@ -1113,8 +1254,10 @@ class FeedStockTransactionController extends GetxController {
                               Expanded(
                                 child: Obx(() {
                                   final items = feedItems.where((i) {
-                                    if (selectedGaushala.value == null) return true;
-                                    return i.gaushalaId == selectedGaushala.value!.id;
+                                    final g = selectedGaushala.value;
+                                    if (g == null) return true;
+                                    if (i.gaushalaId == null || i.gaushalaId!.isEmpty) return true;
+                                    return i.gaushalaId == g.id || i.gaushalaId == g.gaushalaName;
                                   }).toList();
 
                                   return CustomDropdownSearch<FeedItemModel>(
@@ -1355,7 +1498,13 @@ class FeedStockTransactionController extends GetxController {
                     mainAxisAlignment: MainAxisAlignment.end,
                     children: [
                       OutlinedButton(
-                        onPressed: () => Get.back(),
+                        onPressed: () {
+                          if (Navigator.of(context, rootNavigator: true).canPop()) {
+                            Navigator.of(context, rootNavigator: true).pop();
+                          } else if (Get.isDialogOpen == true) {
+                            Get.back();
+                          }
+                        },
                         style: OutlinedButton.styleFrom(
                           padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
@@ -1416,15 +1565,40 @@ class FeedStockTransactionController extends GetxController {
                                       notes: notesController.text.trim(),
                                     );
 
-                                    await _apiService.recordOutwardStock(req);
-                                    Get.back();
+                                    final tx = await _apiService.recordOutwardStock(req);
+
+                                    // 1. Calculate remaining stock accurately
+                                    final itemIndex = feedItems.indexWhere((i) => i.id == itm.id);
+                                    final newStock = (tx.stockAfter >= 0 && (tx.stockAfter != 0 || tx.isOutward))
+                                        ? tx.stockAfter
+                                        : (itm.currentStock - q);
+                                    final remaining = newStock < 0 ? 0.0 : newStock;
+
+                                    // 2. Dispose reactive worker immediately to prevent validation interference
+                                    itemWorker?.dispose();
+                                    itemWorker = null;
+
+                                    // 3. Close dialog immediately and reliably before any snackbar
+                                    if (Navigator.of(context, rootNavigator: true).canPop()) {
+                                      Navigator.of(context, rootNavigator: true).pop();
+                                    } else if (Get.isDialogOpen == true) {
+                                      Get.back();
+                                    }
+
+                                    // 4. Update in-memory item stock for instant reactivity
+                                    if (itemIndex != -1) {
+                                      final current = feedItems[itemIndex];
+                                      feedItems[itemIndex] = current.copyWith(currentStock: remaining);
+                                      feedItems.refresh();
+                                    }
+
+                                    // 5. Show success notification
                                     CustomSnackbar.showSuccess(
                                       title: 'Stock Outward Recorded',
                                       message: 'Successfully issued -$q ${itm.unit} of ${itm.itemName}',
                                     );
-                                    refreshTransactions();
 
-                                    final remaining = itm.currentStock - q;
+                                    // 6. Low stock or depleted alert
                                     if (remaining <= 0) {
                                       Future.delayed(const Duration(milliseconds: 600), () {
                                         CustomSnackbar.showWarning(
@@ -1433,6 +1607,24 @@ class FeedStockTransactionController extends GetxController {
                                           duration: const Duration(seconds: 5),
                                         );
                                       });
+                                    } else if (remaining <= itm.minStockAlert) {
+                                      Future.delayed(const Duration(milliseconds: 600), () {
+                                        final remStr = (remaining % 1 == 0) ? remaining.toInt().toString() : remaining.toStringAsFixed(1);
+                                        final minStr = (itm.minStockAlert % 1 == 0) ? itm.minStockAlert.toInt().toString() : itm.minStockAlert.toStringAsFixed(1);
+                                        CustomSnackbar.showWarning(
+                                          title: '⚠️ Low Stock Alert ($remStr ${itm.unit})',
+                                          message: '"${itm.itemName}" is running low with $remStr ${itm.unit} left (Alert threshold: $minStr ${itm.unit}). Restocking recommended.',
+                                          duration: const Duration(seconds: 5),
+                                        );
+                                      });
+                                    }
+
+                                    // 7. Refresh transactions and master lists from backend asynchronously
+                                    refreshTransactions(gaushalaId: gId);
+
+                                    // 8. Keep FeedItemController in sync if active
+                                    if (Get.isRegistered<FeedItemController>()) {
+                                      Get.find<FeedItemController>().fetchFeedItems();
                                     }
                                   } catch (e) {
                                     CustomSnackbar.showError(
@@ -1453,7 +1645,10 @@ class FeedStockTransactionController extends GetxController {
           ),
         ),
       ),
-    );
+    ).whenComplete(() {
+      itemWorker?.dispose();
+      itemWorker = null;
+    });
   }
 
   // -------------------------------------------------------------

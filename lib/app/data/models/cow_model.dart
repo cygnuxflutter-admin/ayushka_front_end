@@ -215,11 +215,24 @@ class CowModel {
             ? _parseBool(json['is_active'], defaultValue: true)
             : (json['status'] != null && json['status'].toString().trim().toLowerCase() == 'inactive' ? false : true));
 
+    final bool parsedIsFemale = () {
+      final raw = json['isFemale'] ?? json['is_female'];
+      if (raw != null) {
+        return _parseBool(raw, defaultValue: true);
+      }
+      final gender = (json['gender'] ?? json['sex'])?.toString().trim().toLowerCase();
+      if (gender != null && gender.isNotEmpty) {
+        if (gender == 'male' || gender == 'm' || gender == 'bull') return false;
+        if (gender == 'female' || gender == 'f' || gender == 'cow') return true;
+      }
+      return true;
+    }();
+
     return CowModel(
       id: (json['_id'] ?? json['id']) as String? ?? '',
       tagId: (json['tag_id'] as String? ?? '').toUpperCase(),
       calfName: json['calf_name'] as String?,
-      isFemale: json['isFemale'] as bool? ?? true,
+      isFemale: parsedIsFemale,
       isDeleted: parsedIsDeleted,
       isDied: parsedIsDied,
       isActive: parsedIsActive,
@@ -351,13 +364,25 @@ class CowGaushalaRef {
 class CowTypeRef {
   final String id;
   final String typeName;
+  final String? tag;
+  final bool? isFemale;
+  final bool? isMale;
 
-  const CowTypeRef({required this.id, required this.typeName});
+  const CowTypeRef({
+    required this.id,
+    required this.typeName,
+    this.tag,
+    this.isFemale,
+    this.isMale,
+  });
 
   factory CowTypeRef.fromJson(Map<String, dynamic> json) {
     return CowTypeRef(
       id: (json['_id'] ?? json['id']) as String? ?? '',
-      typeName: json['typeName'] as String? ?? '',
+      typeName: (json['typeName'] ?? json['name'] ?? json['type']) as String? ?? '',
+      tag: json['tag']?.toString(),
+      isFemale: json['isFemale'] is bool ? json['isFemale'] as bool : null,
+      isMale: json['isMale'] is bool ? json['isMale'] as bool : null,
     );
   }
 }
@@ -478,7 +503,12 @@ class CowListResponse {
     if (json['female'] is List) {
       for (final item in json['female'] as List) {
         if (item is Map) {
-          femaleList.add(CowModel.fromJson(Map<String, dynamic>.from(item)));
+          final map = Map<String, dynamic>.from(item);
+          if (!map.containsKey('isFemale') && !map.containsKey('is_female') && !map.containsKey('gender')) {
+            map['isFemale'] = true;
+          }
+          final model = CowModel.fromJson(map);
+          femaleList.add(!model.isFemale ? model.copyWith(isFemale: true) : model);
         }
       }
     }
@@ -487,7 +517,12 @@ class CowListResponse {
     if (json['male'] is List) {
       for (final item in json['male'] as List) {
         if (item is Map) {
-          maleList.add(CowModel.fromJson(Map<String, dynamic>.from(item)));
+          final map = Map<String, dynamic>.from(item);
+          if (!map.containsKey('isFemale') && !map.containsKey('is_female') && !map.containsKey('gender')) {
+            map['isFemale'] = false;
+          }
+          final model = CowModel.fromJson(map);
+          maleList.add(model.isFemale ? model.copyWith(isFemale: false) : model);
         }
       }
     }
@@ -507,13 +542,16 @@ class CowListResponse {
       ...directCows,
     ];
 
+    final resolvedFemales = femaleList.isNotEmpty ? femaleList : combined.where((c) => c.isFemale).toList();
+    final resolvedMales = maleList.isNotEmpty ? maleList : combined.where((c) => !c.isFemale).toList();
+
     return CowListResponse(
       total: (json['total'] as num?)?.toInt() ?? combined.length,
-      femaleCount: (json['femaleCount'] as num?)?.toInt() ?? femaleList.length,
-      maleCount: (json['maleCount'] as num?)?.toInt() ?? maleList.length,
+      femaleCount: (json['femaleCount'] as num?)?.toInt() ?? resolvedFemales.length,
+      maleCount: (json['maleCount'] as num?)?.toInt() ?? resolvedMales.length,
       counts: counts,
-      female: femaleList,
-      male: maleList,
+      female: resolvedFemales,
+      male: resolvedMales,
       allCows: combined,
     );
   }

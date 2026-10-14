@@ -9,8 +9,8 @@ abstract class AppConstants {
   static const String logoPath = 'assets/images/logo.png';
   static const String logoIconPath = 'assets/images/logo_icon.png';
 
-  // Network & API Config
-  static const String baseUrl = 'https://ayushkaapi.cygnux.in/api/v1';
+  static const String baseUrl = 'http://192.168.0.207:7070/api/v1';
+  // static const String baseUrl = 'https://ayushkaapi.cygnux.in/api/v1'; // Live Server
   static const Duration connectTimeout = Duration(seconds: 15);
   static const Duration receiveTimeout = Duration(seconds: 15);
   static const Duration sendTimeout = Duration(seconds: 15);

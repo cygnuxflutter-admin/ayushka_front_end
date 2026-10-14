@@ -35,6 +35,17 @@ class _EditUserScreenState extends State<EditUserScreen> {
   @override
   void initState() {
     super.initState();
+    if (controller.isCurrentUser(widget.user)) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        CustomSnackbar.showWarning(
+          title: 'Action Not Allowed',
+          message: 'Admins cannot edit their own account.',
+        );
+        Get.back();
+      });
+      return;
+    }
+
     _nameController = TextEditingController(text: widget.user.name);
     _usernameController = TextEditingController(text: widget.user.username ?? '');
     _emailController = TextEditingController(text: widget.user.email);
@@ -61,6 +72,13 @@ class _EditUserScreenState extends State<EditUserScreen> {
   }
 
   Future<void> _handleSave() async {
+    if (controller.isCurrentUser(widget.user)) {
+      CustomSnackbar.showWarning(
+        title: 'Action Not Allowed',
+        message: 'Admins cannot edit their own account.',
+      );
+      return;
+    }
     if (!(_formKey.currentState?.validate() ?? false)) return;
 
     if (_selectedGaushala.value == null) {

@@ -20,9 +20,14 @@ class BreedController extends GetxController {
   final PermissionService? _permissionService =
       Get.isRegistered<PermissionService>() ? Get.find<PermissionService>() : null;
 
-  bool get canAddBreed =>
-      _permissionService?.canAdd(PermissionModules.breedType, PermissionSubModules.breedTypeList) ??
-      (currentUser.value?.isAdmin ?? false);
+  bool get canAddBreed {
+    final user = currentUser.value ?? _storageService.getUser();
+    final bool isUserAdmin = (user?.isAdmin ?? false) || (user?.isSuperAdmin ?? false);
+    final bool isPermAdmin = _permissionService?.isAdmin ?? false;
+    final bool hasAddPerm =
+        _permissionService?.canAdd(PermissionModules.breedType, PermissionSubModules.breedTypeList) ?? false;
+    return isUserAdmin || isPermAdmin || hasAddPerm;
+  }
 
   // Static in-memory cache to prevent flickering / repeated loading animations on navigation
   static final List<BreedModel> _cachedBreeds = [];
@@ -96,11 +101,17 @@ class BreedController extends GetxController {
   void onInit() {
     super.onInit();
     _loadUser();
-    if (currentUser.value != null && !currentUser.value!.isSuperAdmin) {
+    final user = currentUser.value ?? _storageService.getUser();
+    final bool canAccess = (user?.isSuperAdmin ?? false) ||
+        (user?.isAdmin ?? false) ||
+        (_permissionService?.isAdmin ?? false) ||
+        (_permissionService?.canView(PermissionModules.breedType, PermissionSubModules.breedTypeList) ?? false);
+
+    if (user != null && !canAccess) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         CustomSnackbar.showWarning(
           title: 'Access Restricted',
-          message: 'Only Super Administrators can manage breeds.',
+          message: 'You do not have permission to access breeds.',
         );
         Get.offAllNamed(AppRoutes.dashboard);
       });
@@ -171,7 +182,7 @@ class BreedController extends GetxController {
   }
 
   /// Creates a new breed via POST /api/v1/breed-types
-  Future<bool> createBreed(String breedName) async {
+  Future<bool> createBreed(String breedName, {bool showSnackbar = true}) async {
     final trimmed = breedName.trim();
     if (trimmed.isEmpty) {
       CustomSnackbar.showError(
@@ -186,10 +197,12 @@ class BreedController extends GetxController {
       final newBreed = await _apiService.createBreedType(trimmed);
       _cachedBreeds.insert(0, newBreed);
       breeds.insert(0, newBreed);
-      CustomSnackbar.showSuccess(
-        title: 'Breed Created',
-        message: 'Breed "${newBreed.breedName}" was added successfully.',
-      );
+      if (showSnackbar) {
+        CustomSnackbar.showSuccess(
+          title: 'Breed Created',
+          message: 'Breed "${newBreed.breedName}" was added successfully.',
+        );
+      }
       return true;
     } catch (e) {
       return false;
@@ -211,122 +224,125 @@ class BreedController extends GetxController {
     final nameController = TextEditingController();
 
     Get.dialog(
-      Dialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        insetPadding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 24.0),
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 440),
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.all(20.0),
-            child: Form(
-              key: formKey,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      Builder(
+        builder: (dialogContext) {
+          void closeDialog() {
+            if (Navigator.of(dialogContext).canPop()) {
+              Navigator.of(dialogContext).pop();
+            } else if (context.mounted && Navigator.of(context, rootNavigator: true).canPop()) {
+              Navigator.of(context, rootNavigator: true).pop();
+            } else if (Get.isDialogOpen ?? false) {
+              Get.back();
+            }
+          }
+
+          return Dialog(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            insetPadding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 24.0),
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 440),
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.all(20.0),
+                child: Form(
+                  key: formKey,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Container(
-                            padding: const EdgeInsets.all(8),
-                            decoration: BoxDecoration(
-                              color: AppColors.primary.withValues(alpha: 0.12),
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: const Icon(
-                              PhosphorIconsRegular.dna,
-                              color: AppColors.primary,
-                              size: 20,
-                            ),
+                          Row(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.all(8),
+                                decoration: BoxDecoration(
+                                  color: AppColors.primary.withValues(alpha: 0.12),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: const Icon(
+                                  PhosphorIconsRegular.dna,
+                                  color: AppColors.primary,
+                                  size: 20,
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              const Text(
+                                'Add New Breed',
+                                style: TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ],
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.close_rounded, size: 20),
+                            onPressed: closeDialog,
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      const Text(
+                        'Register a new cattle breed type in the system.',
+                        style: TextStyle(fontSize: 12, color: AppColors.textSecondaryLight),
+                      ),
+                      const SizedBox(height: 20),
+                      CustomTextField(
+                        controller: nameController,
+                        label: 'Breed Name',
+                        hint: 'e.g. Gir, Kankrej, Sahiwal, Red Sindhi',
+                        prefixIcon: const Icon(PhosphorIconsRegular.cow, size: 20),
+                        validator: (val) {
+                          if (val == null || val.trim().isEmpty) {
+                            return 'Breed name is required';
+                          }
+                          if (val.trim().length < 2) {
+                            return 'Breed name must be at least 2 characters';
+                          }
+                          return null;
+                        },
+                      ),
+                      const SizedBox(height: 24),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        children: [
+                          TextButton(
+                            onPressed: closeDialog,
+                            child: const Text('Cancel'),
                           ),
                           const SizedBox(width: 12),
-                          const Text(
-                            'Add New Breed',
-                            style: TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
+                          Obx(
+                            () => CustomButton(
+                              text: 'Create Breed',
+                              icon: Icons.add_rounded,
+                              isLoading: isSubmitting.value,
+                              width: 155,
+                              height: 42,
+                              onPressed: () async {
+                                if (formKey.currentState?.validate() ?? false) {
+                                  final name = nameController.text.trim();
+                                  final success = await createBreed(name, showSnackbar: false);
+                                  if (success) {
+                                    closeDialog();
+                                    CustomSnackbar.showSuccess(
+                                      title: 'Breed Created',
+                                      message: 'Breed "$name" was added successfully.',
+                                    );
+                                  }
+                                }
+                              },
                             ),
                           ),
                         ],
                       ),
-                      IconButton(
-                        icon: const Icon(Icons.close_rounded, size: 20),
-                        onPressed: () {
-                          if (Get.isDialogOpen ?? false) {
-                            Get.back();
-                          } else if (context.mounted) {
-                            Navigator.of(context, rootNavigator: true).pop();
-                          }
-                        },
-                      ),
                     ],
                   ),
-                  const SizedBox(height: 8),
-                  const Text(
-                    'Register a new cattle breed type in the system.',
-                    style: TextStyle(fontSize: 12, color: AppColors.textSecondaryLight),
-                  ),
-                  const SizedBox(height: 20),
-                  CustomTextField(
-                    controller: nameController,
-                    label: 'Breed Name',
-                    hint: 'e.g. Gir, Kankrej, Sahiwal, Red Sindhi',
-                    prefixIcon: const Icon(Icons.pets_outlined, size: 20),
-                    validator: (val) {
-                      if (val == null || val.trim().isEmpty) {
-                        return 'Breed name is required';
-                      }
-                      if (val.trim().length < 2) {
-                        return 'Breed name must be at least 2 characters';
-                      }
-                      return null;
-                    },
-                  ),
-                  const SizedBox(height: 24),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.end,
-                    children: [
-                      TextButton(
-                        onPressed: () {
-                          if (Get.isDialogOpen ?? false) {
-                            Get.back();
-                          } else if (context.mounted) {
-                            Navigator.of(context, rootNavigator: true).pop();
-                          }
-                        },
-                        child: const Text('Cancel'),
-                      ),
-                      const SizedBox(width: 12),
-                      Obx(
-                        () => CustomButton(
-                          text: 'Create Breed',
-                          icon: Icons.add_rounded,
-                          isLoading: isSubmitting.value,
-                          width: 155,
-                          height: 42,
-                          onPressed: () async {
-                            if (formKey.currentState?.validate() ?? false) {
-                              final success = await createBreed(nameController.text);
-                              if (success) {
-                                if (Get.isDialogOpen ?? false) {
-                                  Get.back();
-                                } else if (context.mounted) {
-                                  Navigator.of(context, rootNavigator: true).pop();
-                                }
-                              }
-                            }
-                          },
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
+                ),
               ),
             ),
-          ),
-        ),
+          );
+        },
       ),
       barrierDismissible: false,
     );

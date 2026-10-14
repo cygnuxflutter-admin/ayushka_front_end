@@ -86,6 +86,7 @@ class TreatmentController extends GetxController {
   GaushalaModel? findGaushala(String? query) => _gaushalaService.findGaushala(query);
 
   void setGaushala(String? gaushalaId) {
+    if (!canChangeGaushala) return;
     if (gaushalaId == null || gaushalaId.isEmpty) return;
     final match = findGaushala(gaushalaId);
     if (match != null) {

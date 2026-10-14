@@ -1,11 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:ayushka/app/data/models/cow_model.dart';
 import 'package:ayushka/app/data/models/dashboard_alerts_model.dart';
+import 'package:ayushka/app/data/services/api_service.dart';
+import 'package:ayushka/app/data/services/storage_service.dart';
+import 'package:ayushka/app/modules/dashboard/dashboard_controller.dart';
 import 'package:ayushka/app/modules/dashboard/widgets/dashboard_kpi_strip.dart';
 import 'package:ayushka/app/modules/dashboard/widgets/treatment_alert_card.dart';
 import 'package:ayushka/app/modules/dashboard/widgets/milk_alert_card.dart';
 import 'package:ayushka/app/modules/dashboard/widgets/medical_alert_card.dart';
 import 'package:ayushka/app/modules/dashboard/widgets/feed_alert_card.dart';
+import 'package:ayushka/app/modules/dashboard/widgets/unassigned_shed_alert_card.dart';
+import 'package:get/get.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 
 void main() {
   group('Dashboard Alert Models Tests', () {
@@ -140,7 +147,7 @@ void main() {
       expect(find.text('7'), findsOneWidget);
       expect(find.text('2 Critical Condition'), findsOneWidget);
 
-      expect(find.text('Milk Drops Detected'), findsOneWidget);
+      expect(find.text('Milk Yield Dropped'), findsOneWidget);
       expect(find.text('3'), findsOneWidget);
 
       expect(find.text('Medicines Low / Expiring'), findsOneWidget);
@@ -150,7 +157,7 @@ void main() {
       expect(find.text('2'), findsOneWidget);
 
       // Tap on Milk tab (index 1)
-      await tester.tap(find.text('Milk Drops Detected'));
+      await tester.tap(find.text('Milk Yield Dropped'));
       await tester.pumpAndSettle();
 
       expect(selectedTab, 1);
@@ -292,6 +299,44 @@ void main() {
       await tester.pump();
 
       expect(feedInwardClicked, isTrue);
+    });
+
+    testWidgets('UnassignedShedAlertCard renders dynamically when cattle without shed exist', (tester) async {
+      SharedPreferences.setMockInitialValues({});
+      Get.reset();
+      await Get.putAsync(() => StorageService().init());
+      Get.put(ApiService());
+      final controller = Get.put(DashboardController());
+
+      // Initial state: empty list -> nothing rendered
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: UnassignedShedAlertCard(controller: controller),
+          ),
+        ),
+      );
+      await tester.pump();
+      expect(find.text('HOUSING ALERT'), findsNothing);
+
+      // Populate unassigned cattle
+      controller.unassignedShedCows.assignAll([
+        const CowModel(
+          id: 'cow-1',
+          tagId: 'GIR-002',
+          calfName: 'Lata',
+          isFemale: true,
+          shed: null,
+        ),
+      ]);
+      await tester.pump();
+
+      expect(find.text('HOUSING ALERT'), findsOneWidget);
+      expect(find.text('1 Cattle requires Shed Assignment'), findsOneWidget);
+      expect(find.text('GIR-002'), findsOneWidget);
+      expect(find.text('(Lata)'), findsOneWidget);
+      expect(find.text('Assign Shed Now'), findsOneWidget);
+      expect(find.text('View Cattle Herd'), findsOneWidget);
     });
   });
 }

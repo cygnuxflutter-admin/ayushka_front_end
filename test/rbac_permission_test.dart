@@ -8,6 +8,7 @@ import 'package:ayushka/app/data/services/api_service.dart';
 import 'package:ayushka/app/data/services/permission_service.dart';
 import 'package:ayushka/app/data/services/storage_service.dart';
 import 'package:ayushka/widgets/permission_guard.dart';
+import 'package:ayushka/app/data/models/user_model.dart';
 
 void main() {
   TestWidgetsFlutterBinding.ensureInitialized();
@@ -75,7 +76,7 @@ void main() {
       expect(res.permissions.first.canView, isTrue);
     });
 
-    test('User payload from my-permissions API parses all modules including DONATION', () {
+    test('User payload from my-permissions API parses all modules', () {
       final json = {
         "success": true,
         "data": {
@@ -246,24 +247,6 @@ void main() {
               "canDelete": false
             },
             {
-              "moduleId": "6ac4ee6f8aa8ce1482355d15",
-              "moduleCode": "DONATION",
-              "subModuleCode": "DONATION_LIST",
-              "canView": true,
-              "canAdd": false,
-              "canEdit": false,
-              "canDelete": false
-            },
-            {
-              "moduleId": "6ac4ee6f8aa8ce1482355d15",
-              "moduleCode": "DONATION",
-              "subModuleCode": "DONATION_RECEIPT",
-              "canView": true,
-              "canAdd": false,
-              "canEdit": false,
-              "canDelete": false
-            },
-            {
               "moduleId": "6ac4ee6f8aa8ce1482355d01",
               "moduleCode": "MEDICAL_STOCK",
               "subModuleCode": "STOCK_TRANSACTION",
@@ -280,13 +263,7 @@ void main() {
       expect(res.userId, '6ac4ef718aa8ce1482355daa');
       expect(res.role, 'Staff');
       expect(res.isAdmin, isFalse);
-      expect(res.permissions.length, 21);
-
-      final donationItem = res.permissions.firstWhere((p) => p.moduleCode == 'DONATION' && p.subModuleCode == 'DONATION_LIST');
-      expect(donationItem.canView, isTrue);
-      expect(donationItem.canAdd, isFalse);
-      expect(donationItem.moduleName, 'Donation Management');
-      expect(donationItem.subModuleName, 'Donation Records');
+      expect(res.permissions.length, 19);
     });
   });
 
@@ -445,6 +422,61 @@ void main() {
       // Delete is denied -> 'Delete Cow Button' should not be present, fallback should be shown
       expect(find.text('Delete Cow Button'), findsNothing);
       expect(find.text('No Delete Permission Fallback'), findsOneWidget);
+    });
+
+    testWidgets('Renders child when user is Admin without GetX improper use error', (tester) async {
+      const adminUser = UserModel(
+        id: 'admin_1',
+        name: 'Admin Ayushka',
+        email: 'admin@ayushka.com',
+        role: 'Admin',
+      );
+      await storageService.saveUser(adminUser);
+      permissionService.loadFromCache();
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: PermissionGuard(
+              moduleCode: PermissionModules.user,
+              subModuleCode: PermissionSubModules.userList,
+              action: PermissionAction.add,
+              child: const Text('Add User Button'),
+            ),
+          ),
+        ),
+      );
+
+      await tester.pump();
+      expect(find.text('Add User Button'), findsOneWidget);
+    });
+
+    testWidgets('PermissionBuilder provides admin permissions without GetX improper use error', (tester) async {
+      const adminUser = UserModel(
+        id: 'admin_1',
+        name: 'Admin Ayushka',
+        email: 'admin@ayushka.com',
+        role: 'Admin',
+      );
+      await storageService.saveUser(adminUser);
+      permissionService.loadFromCache();
+
+      await tester.pumpWidget(
+        MaterialApp(
+          home: Scaffold(
+            body: PermissionBuilder(
+              moduleCode: PermissionModules.user,
+              subModuleCode: PermissionSubModules.userList,
+              builder: (context, canView, canAdd, canEdit, canDelete) {
+                return Text('Permissions: v:$canView a:$canAdd e:$canEdit d:$canDelete');
+              },
+            ),
+          ),
+        ),
+      );
+
+      await tester.pump();
+      expect(find.text('Permissions: v:true a:true e:true d:true'), findsOneWidget);
     });
 
     test('hasMenuAccess strictly hides items with no permissions (all flags false)', () async {

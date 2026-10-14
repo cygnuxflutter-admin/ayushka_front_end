@@ -101,7 +101,7 @@ class TreatmentListScreen extends GetView<TreatmentController> {
   Widget _buildTabletScaffold(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Cow Treatment Management'),
+        title: const Text('Cattle Treatment & Veterinary'),
         actions: [
           const NotificationBellWidget(),
           IconButton(
@@ -263,7 +263,7 @@ class TreatmentListScreen extends GetView<TreatmentController> {
                 const SizedBox(width: 14),
                 const Flexible(
                   child: Text(
-                    'Cow Treatment & Multi-Dose Veterinary Schedules',
+                    'Cattle Treatment & Multi-Dose Veterinary Schedules',
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis,
                     style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
@@ -338,7 +338,7 @@ class TreatmentListScreen extends GetView<TreatmentController> {
                 const Icon(Icons.chevron_right_rounded, size: 14, color: AppColors.textSecondaryLight),
                 const SizedBox(width: 6),
                 const Text(
-                  'Cow Treatments',
+                  'Cattle Treatment & Veterinary',
                   style: TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.bold,
@@ -349,7 +349,7 @@ class TreatmentListScreen extends GetView<TreatmentController> {
             ),
             const SizedBox(height: 6),
             Text(
-              'Cow Treatments & Veterinary Care',
+              'Cattle Treatment & Veterinary',
               style: TextStyle(
                 fontSize: 22,
                 fontWeight: FontWeight.bold,
@@ -1388,7 +1388,7 @@ class TreatmentListScreen extends GetView<TreatmentController> {
             Text(
               hasActiveFilter
                   ? 'Try clearing the filters or modifying your search query.'
-                  : 'Click below to register the first cow treatment case.',
+                  : 'Click below to register the first cattle treatment case.',
               style: const TextStyle(fontSize: 13, color: AppColors.textSecondaryLight),
             ),
             const SizedBox(height: 18),

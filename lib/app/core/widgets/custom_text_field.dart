@@ -76,6 +76,61 @@ class CustomTextField extends StatefulWidget {
 
 class _CustomTextFieldState extends State<CustomTextField> {
   late bool _obscureText;
+  TextEditingController? _fallbackController;
+  FocusNode? _fallbackFocusNode;
+
+  static bool _isControllerDisposed(TextEditingController? c) {
+    if (c == null) return false;
+    try {
+      void dummy() {}
+      c.addListener(dummy);
+      c.removeListener(dummy);
+      return false;
+    } catch (_) {
+      return true;
+    }
+  }
+
+  static bool _isFocusNodeDisposed(FocusNode? f) {
+    if (f == null) return false;
+    try {
+      void dummy() {}
+      f.addListener(dummy);
+      f.removeListener(dummy);
+      return false;
+    } catch (_) {
+      return true;
+    }
+  }
+
+  TextEditingController get _effectiveController {
+    final passed = widget.controller;
+    if (passed != null && !_isControllerDisposed(passed)) {
+      return passed;
+    }
+    if (_fallbackController == null || _isControllerDisposed(_fallbackController)) {
+      String initial = '';
+      if (passed != null) {
+        try {
+          initial = passed.text;
+        } catch (_) {}
+      }
+      _fallbackController = TextEditingController(text: initial);
+    }
+    return _fallbackController!;
+  }
+
+  FocusNode? get _effectiveFocusNode {
+    final passed = widget.focusNode;
+    if (passed == null) return null;
+    if (!_isFocusNodeDisposed(passed)) {
+      return passed;
+    }
+    if (_fallbackFocusNode == null || _isFocusNodeDisposed(_fallbackFocusNode)) {
+      _fallbackFocusNode = FocusNode();
+    }
+    return _fallbackFocusNode;
+  }
 
   @override
   void initState() {
@@ -87,18 +142,52 @@ class _CustomTextFieldState extends State<CustomTextField> {
   @override
   void didUpdateWidget(covariant CustomTextField oldWidget) {
     super.didUpdateWidget(oldWidget);
+    if (widget.controller != oldWidget.controller) {
+      if (_fallbackController != null && widget.controller != null && !_isControllerDisposed(widget.controller)) {
+        try {
+          _fallbackController?.dispose();
+        } catch (_) {}
+        _fallbackController = null;
+      }
+    }
+    if (widget.focusNode != oldWidget.focusNode) {
+      if (_fallbackFocusNode != null && widget.focusNode != null && !_isFocusNodeDisposed(widget.focusNode)) {
+        try {
+          _fallbackFocusNode?.dispose();
+        } catch (_) {}
+        _fallbackFocusNode = null;
+      }
+    }
     _ensureUppercase();
   }
 
   void _ensureUppercase() {
-    if (widget.isUpperCase && widget.controller != null && widget.controller!.text.isNotEmpty) {
-      final upper = widget.controller!.text.toUpperCase();
-      if (upper != widget.controller!.text) {
-        widget.controller!.value = widget.controller!.value.copyWith(
-          text: upper,
-        );
+    try {
+      final ctrl = _effectiveController;
+      if (widget.isUpperCase && ctrl.text.isNotEmpty) {
+        final upper = ctrl.text.toUpperCase();
+        if (upper != ctrl.text) {
+          ctrl.value = ctrl.value.copyWith(
+            text: upper,
+          );
+        }
       }
-    }
+    } catch (_) {}
+  }
+
+  @override
+  void dispose() {
+    try {
+      if (!_isControllerDisposed(_fallbackController)) {
+        _fallbackController?.dispose();
+      }
+    } catch (_) {}
+    try {
+      if (!_isFocusNodeDisposed(_fallbackFocusNode)) {
+        _fallbackFocusNode?.dispose();
+      }
+    } catch (_) {}
+    super.dispose();
   }
 
   @override
@@ -141,8 +230,8 @@ class _CustomTextFieldState extends State<CustomTextField> {
           const SizedBox(height: 6),
         ],
         TextFormField(
-          controller: widget.controller,
-          focusNode: widget.focusNode,
+          controller: _effectiveController,
+          focusNode: _effectiveFocusNode,
           enabled: widget.enabled,
           validator: widget.validator,
           obscureText: _obscureText,

@@ -21,17 +21,15 @@ class GaushalaController extends GetxController {
   final PermissionService? _permissionService =
       Get.isRegistered<PermissionService>() ? Get.find<PermissionService>() : null;
 
-  bool get canAddGaushala =>
-      _permissionService?.canAdd(PermissionModules.gaushala, PermissionSubModules.gaushalaList) ??
-      (currentUser.value?.isAdmin ?? false);
+  bool get isSuperAdmin =>
+      currentUser.value?.isSuperAdmin ??
+      (_storageService.getUser()?.isSuperAdmin ?? false);
 
-  bool get canEditGaushala =>
-      _permissionService?.canEdit(PermissionModules.gaushala, PermissionSubModules.gaushalaList) ??
-      (currentUser.value?.isAdmin ?? false);
+  bool get canAddGaushala => isSuperAdmin;
 
-  bool get canDeleteGaushala =>
-      _permissionService?.canDelete(PermissionModules.gaushala, PermissionSubModules.gaushalaList) ??
-      (currentUser.value?.isAdmin ?? false);
+  bool get canEditGaushala => isSuperAdmin;
+
+  bool get canDeleteGaushala => isSuperAdmin;
 
   // Static in-memory cache to prevent flickering / repeated loading animations on navigation
   static final List<GaushalaModel> _cachedGaushalas = [];
@@ -105,7 +103,7 @@ class GaushalaController extends GetxController {
   void onInit() {
     super.onInit();
     _loadUser();
-    if (currentUser.value != null && !currentUser.value!.isSuperAdmin) {
+    if (!isSuperAdmin) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         CustomSnackbar.showWarning(
           title: 'Access Restricted',
@@ -142,7 +140,7 @@ class GaushalaController extends GetxController {
     Get.offAllNamed(AppRoutes.auth);
   }
 
-  /// Fetches all gaushalas from GET /api/v1/gaushalas
+  /// Fetches all gaushalas from GET /api/v1/gaushalas m,
   Future<void> fetchGaushalas({
     bool showLoading = false,
     bool isManualRefresh = false,
@@ -180,7 +178,7 @@ class GaushalaController extends GetxController {
   }
 
   /// Creates a new gaushala via POST /api/v1/gaushalas
-  Future<bool> createGaushala(String gaushalaName) async {
+  Future<bool> createGaushala(String gaushalaName, {bool showSnackbar = true}) async {
     final trimmed = gaushalaName.trim();
     if (trimmed.isEmpty) {
       CustomSnackbar.showError(
@@ -198,10 +196,12 @@ class GaushalaController extends GetxController {
       if (Get.isRegistered<GaushalaSessionService>()) {
         Get.find<GaushalaSessionService>().fetchGaushalas(forceReload: true);
       }
-      CustomSnackbar.showSuccess(
-        title: 'Gaushala Created',
-        message: 'Gaushala "${newGaushala.gaushalaName}" was added successfully.',
-      );
+      if (showSnackbar) {
+        CustomSnackbar.showSuccess(
+          title: 'Gaushala Created',
+          message: 'Gaushala "${newGaushala.gaushalaName}" was added successfully.',
+        );
+      }
       return true;
     } catch (e) {
       return false;
@@ -223,122 +223,125 @@ class GaushalaController extends GetxController {
     final nameController = TextEditingController();
 
     Get.dialog(
-      Dialog(
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        insetPadding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 24.0),
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 440),
-          child: SingleChildScrollView(
-            padding: const EdgeInsets.all(20.0),
-            child: Form(
-              key: formKey,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      Builder(
+        builder: (dialogContext) {
+          void closeDialog() {
+            if (Navigator.of(dialogContext).canPop()) {
+              Navigator.of(dialogContext).pop();
+            } else if (context.mounted && Navigator.of(context, rootNavigator: true).canPop()) {
+              Navigator.of(context, rootNavigator: true).pop();
+            } else if (Get.isDialogOpen ?? false) {
+              Get.back();
+            }
+          }
+
+          return Dialog(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            insetPadding: const EdgeInsets.symmetric(horizontal: 16.0, vertical: 24.0),
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 440),
+              child: SingleChildScrollView(
+                padding: const EdgeInsets.all(20.0),
+                child: Form(
+                  key: formKey,
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          Container(
-                            padding: const EdgeInsets.all(8),
-                            decoration: BoxDecoration(
-                              color: AppColors.primary.withValues(alpha: 0.12),
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: const Icon(
-                              PhosphorIconsRegular.barn,
-                              color: AppColors.primary,
-                              size: 20,
-                            ),
+                          Row(
+                            children: [
+                              Container(
+                                padding: const EdgeInsets.all(8),
+                                decoration: BoxDecoration(
+                                  color: AppColors.primary.withValues(alpha: 0.12),
+                                  borderRadius: BorderRadius.circular(8),
+                                ),
+                                child: const Icon(
+                                  PhosphorIconsRegular.barn,
+                                  color: AppColors.primary,
+                                  size: 20,
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              const Text(
+                                'Add New Gaushala',
+                                style: TextStyle(
+                                  fontSize: 18,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ],
+                          ),
+                          IconButton(
+                            icon: const Icon(Icons.close_rounded, size: 20),
+                            onPressed: closeDialog,
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 8),
+                      const Text(
+                        'Register a new farm or gaushala unit in the system.',
+                        style: TextStyle(fontSize: 12, color: AppColors.textSecondaryLight),
+                      ),
+                      const SizedBox(height: 20),
+                      CustomTextField(
+                        controller: nameController,
+                        label: 'Gaushala Name',
+                        hint: 'e.g. north_farm, ayushka_navsari',
+                        prefixIcon: const Icon(Icons.storefront_outlined, size: 20),
+                        validator: (val) {
+                          if (val == null || val.trim().isEmpty) {
+                            return 'Gaushala name is required';
+                          }
+                          if (val.trim().length < 2) {
+                            return 'Gaushala name must be at least 2 characters';
+                          }
+                          return null;
+                        },
+                      ),
+                      const SizedBox(height: 24),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.end,
+                        children: [
+                          TextButton(
+                            onPressed: closeDialog,
+                            child: const Text('Cancel'),
                           ),
                           const SizedBox(width: 12),
-                          const Text(
-                            'Add New Gaushala',
-                            style: TextStyle(
-                              fontSize: 18,
-                              fontWeight: FontWeight.bold,
+                          Obx(
+                            () => CustomButton(
+                              text: 'Create Gaushala',
+                              icon: Icons.add_rounded,
+                              isLoading: isSubmitting.value,
+                              width: 165,
+                              height: 42,
+                              onPressed: () async {
+                                if (formKey.currentState?.validate() ?? false) {
+                                  final name = nameController.text.trim();
+                                  final success = await createGaushala(name, showSnackbar: false);
+                                  if (success) {
+                                    closeDialog();
+                                    CustomSnackbar.showSuccess(
+                                      title: 'Gaushala Created',
+                                      message: 'Gaushala "$name" was added successfully.',
+                                    );
+                                  }
+                                }
+                              },
                             ),
                           ),
                         ],
                       ),
-                      IconButton(
-                        icon: const Icon(Icons.close_rounded, size: 20),
-                        onPressed: () {
-                          if (Get.isDialogOpen ?? false) {
-                            Get.back();
-                          } else if (context.mounted) {
-                            Navigator.of(context, rootNavigator: true).pop();
-                          }
-                        },
-                      ),
                     ],
                   ),
-                  const SizedBox(height: 8),
-                  const Text(
-                    'Register a new farm or gaushala unit in the system.',
-                    style: TextStyle(fontSize: 12, color: AppColors.textSecondaryLight),
-                  ),
-                  const SizedBox(height: 20),
-                  CustomTextField(
-                    controller: nameController,
-                    label: 'Gaushala Name',
-                    hint: 'e.g. north_farm, ayushka_navsari',
-                    prefixIcon: const Icon(Icons.storefront_outlined, size: 20),
-                    validator: (val) {
-                      if (val == null || val.trim().isEmpty) {
-                        return 'Gaushala name is required';
-                      }
-                      if (val.trim().length < 2) {
-                        return 'Gaushala name must be at least 2 characters';
-                      }
-                      return null;
-                    },
-                  ),
-                  const SizedBox(height: 24),
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.end,
-                    children: [
-                      TextButton(
-                        onPressed: () {
-                          if (Get.isDialogOpen ?? false) {
-                            Get.back();
-                          } else if (context.mounted) {
-                            Navigator.of(context, rootNavigator: true).pop();
-                          }
-                        },
-                        child: const Text('Cancel'),
-                      ),
-                      const SizedBox(width: 12),
-                      Obx(
-                        () => CustomButton(
-                          text: 'Create Gaushala',
-                          icon: Icons.add_rounded,
-                          isLoading: isSubmitting.value,
-                          width: 165,
-                          height: 42,
-                          onPressed: () async {
-                            if (formKey.currentState?.validate() ?? false) {
-                              final success = await createGaushala(nameController.text);
-                              if (success) {
-                                if (Get.isDialogOpen ?? false) {
-                                   Get.back();
-                                } else if (context.mounted) {
-                                  Navigator.of(context, rootNavigator: true).pop();
-                                }
-                              }
-                            }
-                          },
-                        ),
-                      ),
-                    ],
-                  ),
-                ],
+                ),
               ),
             ),
-          ),
-        ),
+          );
+        },
       ),
       barrierDismissible: false,
     );

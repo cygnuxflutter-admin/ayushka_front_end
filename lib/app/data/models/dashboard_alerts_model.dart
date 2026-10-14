@@ -1,3 +1,6 @@
+import 'cow_heat_model.dart';
+import 'cow_mating_model.dart';
+
 /// Aggregated counts of active farm alerts across all modules.
 class DashboardAlertCounts {
   final int treatmentDueDoses;
@@ -6,6 +9,10 @@ class DashboardAlertCounts {
   final int lowMedicalStock;
   final int expiringMedicines;
   final int lowFeedStock;
+  final int activeHeats;
+  final int repeatHeatAlerts;
+  final int repeatBreederAlerts;
+  final int pendingPDChecks;
   final int totalAlerts;
 
   const DashboardAlertCounts({
@@ -15,6 +22,10 @@ class DashboardAlertCounts {
     this.lowMedicalStock = 0,
     this.expiringMedicines = 0,
     this.lowFeedStock = 0,
+    this.activeHeats = 0,
+    this.repeatHeatAlerts = 0,
+    this.repeatBreederAlerts = 0,
+    this.pendingPDChecks = 0,
     this.totalAlerts = 0,
   });
 
@@ -30,11 +41,15 @@ class DashboardAlertCounts {
     final lowMed = parseInt(json['lowMedicalStock'] ?? json['low_medical_stock']);
     final expMed = parseInt(json['expiringMedicines'] ?? json['expiringBatches'] ?? json['expiring_medicines']);
     final lowFeed = parseInt(json['lowFeedStock'] ?? json['low_feed_stock']);
+    final aHeats = parseInt(json['activeHeats'] ?? json['active_heats']);
+    final rHeats = parseInt(json['repeatHeatAlerts'] ?? json['repeat_heat_alerts']);
+    final rBreeders = parseInt(json['repeatBreederAlerts'] ?? json['repeat_breeder_alerts'] ?? json['repeatBreeders']);
+    final pPDChecks = parseInt(json['pendingPDChecks'] ?? json['pending_pd_checks'] ?? json['pendingPDs']);
     final total = parseInt(json['totalAlerts'] ?? json['total_alerts']);
 
     final calculatedTotal = total > 0
         ? total
-        : (treatmentDoses + critical + milk + lowMed + expMed + lowFeed);
+        : (treatmentDoses + critical + milk + lowMed + expMed + lowFeed + aHeats + rHeats + rBreeders + pPDChecks);
 
     return DashboardAlertCounts(
       treatmentDueDoses: treatmentDoses,
@@ -43,6 +58,10 @@ class DashboardAlertCounts {
       lowMedicalStock: lowMed,
       expiringMedicines: expMed,
       lowFeedStock: lowFeed,
+      activeHeats: aHeats,
+      repeatHeatAlerts: rHeats,
+      repeatBreederAlerts: rBreeders,
+      pendingPDChecks: pPDChecks,
       totalAlerts: calculatedTotal,
     );
   }
@@ -55,6 +74,10 @@ class DashboardAlertCounts {
       'lowMedicalStock': lowMedicalStock,
       'expiringMedicines': expiringMedicines,
       'lowFeedStock': lowFeedStock,
+      'activeHeats': activeHeats,
+      'repeatHeatAlerts': repeatHeatAlerts,
+      'repeatBreederAlerts': repeatBreederAlerts,
+      'pendingPDChecks': pendingPDChecks,
       'totalAlerts': totalAlerts,
     };
   }
@@ -410,7 +433,6 @@ class FeedStockAlertItem {
   }
 }
 
-/// Root aggregated alerts response model.
 class DashboardAlertsSummaryResponse {
   final DashboardAlertCounts counts;
   final List<TreatmentAlertItem> treatmentAlerts;
@@ -418,6 +440,10 @@ class DashboardAlertsSummaryResponse {
   final List<MedicalLowStockAlertItem> medicalLowStock;
   final List<MedicalExpiringAlertItem> medicalExpiring;
   final List<FeedStockAlertItem> feedAlerts;
+  final List<CowHeatModel> activeHeats;
+  final List<CowHeatModel> repeatHeatAlerts;
+  final List<CowMatingModel> repeatBreederAlerts;
+  final List<CowMatingModel> pendingPDMatings;
 
   const DashboardAlertsSummaryResponse({
     this.counts = const DashboardAlertCounts(),
@@ -426,6 +452,10 @@ class DashboardAlertsSummaryResponse {
     this.medicalLowStock = const [],
     this.medicalExpiring = const [],
     this.feedAlerts = const [],
+    this.activeHeats = const [],
+    this.repeatHeatAlerts = const [],
+    this.repeatBreederAlerts = const [],
+    this.pendingPDMatings = const [],
   });
 
   factory DashboardAlertsSummaryResponse.fromJson(Map<String, dynamic> json) {
@@ -522,6 +552,70 @@ class DashboardAlertsSummaryResponse {
       }
     }
 
+    List<CowHeatModel> parsedActiveHeats = [];
+    List<CowHeatModel> parsedRepeatHeats = [];
+    if (data['heatAlerts'] is Map) {
+      final hMap = Map<String, dynamic>.from(data['heatAlerts'] as Map);
+      if (hMap['activeHeats'] is List) {
+        parsedActiveHeats = (hMap['activeHeats'] as List)
+            .whereType<Map>()
+            .map((m) => CowHeatModel.fromJson(Map<String, dynamic>.from(m)))
+            .toList();
+      }
+      if (hMap['repeatHeatAlerts'] is List) {
+        parsedRepeatHeats = (hMap['repeatHeatAlerts'] as List)
+            .whereType<Map>()
+            .map((m) => CowHeatModel.fromJson(Map<String, dynamic>.from(m)))
+            .toList();
+      }
+    } else {
+      if (data['activeHeats'] is List) {
+        parsedActiveHeats = (data['activeHeats'] as List)
+            .whereType<Map>()
+            .map((m) => CowHeatModel.fromJson(Map<String, dynamic>.from(m)))
+            .toList();
+      }
+      if (data['repeatHeatAlerts'] is List) {
+        parsedRepeatHeats = (data['repeatHeatAlerts'] as List)
+            .whereType<Map>()
+            .map((m) => CowHeatModel.fromJson(Map<String, dynamic>.from(m)))
+            .toList();
+      }
+    }
+
+    List<CowMatingModel> parsedRepeatBreeders = [];
+    List<CowMatingModel> parsedPendingPDs = [];
+    if (data['matingAlerts'] is Map) {
+      final mMap = Map<String, dynamic>.from(data['matingAlerts'] as Map);
+      final rawRepeat = mMap['repeatBreeders'] ?? mMap['repeatBreederAlerts'];
+      if (rawRepeat is List) {
+        parsedRepeatBreeders = rawRepeat
+            .whereType<Map>()
+            .map((m) => CowMatingModel.fromJson(Map<String, dynamic>.from(m)))
+            .toList();
+      }
+      final rawPDs = mMap['pendingPDs'] ?? mMap['pendingPDChecks'] ?? mMap['pendingPD'];
+      if (rawPDs is List) {
+        parsedPendingPDs = rawPDs
+            .whereType<Map>()
+            .map((m) => CowMatingModel.fromJson(Map<String, dynamic>.from(m)))
+            .toList();
+      }
+    } else {
+      if (data['repeatBreeders'] is List) {
+        parsedRepeatBreeders = (data['repeatBreeders'] as List)
+            .whereType<Map>()
+            .map((m) => CowMatingModel.fromJson(Map<String, dynamic>.from(m)))
+            .toList();
+      }
+      if (data['pendingPDs'] is List) {
+        parsedPendingPDs = (data['pendingPDs'] as List)
+            .whereType<Map>()
+            .map((m) => CowMatingModel.fromJson(Map<String, dynamic>.from(m)))
+            .toList();
+      }
+    }
+
     return DashboardAlertsSummaryResponse(
       counts: counts,
       treatmentAlerts: treatments,
@@ -529,6 +623,10 @@ class DashboardAlertsSummaryResponse {
       medicalLowStock: lowStockMed,
       medicalExpiring: expiringMed,
       feedAlerts: feed,
+      activeHeats: parsedActiveHeats,
+      repeatHeatAlerts: parsedRepeatHeats,
+      repeatBreederAlerts: parsedRepeatBreeders,
+      pendingPDMatings: parsedPendingPDs,
     );
   }
 
@@ -542,6 +640,14 @@ class DashboardAlertsSummaryResponse {
         'expiring': medicalExpiring.map((e) => e.toJson()).toList(),
       },
       'feedAlerts': feedAlerts.map((f) => f.toJson()).toList(),
+      'heatAlerts': {
+        'activeHeats': activeHeats.map((h) => h.toJson()).toList(),
+        'repeatHeatAlerts': repeatHeatAlerts.map((h) => h.toJson()).toList(),
+      },
+      'matingAlerts': {
+        'repeatBreeders': repeatBreederAlerts.map((m) => m.toJson()).toList(),
+        'pendingPDs': pendingPDMatings.map((m) => m.toJson()).toList(),
+      },
     };
   }
 }

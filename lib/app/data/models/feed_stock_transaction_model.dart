@@ -4,7 +4,7 @@ import '../../core/values/app_colors.dart';
 import 'feed_item_model.dart';
 
 /// Transaction types for Stock Movement:
-/// INWARD (Stock received/purchased/donated)
+/// INWARD (Stock received/purchased)
 /// OUTWARD (Stock consumed/fed/transferred)
 enum FeedStockTransactionType {
   inward(
@@ -38,11 +38,10 @@ enum FeedStockTransactionType {
 }
 
 /// Reasons for Stock Transactions:
-/// Inward allowed: PURCHASE, DONATION, OTHER
+/// Inward allowed: PURCHASE, OTHER
 /// Outward allowed: DAILY_FEEDING, OTHER
 enum FeedStockTransactionReason {
   purchase('PURCHASE', 'Purchase', AppColors.primary),
-  donation('DONATION', 'Donation', Color(0xFF3B82F6)),
   dailyFeeding('DAILY_FEEDING', 'Daily Feeding', Color(0xFFF97316)),
   other('OTHER', 'Other', Color(0xFF6B7280));
 
@@ -63,7 +62,6 @@ enum FeedStockTransactionReason {
 
   static List<FeedStockTransactionReason> get inwardReasons => [
         FeedStockTransactionReason.purchase,
-        FeedStockTransactionReason.donation,
         FeedStockTransactionReason.other,
       ];
 
@@ -84,7 +82,7 @@ class FeedStockTransactionModel {
   final String itemCode;
   final String category;
   final String type; // INWARD or OUTWARD
-  final String reason; // PURCHASE, DONATION, DAILY_FEEDING, OTHER
+  final String reason; // PURCHASE, DAILY_FEEDING, OTHER
   final double quantity;
   final String unit;
   final double ratePerUnit;
@@ -327,13 +325,13 @@ class FeedStockTransactionModel {
   }
 }
 
-/// Request DTO for recording Inward Stock (Purchase, Donation, etc.)
+/// Request DTO for recording Inward Stock (Purchase, etc.)
 class FeedStockInwardRequest {
   final String gaushalaId;
   final String itemId;
   final double quantity;
   final String unit;
-  final String reason; // PURCHASE, DONATION, OTHER
+  final String reason; // PURCHASE, OTHER
   final double? ratePerUnit;
   final String? supplierOrDonorName;
   final String? billOrReceiptNo;

@@ -474,16 +474,18 @@ class UserScreen extends GetView<UserController> {
                 ...pageUsers.asMap().entries.map((entry) {
                   final serial = ((controller.currentPage.value - 1) * controller.rowsPerPage.value) + entry.key + 1;
                   final user = entry.value;
+                  final isSelf = controller.isCurrentUser(user);
                   return _HoverableUserTableRow(
                     key: ValueKey('${user.id}_${user.isActive}_${user.isDeleted}'),
                     index: entry.key,
                     serial: serial,
                     user: user,
                     isDark: isDark,
-                    onToggleStatus: (val) => controller.toggleUserStatus(user, val),
+                    isSelf: isSelf,
+                    onToggleStatus: isSelf ? null : (val) => controller.toggleUserStatus(user, val),
                     onChangePassword: () => controller.openChangePasswordDialog(context, user),
-                    onEdit: () => controller.openEditUserDialog(context, user),
-                    onDelete: () => controller.confirmDeleteUser(context, user),
+                    onEdit: isSelf ? null : () => controller.openEditUserDialog(context, user),
+                    onDelete: isSelf ? null : () => controller.confirmDeleteUser(context, user),
                   );
                 }),
                 const Divider(height: 1),
@@ -1048,6 +1050,7 @@ class UserScreen extends GetView<UserController> {
             separatorBuilder: (context, index) => const SizedBox(height: 12),
             itemBuilder: (context, index) {
               final user = displayUsers[index];
+              final isSelf = controller.isCurrentUser(user);
 
               return _HoverableListCard(
                 child: Padding(
@@ -1076,10 +1079,13 @@ class UserScreen extends GetView<UserController> {
                               ],
                             ),
                           ),
-                          Switch.adaptive(
-                            value: user.isActive,
-                            activeThumbColor: AppColors.primary,
-                            onChanged: (val) => controller.toggleUserStatus(user, val),
+                          Tooltip(
+                            message: isSelf ? 'Cannot deactivate your own account' : '',
+                            child: Switch.adaptive(
+                              value: user.isActive,
+                              activeThumbColor: AppColors.primary,
+                              onChanged: isSelf ? null : (val) => controller.toggleUserStatus(user, val),
+                            ),
                           ),
                         ],
                       ),
@@ -1139,12 +1145,16 @@ class UserScreen extends GetView<UserController> {
                                   moduleCode: PermissionModules.user,
                                   subModuleCode: PermissionSubModules.userList,
                                   action: PermissionAction.edit,
-                                  child: IconButton(
-                                    icon: const Icon(Icons.edit_outlined, size: 18),
-                                    tooltip: 'Edit User',
-                                    color: AppColors.info,
-                                    visualDensity: VisualDensity.compact,
-                                    onPressed: () => controller.openEditUserDialog(context, user),
+                                  child: Tooltip(
+                                    message: isSelf ? 'Cannot edit your own account' : 'Edit User',
+                                    child: IconButton(
+                                      icon: const Icon(Icons.edit_outlined, size: 18),
+                                      color: isSelf
+                                          ? (isDark ? AppColors.textMutedDark.withValues(alpha: 0.35) : AppColors.textMutedLight.withValues(alpha: 0.35))
+                                          : AppColors.info,
+                                      visualDensity: VisualDensity.compact,
+                                      onPressed: isSelf ? null : () => controller.openEditUserDialog(context, user),
+                                    ),
                                   ),
                                 ),
                               if (!user.isDeleted)
@@ -1152,12 +1162,16 @@ class UserScreen extends GetView<UserController> {
                                   moduleCode: PermissionModules.user,
                                   subModuleCode: PermissionSubModules.userList,
                                   action: PermissionAction.delete,
-                                  child: IconButton(
-                                    icon: const Icon(Icons.delete_outline_rounded, size: 18),
-                                    tooltip: 'Delete User',
-                                    color: AppColors.error,
-                                    visualDensity: VisualDensity.compact,
-                                    onPressed: () => controller.confirmDeleteUser(context, user),
+                                  child: Tooltip(
+                                    message: isSelf ? 'Cannot delete your own account' : 'Delete User',
+                                    child: IconButton(
+                                      icon: const Icon(Icons.delete_outline_rounded, size: 18),
+                                      color: isSelf
+                                          ? (isDark ? AppColors.textMutedDark.withValues(alpha: 0.35) : AppColors.textMutedLight.withValues(alpha: 0.35))
+                                          : AppColors.error,
+                                      visualDensity: VisualDensity.compact,
+                                      onPressed: isSelf ? null : () => controller.confirmDeleteUser(context, user),
+                                    ),
                                   ),
                                 ),
                             ],
@@ -1298,10 +1312,11 @@ class _HoverableUserTableRow extends StatefulWidget {
   final int serial;
   final UserModel user;
   final bool isDark;
-  final ValueChanged<bool> onToggleStatus;
+  final bool isSelf;
+  final ValueChanged<bool>? onToggleStatus;
   final VoidCallback onChangePassword;
-  final VoidCallback onEdit;
-  final VoidCallback onDelete;
+  final VoidCallback? onEdit;
+  final VoidCallback? onDelete;
 
   const _HoverableUserTableRow({
     super.key,
@@ -1309,6 +1324,7 @@ class _HoverableUserTableRow extends StatefulWidget {
     required this.serial,
     required this.user,
     required this.isDark,
+    this.isSelf = false,
     required this.onToggleStatus,
     required this.onChangePassword,
     required this.onEdit,
@@ -1447,7 +1463,14 @@ class _HoverableUserTableRowState extends State<_HoverableUserTableRow> {
                 child: Transform.scale(
                   scale: 0.8,
                   alignment: Alignment.centerLeft,
-                  child: Switch.adaptive(value: user.isActive, activeThumbColor: AppColors.primary, onChanged: widget.onToggleStatus),
+                  child: Tooltip(
+                    message: widget.isSelf ? 'Cannot deactivate your own account' : (user.isActive ? 'Active' : 'Inactive'),
+                    child: Switch.adaptive(
+                      value: user.isActive,
+                      activeThumbColor: AppColors.primary,
+                      onChanged: widget.onToggleStatus,
+                    ),
+                  ),
                 ),
               ),
             ),
@@ -1492,10 +1515,12 @@ class _HoverableUserTableRowState extends State<_HoverableUserTableRow> {
                       subModuleCode: PermissionSubModules.userList,
                       action: PermissionAction.edit,
                       child: Tooltip(
-                        message: 'Edit User',
+                        message: widget.isSelf ? 'Cannot edit your own account' : 'Edit User',
                         child: IconButton(
                           icon: const Icon(Icons.edit_outlined, size: 18),
-                          color: _isHovered ? AppColors.info : AppColors.info.withValues(alpha: 0.8),
+                          color: widget.isSelf
+                              ? (isDark ? AppColors.textMutedDark.withValues(alpha: 0.35) : AppColors.textMutedLight.withValues(alpha: 0.35))
+                              : (_isHovered ? AppColors.info : AppColors.info.withValues(alpha: 0.8)),
                           visualDensity: VisualDensity.compact,
                           onPressed: widget.onEdit,
                         ),
@@ -1507,10 +1532,12 @@ class _HoverableUserTableRowState extends State<_HoverableUserTableRow> {
                       subModuleCode: PermissionSubModules.userList,
                       action: PermissionAction.delete,
                       child: Tooltip(
-                        message: 'Delete User',
+                        message: widget.isSelf ? 'Cannot delete your own account' : 'Delete User',
                         child: IconButton(
                           icon: const Icon(Icons.delete_outline_rounded, size: 18),
-                          color: _isHovered ? AppColors.error : AppColors.error.withValues(alpha: 0.8),
+                          color: widget.isSelf
+                              ? (isDark ? AppColors.textMutedDark.withValues(alpha: 0.35) : AppColors.textMutedLight.withValues(alpha: 0.35))
+                              : (_isHovered ? AppColors.error : AppColors.error.withValues(alpha: 0.8)),
                           visualDensity: VisualDensity.compact,
                           onPressed: widget.onDelete,
                         ),

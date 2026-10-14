@@ -571,5 +571,102 @@ void main() {
 
       Get.reset();
     });
+
+    test('Manual multi-batch selection mode allows custom per-batch deduction', () {
+      Get.reset();
+      Get.put<ApiService>(_FakeApiService());
+      Get.put<StorageService>(_FakeStorageService());
+      Get.put<GaushalaSessionService>(_FakeGaushalaSessionService());
+      final controller = Get.put<MedicalStockController>(MedicalStockController());
+
+      final b1 = MedicalBatchModel(
+        id: 'batch_01',
+        itemId: 'item_01',
+        itemName: 'Dolo 650',
+        batchNumber: 'B-2026-01',
+        expiryDate: DateTime.now().add(const Duration(days: 100)),
+        availableQuantity: 200,
+        status: 'ACTIVE',
+      );
+      final b2 = MedicalBatchModel(
+        id: 'batch_02',
+        itemId: 'item_01',
+        itemName: 'Dolo 650',
+        batchNumber: 'B-2026-02',
+        expiryDate: DateTime.now().add(const Duration(days: 300)),
+        availableQuantity: 150,
+        status: 'ACTIVE',
+      );
+
+      final med = MedicalItemModel(
+        id: 'item_01',
+        itemName: 'Dolo 650',
+        itemCode: 'MED-DOLO',
+        category: 'TABLET',
+        unit: 'PCS',
+        totalStock: 350,
+        batches: [b1, b2],
+      );
+
+      controller.items.assignAll([med]);
+      controller.allBatches.assignAll([b1, b2]);
+      controller.onOutwardItemChanged(med);
+
+      // Switch to manual batch selection mode
+      controller.setOutwardBatchMode(true);
+      expect(controller.outwardIsManualBatchMode.value, isTrue);
+
+      // Manually allocate from second batch instead of first
+      controller.updateBatchAllocation(b2, 45);
+      expect(controller.isBatchSelected(b2), isTrue);
+      expect(controller.getBatchAllocatedQuantity(b2), equals(45.0));
+      expect(controller.totalManualAllocatedQuantity, equals(45.0));
+      expect(controller.outwardRequestedQuantity.value, equals(45.0));
+      expect(controller.outwardQuantityController.text, equals('45'));
+
+      // Allocate from first batch as well (multi-batch selection)
+      controller.updateBatchAllocation(b1, 30);
+      expect(controller.selectedBatchesCount, equals(2));
+      expect(controller.totalManualAllocatedQuantity, equals(75.0));
+      expect(controller.outwardRequestedQuantity.value, equals(75.0));
+      expect(controller.outwardQuantityController.text, equals('75'));
+
+      // Test deselect all
+      controller.deselectAllBatches();
+      expect(controller.selectedBatchesCount, equals(0));
+      expect(controller.totalManualAllocatedQuantity, equals(0.0));
+
+      // Test select all
+      controller.selectAllBatches();
+      expect(controller.selectedBatchesCount, equals(2));
+      expect(controller.totalManualAllocatedQuantity, equals(350.0));
+
+      Get.reset();
+    });
+
+    test('MedicalStockOutwardRequest serializes multi-batch deduction array correctly', () {
+      final req = MedicalStockOutwardRequest(
+        gaushalaId: 'gaushala_123',
+        itemId: 'med_456',
+        quantity: 58,
+        reason: 'TREATMENT',
+        batches: [
+          const MedicalOutwardBatchDto(batchId: 'b_1', batchNumber: 'B-01', quantity: 30),
+          const MedicalOutwardBatchDto(batchId: 'b_2', batchNumber: 'B-02', quantity: 28),
+        ],
+      );
+
+      final json = req.toJson();
+      expect(json['gaushalaId'], 'gaushala_123');
+      expect(json['itemId'], 'med_456');
+      expect(json['quantity'], 58.0);
+      expect(json['batches'], isA<List>());
+      expect((json['batches'] as List).length, 2);
+      expect((json['batches'] as List)[0]['batchNumber'], 'B-01');
+      expect((json['batches'] as List)[0]['quantity'], 30.0);
+      expect((json['batches'] as List)[1]['batchNumber'], 'B-02');
+      expect((json['batches'] as List)[1]['quantity'], 28.0);
+      expect(json['deductedBatches'], isNotNull);
+    });
   });
 }

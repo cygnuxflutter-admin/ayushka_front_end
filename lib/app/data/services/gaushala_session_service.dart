@@ -8,11 +8,22 @@ import 'storage_service.dart';
 
 /// Centralized Global Gaushala Session Service.
 /// Manages active Gaushala selection across all screens in the Ayushka web portal.
+/// STRICT ACCESS RULE:
+/// - Only Super Administrators can view all gaushalas and switch between stations.
+/// - Non-SuperAdmin users (Admin, Staff, Manager, Doctor, etc.) can NEVER switch gaushalas.
+///   For non-superadmin accounts, their login gaushala is the ONLY one shown and active
+///   throughout the entire app ("teni login mathi je id aave tej show thashe biju kai pan show nahee thay").
 class GaushalaSessionService extends GetxService {
   final ApiService _apiService = Get.find<ApiService>();
   final StorageService _storageService = Get.find<StorageService>();
 
+  /// Master list of all gaushalas from backend (accessible only by Super Admin)
+  final RxList<GaushalaModel> _allGaushalas = <GaushalaModel>[].obs;
+
+  /// Visible gaushalas list for dropdowns & selectors across the entire app
   final RxList<GaushalaModel> gaushalas = <GaushalaModel>[].obs;
+
+  /// Active selected Gaushala
   final Rxn<GaushalaModel> selectedGaushala = Rxn<GaushalaModel>();
   final RxBool isLoading = false.obs;
 
@@ -52,25 +63,40 @@ class GaushalaSessionService extends GetxService {
   bool get canChangeGaushala => isSuperAdmin;
 
   /// Returns the default Gaushala for the active user session.
-  /// Priority:
-  /// 1. The logged-in user's assigned gaushala (by ID, Name, or normalized slug)
-  /// 2. Primary platform gaushala (ayushka_navsari or any gaushala containing 'ayushka')
-  /// 3. First available gaushala
+  /// Strictly isolates non-superadmin users to their assigned login facility.
   GaushalaModel? getUserDefaultGaushala([UserModel? user]) {
     final activeUser = user ?? currentUser;
-    if (activeUser != null) {
-      final userGId = activeUser.gaushalaId;
-      final userGName = activeUser.gaushalaName;
-      final found = findGaushala(userGId) ?? findGaushala(userGName);
-      if (found != null) return found;
+    if (activeUser == null) return null;
+
+    final userGId = activeUser.gaushalaId?.trim();
+    final userGName = activeUser.gaushalaName?.trim();
+
+    // 1. Try finding in loaded gaushalas list
+    final match = findGaushala(userGId) ?? findGaushala(userGName);
+    if (match != null) return match;
+
+    // 2. Non-superadmin rule:
+    // If not in the list yet, synthesize a valid GaushalaModel using user's login gaushala info.
+    // NEVER fall back to ayushka_navsari or any other facility!
+    if (!isSuperAdmin) {
+      if ((userGId != null && userGId.isNotEmpty) || (userGName != null && userGName.isNotEmpty)) {
+        return GaushalaModel(
+          id: (userGId != null && userGId.isNotEmpty) ? userGId : (userGName ?? ''),
+          gaushalaName: (userGName != null && userGName.isNotEmpty) ? userGName : (userGId ?? ''),
+        );
+      }
+      return null;
     }
 
-    // Default primary platform gaushala: ayushka_navsari
+    // 3. For Super Admin only: default primary platform gaushala
     final defaultAyushka = findGaushala('ayushka_navsari') ??
         findGaushala('ayushka navsari') ??
         findGaushala('ayushka');
     if (defaultAyushka != null) return defaultAyushka;
 
+    if (_allGaushalas.isNotEmpty) {
+      return _allGaushalas.first;
+    }
     if (gaushalas.isNotEmpty) {
       return gaushalas.first;
     }
@@ -82,35 +108,59 @@ class GaushalaSessionService extends GetxService {
     if (query == null || query.trim().isEmpty) return null;
     final q = query.trim().toLowerCase();
 
+    final sourceList = _allGaushalas.isNotEmpty ? _allGaushalas : gaushalas;
+
     // 1. Direct ID match
-    var match = gaushalas.firstWhereOrNull((g) => g.id.toLowerCase() == q);
+    var match = sourceList.firstWhereOrNull((g) => g.id.toLowerCase() == q);
     if (match != null) return match;
 
     // 2. Direct name match
-    match = gaushalas.firstWhereOrNull((g) => g.gaushalaName.trim().toLowerCase() == q);
+    match = sourceList.firstWhereOrNull((g) => g.gaushalaName.trim().toLowerCase() == q);
     if (match != null) return match;
 
     // 3. Normalized slug match (e.g. ayushka_navsari vs ayushka navsari)
     final qNorm = q.replaceAll('_', '').replaceAll(' ', '').replaceAll('-', '');
-    match = gaushalas.firstWhereOrNull((g) {
+    match = sourceList.firstWhereOrNull((g) {
       final nameNorm = g.gaushalaName.toLowerCase().replaceAll('_', '').replaceAll(' ', '').replaceAll('-', '');
       return nameNorm == qNorm;
     });
     if (match != null) return match;
 
-    // 4. Substring match
-    match = gaushalas.firstWhereOrNull((g) =>
-        g.gaushalaName.toLowerCase().contains(q) || q.contains(g.gaushalaName.toLowerCase()));
+    // 4. Substring match (length >= 3 to prevent false positive short matches)
+    if (q.length >= 3) {
+      match = sourceList.firstWhereOrNull((g) =>
+          g.gaushalaName.toLowerCase().contains(q) || q.contains(g.gaushalaName.toLowerCase()));
+    }
     return match;
+  }
+
+  /// Synchronizes the observable [gaushalas] list based on user role permissions:
+  /// - Superadmin: gets all gaushalas
+  /// - Non-superadmin: gets ONLY their assigned login gaushala
+  void _syncGaushalaList() {
+    if (isSuperAdmin) {
+      gaushalas.assignAll(_allGaushalas);
+    } else {
+      final target = selectedGaushala.value ?? getUserDefaultGaushala();
+      if (target != null) {
+        gaushalas.assignAll([target]);
+      } else {
+        gaushalas.clear();
+      }
+    }
   }
 
   /// Fetches gaushalas list from backend
   Future<void> fetchGaushalas({bool forceReload = false}) async {
-    if (gaushalas.isNotEmpty && !forceReload) return;
+    if (_allGaushalas.isNotEmpty && !forceReload) {
+      _syncGaushalaList();
+      return;
+    }
     isLoading.value = true;
     try {
       final list = await _apiService.getGaushalas();
-      gaushalas.assignAll(list);
+      _allGaushalas.assignAll(list);
+      _syncGaushalaList();
     } catch (e) {
       if (kDebugMode) {
         print('[GaushalaSessionService] fetchGaushalas error: $e');
@@ -123,23 +173,21 @@ class GaushalaSessionService extends GetxService {
   /// Initializes the active gaushala on login or app start/refresh.
   /// Strictly guarantees the user's login gaushala is default and preserved on refresh.
   Future<void> initSession({UserModel? user, bool isLogin = false}) async {
-    await fetchGaushalas();
-
     final activeUser = user ?? currentUser;
-    final defaultGaushala = getUserDefaultGaushala(activeUser);
+    await fetchGaushalas();
 
     GaushalaModel? target;
 
-    if (isLogin) {
-      // Fresh login: strictly reset to user's assigned/default gaushala
-      target = defaultGaushala;
+    if (!isSuperAdmin) {
+      // Non-SuperAdmin (Admin, Staff, etc.): STRICTLY locked to their login gaushala
+      target = getUserDefaultGaushala(activeUser);
     } else {
-      // On website refresh or app launch:
-      // Always restore the user's default gaushala so refresh maintains the user's assigned facility
-      target = defaultGaushala;
-      if (target == null) {
+      // Super Admin:
+      if (isLogin) {
+        target = getUserDefaultGaushala(activeUser);
+      } else {
         final storedId = _storageService.getSelectedGaushalaId();
-        target = findGaushala(storedId) ?? (gaushalas.isNotEmpty ? gaushalas.first : null);
+        target = findGaushala(storedId) ?? getUserDefaultGaushala(activeUser);
       }
     }
 
@@ -156,9 +204,11 @@ class GaushalaSessionService extends GetxService {
         await _storageService.saveUser(updatedUser);
       }
     }
+
+    _syncGaushalaList();
   }
 
-  /// Switch the active Gaushala globally across the entire app
+  /// Switch the active Gaushala globally across the entire app (Super Admin only)
   void setGaushala(GaushalaModel gaushala) {
     if (!canChangeGaushala) {
       CustomSnackbar.showWarning(
@@ -178,8 +228,15 @@ class GaushalaSessionService extends GetxService {
     _storageService.saveSelectedGaushalaId(gaushala.id);
   }
 
-  /// Switch active Gaushala by ID or Name
+  /// Switch active Gaushala by ID or Name (Super Admin only)
   void setGaushalaById(String query) {
+    if (!canChangeGaushala) {
+      CustomSnackbar.showWarning(
+        title: 'Access Restricted',
+        message: 'Only Super Administrators have permission to switch gaushalas.',
+      );
+      return;
+    }
     final match = findGaushala(query);
     if (match != null) {
       setGaushala(match);
@@ -189,6 +246,8 @@ class GaushalaSessionService extends GetxService {
   /// Clear session on logout
   void clearSession() {
     selectedGaushala.value = null;
+    _allGaushalas.clear();
+    gaushalas.clear();
     _storageService.removeSelectedGaushalaId();
   }
 }

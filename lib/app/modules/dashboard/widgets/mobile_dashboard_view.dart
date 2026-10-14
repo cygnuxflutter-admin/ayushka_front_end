@@ -9,8 +9,8 @@ import '../../../data/services/permission_service.dart';
 import '../../../routes/app_routes.dart';
 import '../dashboard_controller.dart';
 import 'administer_dose_quick_dialog.dart';
-import 'quick_feed_inward_dialog.dart';
 import 'quick_medical_inward_dialog.dart';
+import 'unassigned_shed_alert_card.dart';
 
 /// Purpose-built Mobile Dashboard view for Ayushka Cattle Management Portal.
 /// Features:
@@ -74,13 +74,13 @@ class MobileDashboardView extends StatelessWidget {
   }
 
   void _openQuickFeedInwardDialog(BuildContext context, FeedStockAlertItem alert) {
-    showDialog(
-      context: context,
-      barrierDismissible: false,
-      builder: (ctx) => QuickFeedInwardDialog(
-        alert: alert,
-        onConfirm: controller.quickFeedInward,
-      ),
+    Get.toNamed(
+      AppRoutes.feedTransactions,
+      arguments: {
+        'type': 'INWARD',
+        'itemId': alert.itemId,
+        'itemName': alert.itemName,
+      },
     );
   }
 
@@ -94,6 +94,19 @@ class MobileDashboardView extends StatelessWidget {
         // 1. Compact Mobile Station Banner
         _buildCompactHeroBanner(context, isDark),
         const SizedBox(height: 16),
+
+        // 1.5. Dynamic Housing Alert: Cattle Without Assigned Shed
+        Obx(
+          () => controller.unassignedShedCows.isNotEmpty
+              ? Padding(
+                  padding: const EdgeInsets.only(bottom: 16),
+                  child: UnassignedShedAlertCard(
+                    controller: controller,
+                    isCompact: true,
+                  ),
+                )
+              : const SizedBox.shrink(),
+        ),
 
         // 2. Compact Daily Data Section ("daliy data ... thoda place par")
         _buildDailyTelemetrySection(context, isDark),
@@ -529,7 +542,7 @@ class MobileDashboardView extends StatelessWidget {
         ])) {
       menuItems.add(
         _MobileMenuItemData(
-          title: 'Cow Treatments',
+          title: 'Cattle Treatment & Veterinary',
           subtitle: 'Prescriptions & vet triage',
           icon: PhosphorIconsRegular.firstAidKit,
           color: const Color(0xFFEF4444),

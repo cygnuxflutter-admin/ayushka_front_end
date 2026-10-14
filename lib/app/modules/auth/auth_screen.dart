@@ -22,11 +22,34 @@ class AuthScreen extends StatefulWidget {
 
 class _AuthScreenState extends State<AuthScreen> {
   late final AuthController controller;
-  final FocusNode _passwordFocusNode = FocusNode();
+  FocusNode _passwordFocusNode = FocusNode();
+
+  static bool _isFocusNodeDisposed(FocusNode? f) {
+    if (f == null) return false;
+    try {
+      void dummy() {}
+      f.addListener(dummy);
+      f.removeListener(dummy);
+      return false;
+    } catch (_) {
+      return true;
+    }
+  }
+
+  FocusNode get passwordFocusNode {
+    if (_isFocusNodeDisposed(_passwordFocusNode)) {
+      _passwordFocusNode = FocusNode();
+    }
+    return _passwordFocusNode;
+  }
 
   @override
   void initState() {
     super.initState();
+    if (!Get.isRegistered<AuthController>() || Get.find<AuthController>().isClosed) {
+      Get.delete<AuthController>(force: true);
+      Get.put(AuthController());
+    }
     controller = Get.find<AuthController>();
     HardwareKeyboard.instance.addHandler(_handleKeyEvent);
   }
@@ -34,7 +57,11 @@ class _AuthScreenState extends State<AuthScreen> {
   @override
   void dispose() {
     HardwareKeyboard.instance.removeHandler(_handleKeyEvent);
-    _passwordFocusNode.dispose();
+    try {
+      if (!_isFocusNodeDisposed(_passwordFocusNode)) {
+        _passwordFocusNode.dispose();
+      }
+    } catch (_) {}
     super.dispose();
   }
 
@@ -52,8 +79,8 @@ class _AuthScreenState extends State<AuthScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       body: ResponsiveLayout(
-        mobile: _buildMobileView(context),
-        desktop: _buildDesktopView(context),
+        mobileBuilder: (context) => _buildMobileView(context),
+        desktopBuilder: (context) => _buildDesktopView(context),
       ),
     );
   }
@@ -314,7 +341,7 @@ class _AuthScreenState extends State<AuthScreen> {
                   if (controller.passwordController.text.trim().isNotEmpty) {
                     controller.login();
                   } else {
-                    _passwordFocusNode.requestFocus();
+                    passwordFocusNode.requestFocus();
                   }
                 },
               ),
@@ -325,7 +352,7 @@ class _AuthScreenState extends State<AuthScreen> {
                 label: 'Password',
                 hint: 'Enter your password',
                 controller: controller.passwordController,
-                focusNode: _passwordFocusNode,
+                focusNode: passwordFocusNode,
                 validator: controller.validatePassword,
                 isPassword: true,
                 textInputAction: TextInputAction.done,

@@ -1,12 +1,16 @@
 import 'package:flutter/foundation.dart';
 import 'package:get/get.dart';
 import '../../core/widgets/custom_snackbar.dart';
+import '../../data/models/cow_model.dart';
 import '../../data/models/dashboard_alerts_model.dart';
 import '../../data/models/feed_item_model.dart';
 import '../../data/models/medical_item_model.dart';
 import '../../data/models/notification_model.dart';
+import '../../data/models/shed_model.dart';
 import '../../data/models/treatment_model.dart';
 import '../../data/models/user_model.dart';
+import '../../data/models/cow_heat_model.dart';
+import '../../data/models/cow_mating_model.dart';
 import '../../data/services/api_service.dart';
 import '../../data/services/gaushala_session_service.dart';
 import '../../data/services/storage_service.dart';
@@ -29,6 +33,7 @@ class DashboardController extends GetxController {
   final RxInt femaleCattleCount = 0.obs;
   final RxInt maleCattleCount = 0.obs;
   final RxBool isCattleLoaded = false.obs;
+  final RxList<CowModel> unassignedShedCows = <CowModel>[].obs;
 
   // Live Milking Telemetry Observables
   final RxDouble todayMilkProduced = 0.0.obs;
@@ -48,6 +53,10 @@ class DashboardController extends GetxController {
   final RxList<MedicalLowStockAlertItem> medicalLowStock = <MedicalLowStockAlertItem>[].obs;
   final RxList<MedicalExpiringAlertItem> medicalExpiring = <MedicalExpiringAlertItem>[].obs;
   final RxList<FeedStockAlertItem> feedAlerts = <FeedStockAlertItem>[].obs;
+  final RxList<CowHeatModel> activeHeats = <CowHeatModel>[].obs;
+  final RxList<CowHeatModel> repeatHeatAlerts = <CowHeatModel>[].obs;
+  final RxList<CowMatingModel> repeatBreederAlerts = <CowMatingModel>[].obs;
+  final RxList<CowMatingModel> pendingPDMatings = <CowMatingModel>[].obs;
 
   // Active Tab Index (0: Treatments, 1: Milk, 2: Medical, 3: Feed)
   final RxInt selectedTabIndex = 0.obs;
@@ -107,6 +116,10 @@ class DashboardController extends GetxController {
         medicalLowStock.assignAll(summary.medicalLowStock);
         medicalExpiring.assignAll(summary.medicalExpiring);
         feedAlerts.assignAll(summary.feedAlerts);
+        activeHeats.assignAll(summary.activeHeats);
+        repeatHeatAlerts.assignAll(summary.repeatHeatAlerts);
+        repeatBreederAlerts.assignAll(summary.repeatBreederAlerts);
+        pendingPDMatings.assignAll(summary.pendingPDMatings);
         return;
       }
 
@@ -129,6 +142,10 @@ class DashboardController extends GetxController {
       List<MedicalItemModel> lowMeds = [];
       List<MedicalBatchModel> expBatches = [];
       List<FeedItemModel> lowFeed = [];
+      List<CowHeatModel> fallbackActiveHeats = [];
+      List<CowHeatModel> fallbackRepeatHeats = [];
+      List<CowMatingModel> fallbackRepeatBreeders = [];
+      List<CowMatingModel> fallbackPendingPDs = [];
 
       await Future.wait([
         () async {
@@ -168,6 +185,26 @@ class DashboardController extends GetxController {
         () async {
           try {
             lowFeed = await _apiService.getLowStockFeedItems(gaushalaId: gId);
+          } catch (_) {}
+        }(),
+        () async {
+          try {
+            fallbackActiveHeats = await _apiService.getActiveHeatAlerts(gaushalaId: gId);
+          } catch (_) {}
+        }(),
+        () async {
+          try {
+            fallbackRepeatHeats = await _apiService.getRepeatHeatAlerts(gaushalaId: gId);
+          } catch (_) {}
+        }(),
+        () async {
+          try {
+            fallbackRepeatBreeders = await _apiService.getRepeatBreederAlerts(gaushalaId: gId);
+          } catch (_) {}
+        }(),
+        () async {
+          try {
+            fallbackPendingPDs = await _apiService.getPendingPDAlerts(gaushalaId: gId);
           } catch (_) {}
         }(),
       ]);
@@ -280,13 +317,23 @@ class DashboardController extends GetxController {
       }
       feedAlerts.assignAll(mappedFeed);
 
-      // 5. Compute Consolidated Counts
+      // 5. Heat & Mating Alerts
+      activeHeats.assignAll(fallbackActiveHeats);
+      repeatHeatAlerts.assignAll(fallbackRepeatHeats);
+      repeatBreederAlerts.assignAll(fallbackRepeatBreeders);
+      pendingPDMatings.assignAll(fallbackPendingPDs);
+
+      // 6. Compute Consolidated Counts
       final criticalCount = mappedTreatments.where((t) => t.isCritical).length;
       final total = mappedTreatments.length +
           mappedMilk.length +
           mappedLowMeds.length +
           mappedExpMeds.length +
-          mappedFeed.length;
+          mappedFeed.length +
+          fallbackActiveHeats.length +
+          fallbackRepeatHeats.length +
+          fallbackRepeatBreeders.length +
+          fallbackPendingPDs.length;
 
       alertCounts.value = DashboardAlertCounts(
         treatmentDueDoses: mappedTreatments.length,
@@ -295,6 +342,10 @@ class DashboardController extends GetxController {
         lowMedicalStock: mappedLowMeds.length,
         expiringMedicines: mappedExpMeds.length,
         lowFeedStock: mappedFeed.length,
+        activeHeats: fallbackActiveHeats.length,
+        repeatHeatAlerts: fallbackRepeatHeats.length,
+        repeatBreederAlerts: fallbackRepeatBreeders.length,
+        pendingPDChecks: fallbackPendingPDs.length,
         totalAlerts: total,
       );
     } catch (e) {
@@ -486,10 +537,79 @@ class DashboardController extends GetxController {
       femaleCattleCount.value = res.femaleCount;
       maleCattleCount.value = res.maleCount;
       isCattleLoaded.value = true;
+
+      final activeUnassigned = res.allCows.where((c) =>
+        !c.isDelete && !c.isDead && (c.shed == null || c.shed!.id.trim().isEmpty)
+      ).toList();
+      unassignedShedCows.assignAll(activeUnassigned);
     } catch (_) {
       // Graceful fallback
     } finally {
       isLoading.value = false;
+    }
+  }
+
+  /// Fetches all active sheds for the current Gaushala
+  Future<List<ShedModel>> fetchActiveSheds() async {
+    final gId = _currentGaushalaId;
+    if (gId == null || gId.isEmpty) return [];
+    try {
+      return await _apiService.getSheds(gaushalaId: gId);
+    } catch (_) {
+      return [];
+    }
+  }
+
+  /// Allocates one or multiple cattle to a target shed from the Dashboard alert flow
+  Future<bool> assignCowToShed({
+    required List<String> cowIds,
+    required String targetShedId,
+    String reason = 'Initial Shed Allocation',
+  }) async {
+    final gId = _currentGaushalaId;
+    if (gId == null || gId.isEmpty) {
+      CustomSnackbar.showError(
+        title: 'Action Error',
+        message: 'No active Gaushala selected.',
+      );
+      return false;
+    }
+    if (cowIds.isEmpty || targetShedId.trim().isEmpty) {
+      CustomSnackbar.showError(
+        title: 'Validation Error',
+        message: 'Please select cattle and destination shed.',
+      );
+      return false;
+    }
+
+    try {
+      isActionLoading.value = true;
+      final req = ShedTransferRequestModel(
+        gaushalaId: gId,
+        cowIds: cowIds,
+        toShedId: targetShedId.trim(),
+        reason: reason.trim(),
+        transferDate: DateTime.now().toIso8601String().substring(0, 10),
+      );
+
+      await _apiService.transferCowShed(req);
+
+      CustomSnackbar.showSuccess(
+        title: 'Shed Allocated',
+        message: 'Successfully allocated shed to ${cowIds.length} cattle.',
+      );
+
+      // Refresh cattle list to update unassigned alerts
+      await _fetchLiveCattleStats();
+      return true;
+    } catch (e) {
+      CustomSnackbar.showError(
+        title: 'Assignment Failed',
+        message: e.toString().replaceFirst('Exception: ', ''),
+      );
+      return false;
+    } finally {
+      isActionLoading.value = false;
     }
   }
 
@@ -771,7 +891,139 @@ class DashboardController extends GetxController {
     return false;
   }
 
-  /// Concurrently generates test alerts across all 4 operational domains
+  /// Creates a real Active Estrus / Heat Alert via POST /heats
+  Future<bool> generateTestHeatAlert({bool isRepeat = false}) async {
+    final gId = _currentGaushalaId;
+    if (gId == null || gId.isEmpty) {
+      CustomSnackbar.showError(
+        title: 'Action Error',
+        message: 'No active Gaushala selected.',
+      );
+      return false;
+    }
+
+    try {
+      isActionLoading.value = true;
+      final cowsRes = await _apiService.getCows(gaushalaId: gId);
+      String cowId = '';
+      String cowTag = 'COW-DEMO-01';
+      if (cowsRes.allCows.isNotEmpty) {
+        final femaleCows = cowsRes.allCows.where((c) => !c.isDelete && !c.isDead && c.isFemale).toList();
+        final targetCow = femaleCows.isNotEmpty ? femaleCows.first : cowsRes.allCows.first;
+        cowId = targetCow.id;
+        cowTag = targetCow.tagId.isNotEmpty ? targetCow.tagId : 'CATTLE';
+      }
+
+      if (cowId.isEmpty) {
+        CustomSnackbar.showError(
+          title: 'Simulation Error',
+          message: 'No cattle available in this Gaushala to record heat.',
+        );
+        return false;
+      }
+
+      final payload = {
+        'gaushalaId': gId,
+        'cowId': cowId,
+        'heatDate': DateTime.now().toIso8601String().substring(0, 10),
+        'heatTime': 'morning',
+        'heatStage': 'STANDING',
+        'heatSigns': ['MOUNTING', 'MUCUS_DISCHARGE', 'RESTLESSNESS'],
+        'intensity': 'STRONG',
+        'status': 'READY_FOR_MATING',
+        'remarks': isRepeat
+            ? 'Simulated repeat heat cycle alert for clinical review.'
+            : 'Simulated active estrus for breeding alert center triage.',
+      };
+
+      final created = await _apiService.createHeat(payload);
+      if (created.id.isNotEmpty) {
+        CustomSnackbar.showSuccess(
+          title: 'Heat Alert Created',
+          message: 'Recorded active estrus for cow $cowTag (Ready for Mating).',
+        );
+        await fetchAlertsSummary();
+        return true;
+      }
+    } catch (e) {
+      CustomSnackbar.showError(
+        title: 'Simulation Error',
+        message: e.toString().replaceFirst('Exception: ', ''),
+      );
+    } finally {
+      isActionLoading.value = false;
+    }
+    return false;
+  }
+
+  /// Creates a real Breeding / Insemination Alert via POST /matings
+  Future<bool> generateTestBreedingAlert({bool isRepeatBreeder = true}) async {
+    final gId = _currentGaushalaId;
+    if (gId == null || gId.isEmpty) {
+      CustomSnackbar.showError(
+        title: 'Action Error',
+        message: 'No active Gaushala selected.',
+      );
+      return false;
+    }
+
+    try {
+      isActionLoading.value = true;
+      final cowsRes = await _apiService.getCows(gaushalaId: gId);
+      String cowId = '';
+      String cowTag = 'COW-DEMO-01';
+      if (cowsRes.allCows.isNotEmpty) {
+        final femaleCows = cowsRes.allCows.where((c) => !c.isDelete && !c.isDead && c.isFemale).toList();
+        final targetCow = femaleCows.isNotEmpty ? femaleCows.first : cowsRes.allCows.first;
+        cowId = targetCow.id;
+        cowTag = targetCow.tagId.isNotEmpty ? targetCow.tagId : 'CATTLE';
+      }
+
+      if (cowId.isEmpty) {
+        CustomSnackbar.showError(
+          title: 'Simulation Error',
+          message: 'No cattle available in this Gaushala to record breeding.',
+        );
+        return false;
+      }
+
+      final matingDate = DateTime.now().subtract(const Duration(days: 60)).toIso8601String().substring(0, 10);
+      final randStraw = DateTime.now().millisecondsSinceEpoch % 1000;
+      final payload = {
+        'gaushalaId': gId,
+        'cowId': cowId,
+        'matingDate': matingDate,
+        'matingTime': 'morning',
+        'matingType': 'ARTIFICIAL',
+        'semenStrawCode': 'HF-PURE-$randStraw',
+        'attemptCount': isRepeatBreeder ? 3 : 1,
+        'status': 'PENDING_PD',
+        'remarks': isRepeatBreeder
+            ? 'Simulated repeat breeder (Attempt #3) requiring clinical triage.'
+            : 'Simulated mating record due for Pregnancy Diagnosis.',
+      };
+
+      final created = await _apiService.createMating(payload);
+      if (created.id.isNotEmpty) {
+        CustomSnackbar.showSuccess(
+          title: 'Breeding Alert Created',
+          message: 'Recorded ${isRepeatBreeder ? "repeat breeder" : "mating"} alert for cow $cowTag.',
+        );
+        await fetchAlertsSummary();
+        return true;
+      }
+    } catch (e) {
+      CustomSnackbar.showError(
+        title: 'Simulation Error',
+        message: e.toString().replaceFirst('Exception: ', ''),
+      );
+    } finally {
+      isActionLoading.value = false;
+    }
+    return false;
+  }
+
+  /// Concurrently generates test alerts across all operational domains
   Future<void> generateAllTestAlerts() async {
     isActionLoading.value = true;
     try {
@@ -780,11 +1032,13 @@ class DashboardController extends GetxController {
         generateTestMilkAlert(),
         generateTestMedicalAlert(),
         generateTestFeedAlert(),
+        generateTestHeatAlert(),
+        generateTestBreedingAlert(),
       ]);
       await fetchAlertsSummary();
       CustomSnackbar.showSuccess(
         title: 'All Alerts Simulated',
-        message: 'Live test records created across treatments, milk, medicines, and feed.',
+        message: 'Live test records created across treatments, milk, medicines, feed, and breeding.',
       );
     } finally {
       isActionLoading.value = false;

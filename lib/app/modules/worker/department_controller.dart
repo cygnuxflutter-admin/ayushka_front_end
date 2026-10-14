@@ -88,6 +88,7 @@ class DepartmentController extends GetxController {
     required String departmentName,
     required String departmentCode,
     String? description,
+    bool showSnackbar = true,
   }) async {
     final gId = currentGaushalaId;
     if (gId.isEmpty) {
@@ -112,10 +113,12 @@ class DepartmentController extends GetxController {
         description: description?.trim(),
       );
       departments.insert(0, newDept);
-      CustomSnackbar.showSuccess(
-        title: 'Department Created',
-        message: 'Department "${newDept.departmentName}" ($trimmedCode) created successfully.',
-      );
+      if (showSnackbar) {
+        CustomSnackbar.showSuccess(
+          title: 'Department Created',
+          message: 'Department "${newDept.departmentName}" ($trimmedCode) created successfully.',
+        );
+      }
       return true;
     } catch (e) {
       String msg = 'Failed to create department.';
@@ -136,6 +139,7 @@ class DepartmentController extends GetxController {
     required String departmentCode,
     String? description,
     bool isActive = true,
+    bool showSnackbar = true,
   }) async {
     final trimmedName = departmentName.trim();
     final trimmedCode = departmentCode.trim().toUpperCase();
@@ -160,10 +164,12 @@ class DepartmentController extends GetxController {
         departments[index] = updated;
       }
 
-      CustomSnackbar.showSuccess(
-        title: 'Department Updated',
-        message: 'Department "${updated.departmentName}" updated successfully.',
-      );
+      if (showSnackbar) {
+        CustomSnackbar.showSuccess(
+          title: 'Department Updated',
+          message: 'Department "${updated.departmentName}" updated successfully.',
+        );
+      }
       return true;
     } catch (e) {
       String msg = 'Failed to update department.';
@@ -215,8 +221,10 @@ class DepartmentController extends GetxController {
     final codeController = TextEditingController();
     final descController = TextEditingController();
 
-    Get.dialog(
-      Dialog(
+    showDialog<void>(
+      context: context,
+      barrierDismissible: true,
+      builder: (dialogContext) => Dialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 480),
@@ -255,11 +263,7 @@ class DepartmentController extends GetxController {
                       IconButton(
                         icon: const Icon(Icons.close_rounded, size: 20),
                         onPressed: () {
-                          if (Get.isDialogOpen ?? false) {
-                            Get.back();
-                          } else if (context.mounted) {
-                            Navigator.of(context, rootNavigator: true).pop();
-                          }
+                          Navigator.of(dialogContext).pop();
                         },
                       ),
                     ],
@@ -303,11 +307,7 @@ class DepartmentController extends GetxController {
                         variant: ButtonVariant.outlined,
                         width: 100,
                         onPressed: () {
-                          if (Get.isDialogOpen ?? false) {
-                            Get.back();
-                          } else if (context.mounted) {
-                            Navigator.of(context, rootNavigator: true).pop();
-                          }
+                          Navigator.of(dialogContext).pop();
                         },
                       ),
                       const SizedBox(width: 12),
@@ -319,18 +319,25 @@ class DepartmentController extends GetxController {
                           width: 160,
                           onPressed: () async {
                             if (formKey.currentState?.validate() ?? false) {
+                              final deptName = nameController.text.trim();
+                              final deptCode = codeController.text.trim().toUpperCase();
                               final ok = await createDepartment(
-                                departmentName: nameController.text,
-                                departmentCode: codeController.text,
-                                description: descController.text,
+                                departmentName: deptName,
+                                departmentCode: deptCode,
+                                description: descController.text.trim(),
+                                showSnackbar: false,
                               );
                               if (ok) {
-                                if (Get.isDialogOpen ?? false) {
-                                  Get.back();
+                                if (dialogContext.mounted) {
+                                  Navigator.of(dialogContext).pop();
                                 } else if (context.mounted) {
                                   Navigator.of(context, rootNavigator: true).pop();
                                 }
                                 onSuccess?.call();
+                                CustomSnackbar.showSuccess(
+                                  title: 'Department Created',
+                                  message: 'Department "$deptName" ($deptCode) created successfully.',
+                                );
                               }
                             }
                           },
@@ -360,8 +367,10 @@ class DepartmentController extends GetxController {
     final descController = TextEditingController(text: dept.description);
     final RxBool isActive = dept.isActive.obs;
 
-    Get.dialog(
-      Dialog(
+    showDialog<void>(
+      context: context,
+      barrierDismissible: true,
+      builder: (dialogContext) => Dialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 480),
@@ -400,11 +409,7 @@ class DepartmentController extends GetxController {
                       IconButton(
                         icon: const Icon(Icons.close_rounded, size: 20),
                         onPressed: () {
-                          if (Get.isDialogOpen ?? false) {
-                            Get.back();
-                          } else if (context.mounted) {
-                            Navigator.of(context, rootNavigator: true).pop();
-                          }
+                          Navigator.of(dialogContext).pop();
                         },
                       ),
                     ],
@@ -460,11 +465,7 @@ class DepartmentController extends GetxController {
                         variant: ButtonVariant.outlined,
                         width: 100,
                         onPressed: () {
-                          if (Get.isDialogOpen ?? false) {
-                            Get.back();
-                          } else if (context.mounted) {
-                            Navigator.of(context, rootNavigator: true).pop();
-                          }
+                          Navigator.of(dialogContext).pop();
                         },
                       ),
                       const SizedBox(width: 12),
@@ -476,20 +477,26 @@ class DepartmentController extends GetxController {
                           width: 150,
                           onPressed: () async {
                             if (formKey.currentState?.validate() ?? false) {
+                              final deptName = nameController.text.trim();
                               final ok = await updateDepartment(
                                 dept.id,
-                                departmentName: nameController.text,
-                                departmentCode: codeController.text,
-                                description: descController.text,
+                                departmentName: deptName,
+                                departmentCode: codeController.text.trim().toUpperCase(),
+                                description: descController.text.trim(),
                                 isActive: isActive.value,
+                                showSnackbar: false,
                               );
                               if (ok) {
-                                if (Get.isDialogOpen ?? false) {
-                                  Get.back();
+                                if (dialogContext.mounted) {
+                                  Navigator.of(dialogContext).pop();
                                 } else if (context.mounted) {
                                   Navigator.of(context, rootNavigator: true).pop();
                                 }
                                 onSuccess?.call();
+                                CustomSnackbar.showSuccess(
+                                  title: 'Department Updated',
+                                  message: 'Department "$deptName" updated successfully.',
+                                );
                               }
                             }
                           },

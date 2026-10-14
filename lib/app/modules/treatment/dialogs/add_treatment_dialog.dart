@@ -418,7 +418,7 @@ class _AddTreatmentDialogState extends State<AddTreatmentDialog> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         const Text(
-                          'Create Cow Treatment Case',
+                          'Create Cattle Treatment Case',
                           style: TextStyle(fontSize: 17, fontWeight: FontWeight.bold),
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,

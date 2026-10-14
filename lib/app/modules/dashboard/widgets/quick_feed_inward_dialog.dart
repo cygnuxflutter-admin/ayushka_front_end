@@ -224,7 +224,6 @@ class _QuickFeedInwardDialogState extends State<QuickFeedInwardDialog> {
                           icon: const Icon(Icons.keyboard_arrow_down_rounded),
                           items: const [
                             DropdownMenuItem(value: 'PURCHASE', child: Text('Direct Purchase')),
-                            DropdownMenuItem(value: 'DONATION', child: Text('Charitable Donation')),
                             DropdownMenuItem(value: 'OTHER', child: Text('Other / Internal Transfer')),
                           ],
                           onChanged: (val) {

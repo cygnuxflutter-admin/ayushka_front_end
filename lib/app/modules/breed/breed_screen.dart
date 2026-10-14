@@ -97,11 +97,15 @@ class BreedScreen extends GetView<BreedController> {
               onPressed: isBusy ? null : controller.refreshBreeds,
             );
           }),
-          if (controller.canAddBreed)
-            IconButton(
-              icon: const Icon(Icons.add_rounded),
-              onPressed: () => controller.openAddBreedDialog(context),
-            ),
+          Obx(() {
+            return controller.canAddBreed
+                ? IconButton(
+                    icon: const Icon(Icons.add_rounded),
+                    tooltip: 'Add Breed',
+                    onPressed: () => controller.openAddBreedDialog(context),
+                  )
+                : const SizedBox.shrink();
+          }),
         ],
       ),
       drawer: Obx(
@@ -150,14 +154,16 @@ class BreedScreen extends GetView<BreedController> {
           onLogout: controller.logout,
         ),
       ),
-      floatingActionButton: controller.canAddBreed
-          ? FloatingActionButton.extended(
-              backgroundColor: AppColors.primary,
-              icon: const Icon(Icons.add_rounded, color: Colors.white),
-              label: const Text('Add Breed', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
-              onPressed: () => controller.openAddBreedDialog(context),
-            )
-          : null,
+      floatingActionButton: Obx(() {
+        return controller.canAddBreed
+            ? FloatingActionButton.extended(
+                backgroundColor: AppColors.primary,
+                icon: const Icon(Icons.add_rounded, color: Colors.white),
+                label: const Text('Add Breed', style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                onPressed: () => controller.openAddBreedDialog(context),
+              )
+            : const SizedBox.shrink();
+      }),
       body: RefreshIndicator(
         onRefresh: controller.refreshBreeds,
         child: NotificationListener<ScrollNotification>(
@@ -205,46 +211,54 @@ class BreedScreen extends GetView<BreedController> {
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Row(
-            children: [
-              Obx(
-                () => IconButton(
-                  icon: Icon(
-                    controller.isSidebarCollapsed.value
-                        ? Icons.menu_open_rounded
-                        : Icons.menu_rounded,
-                    size: 22,
-                  ),
-                  tooltip: controller.isSidebarCollapsed.value
-                      ? 'Expand Sidebar'
-                      : 'Collapse Sidebar',
-                  onPressed: controller.toggleSidebar,
-                ),
-              ),
-              const SizedBox(width: 8),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                decoration: BoxDecoration(
-                  color: AppColors.primary.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(6),
-                ),
-                child: const Text(
-                  'MASTER',
-                  style: TextStyle(
-                    color: AppColors.primary,
-                    fontSize: 11,
-                    fontWeight: FontWeight.bold,
+          Flexible(
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Obx(
+                  () => IconButton(
+                    icon: Icon(
+                      controller.isSidebarCollapsed.value
+                          ? Icons.menu_open_rounded
+                          : Icons.menu_rounded,
+                      size: 22,
+                    ),
+                    tooltip: controller.isSidebarCollapsed.value
+                        ? 'Expand Sidebar'
+                        : 'Collapse Sidebar',
+                    onPressed: controller.toggleSidebar,
                   ),
                 ),
-              ),
-              const SizedBox(width: 14),
-              const Text(
-                'Cattle Breeds & Genetics',
-                style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
-              ),
-            ],
+                const SizedBox(width: 8),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: AppColors.primary.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: const Text(
+                    'MASTER',
+                    style: TextStyle(
+                      color: AppColors.primary,
+                      fontSize: 11,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 14),
+                const Flexible(
+                  child: Text(
+                    'Cattle Breeds & Genetics',
+                    style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ],
+            ),
           ),
+          const SizedBox(width: 12),
           Row(
+            mainAxisSize: MainAxisSize.min,
             children: [
               const GlobalGaushalaSelector(),
               const SizedBox(width: 8),
@@ -328,14 +342,17 @@ class BreedScreen extends GetView<BreedController> {
         ),
         Row(
           children: [
-            if (controller.canAddBreed)
-              CustomButton(
-                text: 'Add Breed',
-                icon: Icons.add_rounded,
-                width: 150,
-                height: 42,
-                onPressed: () => controller.openAddBreedDialog(context),
-              ),
+            Obx(() {
+              return controller.canAddBreed
+                  ? CustomButton(
+                      text: 'Add Breed',
+                      icon: Icons.add_rounded,
+                      width: 150,
+                      height: 42,
+                      onPressed: () => controller.openAddBreedDialog(context),
+                    )
+                  : const SizedBox.shrink();
+            }),
           ],
         ),
       ],

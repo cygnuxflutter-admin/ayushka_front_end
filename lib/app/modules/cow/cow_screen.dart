@@ -902,6 +902,7 @@ class CowScreen extends GetView<CowController> {
                     SizedBox(
                       width: 240,
                       child: TextField(
+                        controller: controller.searchController,
                         onChanged: (val) => controller.searchQuery.value = val,
                         decoration: InputDecoration(
                           hintText: 'Search Tag ID, breed, shed...',
@@ -910,7 +911,7 @@ class CowScreen extends GetView<CowController> {
                             () => controller.searchQuery.value.isNotEmpty
                                 ? IconButton(
                                     icon: const Icon(Icons.clear_rounded, size: 16),
-                                    onPressed: () => controller.searchQuery.value = '',
+                                    onPressed: controller.clearSearch,
                                   )
                                 : const SizedBox.shrink(),
                           ),
@@ -1070,7 +1071,7 @@ class CowScreen extends GetView<CowController> {
                                 onEdit: () => controller.goToEditCow(cow),
                                 onTransferShed: () => controller.openShedTransferDialog(context, cow: cow),
                                 onViewHistory: () => controller.openShedTransferHistoryDialog(context, cow: cow),
-                                onToggleStatus: () => controller.toggleCowStatus(cow),
+                                onToggleStatus: () => controller.confirmToggleCowStatus(context, cow),
                                 onMarkDied: () => controller.showMarkDiedDialog(context, cow),
                                 onDelete: () => controller.confirmDeleteCow(context, cow),
                               );
@@ -1403,6 +1404,7 @@ class CowScreen extends GetView<CowController> {
           children: [
             Expanded(
               child: TextField(
+                controller: controller.searchController,
                 onChanged: (val) => controller.searchQuery.value = val,
                 decoration: InputDecoration(
                   hintText: 'Search Tag ID, breed...',
@@ -1411,7 +1413,7 @@ class CowScreen extends GetView<CowController> {
                     () => controller.searchQuery.value.isNotEmpty
                         ? IconButton(
                             icon: const Icon(Icons.clear_rounded, size: 16),
-                            onPressed: () => controller.searchQuery.value = '',
+                            onPressed: controller.clearSearch,
                           )
                         : const SizedBox.shrink(),
                   ),
@@ -1514,7 +1516,7 @@ class CowScreen extends GetView<CowController> {
                           isDark: isDark,
                           isUpdatingStatus: controller.updatingStatusCowIds.contains(cow.id),
                           isUpdatingDied: controller.updatingDiedCowIds.contains(cow.id),
-                          onToggleStatus: () => controller.toggleCowStatus(cow),
+                          onToggleStatus: () => controller.confirmToggleCowStatus(context, cow),
                           onMarkDied: () => controller.showMarkDiedDialog(context, cow),
                           canEdit: cow.canEdit && controller.canEditCow,
                           isMobile: true,
@@ -1610,7 +1612,7 @@ class CowScreen extends GetView<CowController> {
                           canViewShedTransferHistory: controller.canViewShedTransferHistory,
                           onTransferShed: () => controller.openShedTransferDialog(context, cow: cow),
                           onViewHistory: () => controller.openShedTransferHistoryDialog(context, cow: cow),
-                          onToggleStatus: () => controller.toggleCowStatus(cow),
+                          onToggleStatus: () => controller.confirmToggleCowStatus(context, cow),
                           onMarkDied: () => controller.showMarkDiedDialog(context, cow),
                           onDelete: () => controller.confirmDeleteCow(context, cow),
                         ),

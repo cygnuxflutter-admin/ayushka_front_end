@@ -115,7 +115,6 @@ enum MedicalTransactionType {
 /// Transaction reasons
 enum MedicalTransactionReason {
   purchase('PURCHASE', 'Purchase', AppColors.primary),
-  donation('DONATION', 'Donation', Color(0xFF3B82F6)),
   openingStock('OPENING_STOCK', 'Opening Stock', Color(0xFF8B5CF6)),
   treatment('TREATMENT', 'Treatment', Color(0xFFF59E0B)),
   emergency('EMERGENCY', 'Emergency Care', Color(0xFFEF4444)),
@@ -141,7 +140,6 @@ enum MedicalTransactionReason {
 
   static List<MedicalTransactionReason> get inwardReasons => [
         MedicalTransactionReason.purchase,
-        MedicalTransactionReason.donation,
         MedicalTransactionReason.openingStock,
         MedicalTransactionReason.other,
       ];
@@ -983,7 +981,27 @@ class MedicalStockInwardRequest {
   }
 }
 
-/// Request DTO for Stock Outward (FEFO automatic backend deduction)
+/// DTO for specifying a batch deduction in Stock Outward
+class MedicalOutwardBatchDto {
+  final String? batchId;
+  final String batchNumber;
+  final double quantity;
+
+  const MedicalOutwardBatchDto({
+    this.batchId,
+    required this.batchNumber,
+    required this.quantity,
+  });
+
+  Map<String, dynamic> toJson() => {
+    if (batchId != null && batchId!.isNotEmpty) 'batchId': batchId,
+    'batchNumber': batchNumber,
+    'quantity': quantity,
+    'deductedQuantity': quantity,
+  };
+}
+
+/// Request DTO for Stock Outward (FEFO automatic backend deduction or specific manual batch deduction)
 class MedicalStockOutwardRequest {
   final String gaushalaId;
   final String itemId;
@@ -995,6 +1013,7 @@ class MedicalStockOutwardRequest {
   final String? prescribedFor;
   final String? notes;
   final DateTime? transactionDate;
+  final List<MedicalOutwardBatchDto>? batches;
 
   const MedicalStockOutwardRequest({
     required this.gaushalaId,
@@ -1007,6 +1026,7 @@ class MedicalStockOutwardRequest {
     this.prescribedFor,
     this.notes,
     this.transactionDate,
+    this.batches,
   });
 
   Map<String, dynamic> toJson() {
@@ -1022,6 +1042,16 @@ class MedicalStockOutwardRequest {
     if (prescribedFor != null && prescribedFor!.trim().isNotEmpty) map['prescribedFor'] = prescribedFor!.trim();
     if (notes != null && notes!.trim().isNotEmpty) map['notes'] = notes!.trim();
     if (transactionDate != null) map['transactionDate'] = transactionDate!.toIso8601String();
+    if (batches != null && batches!.isNotEmpty) {
+      map['batches'] = batches!.map((b) => b.toJson()).toList();
+      map['deductedBatches'] = batches!.map((b) => b.toJson()).toList();
+      if (batches!.length == 1) {
+        if (batches!.first.batchId != null && batches!.first.batchId!.isNotEmpty) {
+          map['batchId'] = batches!.first.batchId;
+        }
+        map['batchNumber'] = batches!.first.batchNumber;
+      }
+    }
     return map;
   }
 }

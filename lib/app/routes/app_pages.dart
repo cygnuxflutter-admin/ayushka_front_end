@@ -30,6 +30,10 @@ import '../modules/treatment/treatment_binding.dart';
 import '../modules/treatment/treatment_details_binding.dart';
 import '../modules/treatment/treatment_details_screen.dart';
 import '../modules/treatment/treatment_list_screen.dart';
+import '../modules/heat/heat_binding.dart';
+import '../modules/heat/heat_screen.dart';
+import '../modules/mating/mating_binding.dart';
+import '../modules/mating/mating_screen.dart';
 import '../modules/type/type_binding.dart';
 import '../modules/type/type_screen.dart';
 import '../modules/user/user_binding.dart';
@@ -219,6 +223,22 @@ class AppPages {
       page: () => const MilkMainView(),
       binding: MilkBinding(),
       middlewares: [RoutePermissionRegistry.forRoute(AppRoutes.milk)],
+      transition: kIsWeb ? Transition.noTransition : Transition.cupertino,
+      transitionDuration: kIsWeb ? Duration.zero : const Duration(milliseconds: 250),
+    ),
+    GetPage(
+      name: AppRoutes.heats,
+      page: () => const HeatScreen(),
+      binding: HeatBinding(),
+      middlewares: [RoutePermissionRegistry.forRoute(AppRoutes.heats)],
+      transition: kIsWeb ? Transition.noTransition : Transition.cupertino,
+      transitionDuration: kIsWeb ? Duration.zero : const Duration(milliseconds: 250),
+    ),
+    GetPage(
+      name: AppRoutes.matings,
+      page: () => const MatingScreen(),
+      binding: MatingBinding(),
+      middlewares: [RoutePermissionRegistry.forRoute(AppRoutes.matings)],
       transition: kIsWeb ? Transition.noTransition : Transition.cupertino,
       transitionDuration: kIsWeb ? Duration.zero : const Duration(milliseconds: 250),
     ),
